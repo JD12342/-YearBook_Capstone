@@ -1,0 +1,17 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedInAdmin() {
+      return request.auth != null && request.auth.token.role == 'admin';
+    }
+
+    match /photos/{schoolYear}/{strand}/{studentId}/{imageType}/{fileName} {
+      allow read: if isSignedInAdmin();
+      allow write: if isSignedInAdmin() && request.resource.size < 20 * 1024 * 1024;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
