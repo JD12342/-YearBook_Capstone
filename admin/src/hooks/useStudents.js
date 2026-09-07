@@ -15,20 +15,30 @@ import { isFirebaseConfigured } from '../services/firebase/firebaseConfig.js'
 
 const normalizeSchoolYear = (schoolYear) => ({ ...schoolYear, label: schoolYear.name })
 const normalizeStrand = (strand) => ({ ...strand, sections: Array.isArray(strand.sections) ? strand.sections : [] })
+const studentDirectoryStateKey = 'gradbook-admin-student-directory-state'
+
+const getSavedDirectoryState = () => {
+  try {
+    return JSON.parse(localStorage.getItem(studentDirectoryStateKey) || '{}')
+  } catch {
+    return {}
+  }
+}
 
 export function useStudents() {
   const location = useLocation()
+  const savedState = getSavedDirectoryState()
   const [schoolYears, setSchoolYears] = useState([])
   const [strands, setStrands] = useState([])
   const [sections, setSections] = useState([])
-  const [selectedSchoolYearId, setSelectedSchoolYearId] = useState('')
-  const [selectedStrandId, setSelectedStrandId] = useState('')
-  const [selectedSectionId, setSelectedSectionId] = useState('')
-  const [statusFilter, setStatusFilter] = useState('active')
-  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedSchoolYearId, setSelectedSchoolYearId] = useState(savedState.schoolYearId || '')
+  const [selectedStrandId, setSelectedStrandId] = useState(savedState.strandId || '')
+  const [selectedSectionId, setSelectedSectionId] = useState(savedState.sectionId || '')
+  const [statusFilter, setStatusFilter] = useState(savedState.statusFilter || 'active')
+  const [searchTerm, setSearchTerm] = useState(savedState.searchTerm || '')
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(false)
-  const [selectedStudentId, setSelectedStudentId] = useState('')
+  const [selectedStudentId, setSelectedStudentId] = useState(savedState.studentId || '')
   const [error, setError] = useState('')
 
   const selectedSchoolYear = useMemo(
@@ -72,9 +82,6 @@ export function useStudents() {
       )
 
       setStudents(enriched)
-      if (!enriched.some((student) => student.id === selectedStudentId)) {
-        setSelectedStudentId(enriched[0]?.id ?? '')
-      }
       return enriched
     } catch (loadError) {
       setStudents([])
@@ -209,6 +216,17 @@ export function useStudents() {
     refreshStudents()
   }, [selectedSchoolYearId, selectedStrandId, selectedSectionId, statusFilter, searchTerm])
 
+  useEffect(() => {
+    localStorage.setItem(studentDirectoryStateKey, JSON.stringify({
+      schoolYearId: selectedSchoolYearId,
+      strandId: selectedStrandId,
+      sectionId: selectedSectionId,
+      statusFilter,
+      searchTerm,
+      studentId: selectedStudentId,
+    }))
+  }, [selectedSchoolYearId, selectedStrandId, selectedSectionId, statusFilter, searchTerm, selectedStudentId])
+
   const addStudent = useCallback(async (payload) => {
     const studentId = await createStudent(payload)
     await refreshStudents()
@@ -258,7 +276,7 @@ export function useStudents() {
   }, [refreshStudents])
 
   const selectedStudent = useMemo(
-    () => students.find((student) => student.id === selectedStudentId) ?? students[0] ?? null,
+    () => students.find((student) => student.id === selectedStudentId) ?? null,
     [students, selectedStudentId],
   )
 

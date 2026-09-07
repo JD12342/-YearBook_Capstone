@@ -2,12 +2,13 @@ import { Button } from '../ui/Button.jsx'
 import { Input } from '../ui/Input.jsx'
 import { Modal } from '../ui/Modal.jsx'
 
-export function AddSectionModal({ isOpen, schoolYearName, strandName, form, onChange, onSubmit, onCancel, loading = false }) {
+export function AddSectionModal({ isOpen, schoolYearName, strandName, form, error, onChange, onSubmit, onCancel, loading = false }) {
   if (!isOpen) return null
 
   return (
     <Modal isOpen={isOpen} title="Add section" onClose={onCancel}>
       <form className="student-form" onSubmit={onSubmit}>
+        {error && <div className="form-error" role="alert">{error}</div>}
         <div className="field-grid">
           <label className="form-field span-2">
             <span>School Year</span>

@@ -8,6 +8,7 @@ import { PhotoManagement } from '../pages/photos/PhotoManagement.jsx'
 import { PhotoEditing } from '../pages/photos/PhotoEditing.jsx'
 import { PhotoRetakes } from '../pages/photos/PhotoRetakes.jsx'
 import { PhotoEditorPage } from '../pages/photos/PhotoEditorPage.jsx'
+import { PhotoCapturePage } from '../pages/photos/PhotoCapturePage.jsx'
 import { ExistingPhotos } from '../pages/photos/ExistingPhotos.jsx'
 import { AcademicManagementPage } from '../pages/academic/AcademicManagementPage.jsx'
 import { SchoolYearManagementPage } from '../pages/schoolYears/SchoolYearManagementPage.jsx'
@@ -16,6 +17,8 @@ import { StrandManagementPage } from '../pages/strands/StrandManagementPage.jsx'
 import { StudentManagementPage } from '../pages/students/StudentManagementPage.jsx'
 import { StudentProfilePage } from '../pages/students/StudentProfilePage.jsx'
 import { YearbookManagementPage } from '../pages/yearbooks/YearbookManagementPage.jsx'
+import { VerificationRequestsPage } from '../pages/VerificationRequestsPage.jsx'
+import { ContentManagementPage } from '../pages/ContentManagementPage.jsx'
 
 export function AppRoutes() {
   return (
@@ -30,6 +33,8 @@ export function AppRoutes() {
           <Route path="/photos/editing" element={<PhotoEditing />} />
           <Route path="/photos/retakes" element={<PhotoRetakes />} />
           <Route path="/photos/existing" element={<ExistingPhotos />} />
+          <Route path="/photos/camera" element={<PhotoCapturePage />} />
+          <Route path="/photos/capture" element={<PhotoCapturePage />} />
           <Route path="/photos/edit/:photoId" element={<PhotoEditorPage />} />
           <Route path="/students" element={<StudentManagementPage />} />
           <Route path="/students/:studentId" element={<StudentProfilePage />} />
@@ -38,7 +43,9 @@ export function AppRoutes() {
           <Route path="/strands" element={<Navigate to="/academic?tab=strands-sections" replace />} />
           <Route path="/sections" element={<Navigate to="/academic?tab=strands-sections" replace />} />
           <Route path="/yearbooks" element={<Navigate to="/academic?tab=school-years" replace />} />
-          <Route path="/alumni" element={<PlaceholderPage title="Alumni" description="Alumni functionality is intentionally deferred." />} />
+          <Route path="/verification-requests" element={<VerificationRequestsPage />} />
+          <Route path="/content" element={<ContentManagementPage />} />
+          <Route path="/alumni" element={<Navigate to="/content" replace />} />
           <Route path="/reports" element={<PlaceholderPage title="Reports" description="Reports and analytics dashboards will be expanded next." />} />
           <Route path="/settings" element={<PlaceholderPage title="Settings" description="System configuration is planned for a later update." />} />
           <Route path="/profile" element={<PlaceholderPage title="Admin Profile" description="Profile management is not yet implemented." />} />

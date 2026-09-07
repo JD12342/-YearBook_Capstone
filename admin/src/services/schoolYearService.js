@@ -23,7 +23,14 @@ export const getSchoolYears = async () => {
     const snapshot = await getDocs(schoolYearsCollection)
     return snapshot.docs
       .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
-      .sort((left, right) => Number(right.startYear ?? 0) - Number(left.startYear ?? 0))
+      .sort((left, right) => {
+        const leftOrder = Number(left.displayOrder)
+        const rightOrder = Number(right.displayOrder)
+        if (Number.isFinite(leftOrder) && Number.isFinite(rightOrder)) return leftOrder - rightOrder
+        if (Number.isFinite(leftOrder)) return -1
+        if (Number.isFinite(rightOrder)) return 1
+        return Number(right.startYear ?? 0) - Number(left.startYear ?? 0)
+      })
   } catch (error) {
     throw new Error('Unable to load school years.')
   }

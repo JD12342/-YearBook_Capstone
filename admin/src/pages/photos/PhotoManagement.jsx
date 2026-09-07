@@ -1,5 +1,7 @@
 import { Camera, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Button } from '../../components/ui/Button.jsx'
 import { Card } from '../../components/ui/Card.jsx'
 import { Input } from '../../components/ui/Input.jsx'
 import { Select } from '../../components/ui/Select.jsx'
@@ -7,15 +9,27 @@ import { getSchoolYears, getStrands, getSections } from '../../services/schoolYe
 import { getStudents } from '../../services/studentService.js'
 import { isFirebaseConfigured } from '../../services/firebase/firebaseConfig.js'
 
+const photoManagementStateKey = 'gradbook-admin-photo-management-state'
+
+const readPhotoManagementState = () => {
+  try {
+    return JSON.parse(localStorage.getItem(photoManagementStateKey) || '{}')
+  } catch {
+    return {}
+  }
+}
+
 export function PhotoManagement() {
+  const navigate = useNavigate()
+  const [savedState] = useState(readPhotoManagementState)
   const [schoolYears, setSchoolYears] = useState([])
   const [strands, setStrands] = useState([])
   const [sections, setSections] = useState([])
   const [students, setStudents] = useState([])
-  const [selectedSchoolYearId, setSelectedSchoolYearId] = useState('')
-  const [selectedStrandId, setSelectedStrandId] = useState('')
-  const [selectedSectionId, setSelectedSectionId] = useState('')
-  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedSchoolYearId, setSelectedSchoolYearId] = useState(() => savedState.schoolYearId || '')
+  const [selectedStrandId, setSelectedStrandId] = useState(() => savedState.strandId || '')
+  const [selectedSectionId, setSelectedSectionId] = useState(() => savedState.sectionId || '')
+  const [searchTerm, setSearchTerm] = useState(() => savedState.searchTerm || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -105,7 +119,7 @@ export function PhotoManagement() {
         const records = await getSections({ schoolYearId: selectedSchoolYearId, strandId: selectedStrandId })
         if (!ignore) {
           setSections(records)
-          setSelectedSectionId((current) => (current && records.some((section) => section.name === current) ? current : ''))
+          setSelectedSectionId((current) => (current && records.some((section) => section.id === current) ? current : ''))
         }
       } catch (error) {
         if (!ignore) setSections([])
@@ -149,6 +163,15 @@ export function PhotoManagement() {
     }
   }, [selectedSchoolYearId, selectedStrandId, selectedSectionId, searchTerm])
 
+  useEffect(() => {
+    localStorage.setItem(photoManagementStateKey, JSON.stringify({
+      schoolYearId: selectedSchoolYearId,
+      strandId: selectedStrandId,
+      sectionId: selectedSectionId,
+      searchTerm,
+    }))
+  }, [selectedSchoolYearId, selectedStrandId, selectedSectionId, searchTerm])
+
   const filteredStudents = students.filter((student) => {
     if (!searchTerm) return true
     const haystack = [student.firstName, student.middleName, student.lastName, student.studentNumber]
@@ -157,6 +180,10 @@ export function PhotoManagement() {
       .toLowerCase()
     return haystack.includes(searchTerm.toLowerCase())
   })
+
+  const openCapture = (student) => {
+    navigate(`/photos/camera?studentId=${encodeURIComponent(student.id)}`)
+  }
 
   return (
     <div className="page-stack">
@@ -186,7 +213,7 @@ export function PhotoManagement() {
             <Select value={selectedStrandId} onChange={(event) => setSelectedStrandId(event.target.value)}>
               <option value="">All</option>
               {strands.map((strand) => (
-                <option key={strand.id} value={strand.id}>{strand.name}</option>
+                <option key={strand.id} value={strand.id}>{strand.code || strand.name}</option>
               ))}
             </Select>
           </div>
@@ -195,7 +222,7 @@ export function PhotoManagement() {
             <Select value={selectedSectionId} onChange={(event) => setSelectedSectionId(event.target.value)}>
               <option value="">All</option>
               {sections.map((section) => (
-                <option key={section.id} value={section.name}>{section.name}</option>
+                <option key={section.id} value={section.id}>{section.code || section.name}</option>
               ))}
             </Select>
           </div>
@@ -220,11 +247,11 @@ export function PhotoManagement() {
 
       <Card className="panel-card">
         <div className="section-title-row">
-          <h3>Photo Session</h3>
-          <button type="button" className="btn btn-primary btn-md">
+          <div><h3>Photo sessions</h3><span className="panel-caption">Start a fast, consistent capture session or open an existing photo for detailed editing.</span></div>
+          <Button type="button" disabled={!filteredStudents.length} onClick={() => openCapture(filteredStudents[0])}>
             <Camera size={16} />
-            Capture Photo
-          </button>
+            Start photo session
+          </Button>
         </div>
 
         {loading ? (
@@ -246,11 +273,11 @@ export function PhotoManagement() {
                 {filteredStudents.map((student) => (
                   <tr key={student.id}>
                     <td>{[student.firstName, student.middleName, student.lastName].filter(Boolean).join(' ') || student.name || 'Unnamed student'}</td>
-                    <td>{strands.find((strand) => strand.id === student.strandId)?.name || student.strandId || '—'}</td>
-                    <td>{student.sectionId || '—'}</td>
+                    <td>{strands.find((strand) => strand.id === student.strandId)?.code || '—'}</td>
+                    <td>{sections.find((section) => section.id === student.sectionId)?.code || '—'}</td>
                     <td><span className="badge badge-neutral">{student.status || 'active'}</span></td>
-                    <td>Camera</td>
-                    <td><button type="button" className="text-button">View</button></td>
+                    <td>{student.photoId ? 'Captured' : 'Not captured'}</td>
+                    <td><div className="inline-actions"><button type="button" className="table-action-button" onClick={() => openCapture(student)}>Capture</button>{student.photoId && <button type="button" className="table-action-button alt" onClick={() => navigate(`/photos/edit/${student.photoId}`)}>Edit</button>}</div></td>
                   </tr>
                 ))}
               </tbody>
@@ -260,6 +287,7 @@ export function PhotoManagement() {
           <div className="empty-state">No students found.</div>
         )}
       </Card>
+
     </div>
   )
 }

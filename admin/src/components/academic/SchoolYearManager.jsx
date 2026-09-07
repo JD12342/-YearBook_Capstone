@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { GripVertical } from 'lucide-react'
 import { Badge } from '../ui/Badge.jsx'
 import { Button } from '../ui/Button.jsx'
 import { Card } from '../ui/Card.jsx'
@@ -22,6 +23,9 @@ export function SchoolYearManager() {
   const [selectedSchoolYear, setSelectedSchoolYear] = useState(null)
   const [pendingDelete, setPendingDelete] = useState(null)
   const [deleteLoading, setDeleteLoading] = useState(false)
+  const [isReordering, setIsReordering] = useState(false)
+  const [draggedSchoolYearId, setDraggedSchoolYearId] = useState(null)
+  const [savingOrder, setSavingOrder] = useState(false)
 
   const loadSchoolYears = async () => {
     setLoading(true)
@@ -137,6 +141,33 @@ export function SchoolYearManager() {
     }
   }
 
+  const moveSchoolYear = (targetId) => {
+    if (!draggedSchoolYearId || draggedSchoolYearId === targetId) return
+    setSchoolYears((current) => {
+      const next = [...current]
+      const fromIndex = next.findIndex((year) => year.id === draggedSchoolYearId)
+      const toIndex = next.findIndex((year) => year.id === targetId)
+      if (fromIndex < 0 || toIndex < 0) return current
+      const [moved] = next.splice(fromIndex, 1)
+      next.splice(toIndex, 0, moved)
+      return next
+    })
+    setDraggedSchoolYearId(null)
+  }
+
+  const saveSchoolYearOrder = async () => {
+    setSavingOrder(true)
+    setError('')
+    try {
+      await Promise.all(schoolYears.map((schoolYear, index) => updateSchoolYear(schoolYear.id, { displayOrder: index })))
+      setIsReordering(false)
+    } catch (saveError) {
+      setError(saveError.message || 'Unable to save the school year order.')
+    } finally {
+      setSavingOrder(false)
+    }
+  }
+
   return (
     <div className="manager-panel">
       <div className="manager-toolbar">
@@ -151,9 +182,15 @@ export function SchoolYearManager() {
           <div className="bar-form-field">
             <Input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search school years..." />
           </div>
+          <Button className="bar-form-button" variant="secondary" onClick={() => setIsReordering((active) => !active)} disabled={Boolean(searchTerm.trim())}>
+            {isReordering ? 'Done arranging' : 'Arrange order'}
+          </Button>
+          {isReordering && <Button className="bar-form-button" onClick={saveSchoolYearOrder} disabled={savingOrder}>{savingOrder ? 'Saving order...' : 'Save order'}</Button>}
           <Button className="bar-form-button" onClick={() => setIsFormOpen(true)}>+ Add School Year</Button>
         </div>
       </div>
+
+      {isReordering && <div className="reorder-hint">Drag a school year by its handle and drop it where you want it to appear. Save when finished.</div>}
 
       {error && <div className="form-error">{error}</div>}
 
@@ -211,8 +248,16 @@ export function SchoolYearManager() {
                   const isYearbookArchived = yearbookStatus === 'archived'
 
                   return (
-                    <tr key={schoolYear.id}>
-                      <td>{schoolYear.name}</td>
+                    <tr
+                      key={schoolYear.id}
+                      className={isReordering ? 'reorder-row' : ''}
+                      draggable={isReordering}
+                      onDragStart={() => setDraggedSchoolYearId(schoolYear.id)}
+                      onDragOver={(event) => { if (isReordering) event.preventDefault() }}
+                      onDrop={() => moveSchoolYear(schoolYear.id)}
+                      onDragEnd={() => setDraggedSchoolYearId(null)}
+                    >
+                      <td><span className="reorder-name">{isReordering && <GripVertical className="reorder-handle" size={17} aria-hidden="true" />}{schoolYear.name}</span></td>
                       <td><Badge status={schoolYear.status === 'active' ? 'active' : 'archived'}>{schoolYear.status || 'active'}</Badge></td>
                       <td>{schoolYear.yearbook?.title || 'No yearbook created yet'}</td>
                       <td>{schoolYear.strandsCount ?? 0}</td>

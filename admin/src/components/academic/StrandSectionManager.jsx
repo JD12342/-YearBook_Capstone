@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { GripVertical } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../ui/Button.jsx'
 import { Card } from '../ui/Card.jsx'
@@ -21,6 +22,7 @@ export function StrandSectionManager() {
   const [strands, setStrands] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [formError, setFormError] = useState('')
   const [statusFilter, setStatusFilter] = useState('active')
   const [activeModal, setActiveModal] = useState(null)
   const [selectedStrandDetail, setSelectedStrandDetail] = useState(null)
@@ -28,6 +30,9 @@ export function StrandSectionManager() {
   const [deleteLoading, setDeleteLoading] = useState(false)
   const [strandForm, setStrandForm] = useState({ name: '', code: '', status: 'active', schoolYearId: '' })
   const [sectionForm, setSectionForm] = useState({ name: '', code: '', schoolYearId: '', strandId: '', status: 'active' })
+  const [isReordering, setIsReordering] = useState(false)
+  const [draggedStrandId, setDraggedStrandId] = useState(null)
+  const [savingOrder, setSavingOrder] = useState(false)
 
   const loadSchoolYears = async () => {
     const years = await getSchoolYears()
@@ -86,6 +91,7 @@ export function StrandSectionManager() {
   )
 
   const handleAddStrand = () => {
+    setFormError('')
     setStrandForm({
       name: '',
       code: '',
@@ -106,7 +112,7 @@ export function StrandSectionManager() {
   const handleSubmitStrand = async (event) => {
     event.preventDefault()
     if (!strandForm.schoolYearId || !strandForm.name.trim()) {
-      setError('Please choose a school year and provide a strand name.')
+      setFormError('Please choose a school year and provide a strand name.')
       return
     }
 
@@ -128,11 +134,12 @@ export function StrandSectionManager() {
       }
 
       setStrands((current) => [createdStrand, ...current])
+      setFormError('')
       setActiveModal(null)
       setStrandForm({ name: '', code: '', status: 'active', schoolYearId: selectedSchoolYearId })
       await loadStrands(selectedSchoolYearId)
     } catch (submitError) {
-      setError(submitError.message || 'Unable to create strand.')
+      setFormError(submitError.message || 'Unable to create strand.')
     }
   }
 
@@ -146,6 +153,7 @@ export function StrandSectionManager() {
   }
 
   const handleOpenSectionCreate = (strand) => {
+    setFormError('')
     setSelectedStrandDetail((current) => current && current.id === strand.id ? current : strand)
     setSectionForm({
       name: '',
@@ -160,7 +168,7 @@ export function StrandSectionManager() {
   const handleSubmitSection = async (event) => {
     event.preventDefault()
     if (!sectionForm.schoolYearId || !sectionForm.strandId || !sectionForm.name.trim()) {
-      setError('Please provide a valid section name and selected strand.')
+      setFormError('Please provide a valid section name and selected strand.')
       return
     }
 
@@ -191,11 +199,12 @@ export function StrandSectionManager() {
 
       const targetStrand = strands.find((strand) => strand.id === sectionForm.strandId) ?? { id: sectionForm.strandId, name: '' }
       setSelectedStrandDetail((current) => current && current.id === targetStrand.id ? { ...current, sections: [createdSection, ...(current.sections ?? [])] } : current)
+      setFormError('')
       setActiveModal('strand-details')
       setSectionForm({ name: '', code: '', schoolYearId: selectedSchoolYearId, strandId: '', status: 'active' })
       await loadStrands(selectedSchoolYearId)
     } catch (submitError) {
-      setError(submitError.message || 'Unable to create section.')
+      setFormError(submitError.message || 'Unable to create section.')
     }
   }
 
@@ -205,6 +214,44 @@ export function StrandSectionManager() {
       await loadStrands(selectedSchoolYearId)
     } catch (submitError) {
       setError(submitError.message || 'Unable to archive section.')
+    }
+  }
+
+  const moveStrand = (targetId) => {
+    if (!draggedStrandId || draggedStrandId === targetId) return
+    setStrands((current) => {
+      const next = [...current]
+      const fromIndex = next.findIndex((strand) => strand.id === draggedStrandId)
+      const toIndex = next.findIndex((strand) => strand.id === targetId)
+      if (fromIndex < 0 || toIndex < 0) return current
+      const [moved] = next.splice(fromIndex, 1)
+      next.splice(toIndex, 0, moved)
+      return next
+    })
+    setDraggedStrandId(null)
+  }
+
+  const saveStrandOrder = async () => {
+    setSavingOrder(true)
+    setError('')
+    try {
+      await Promise.all(strands.map((strand, index) => updateStrand(strand.id, { displayOrder: index })))
+      setIsReordering(false)
+    } catch (saveError) {
+      setError(saveError.message || 'Unable to save the strand order.')
+    } finally {
+      setSavingOrder(false)
+    }
+  }
+
+  const saveSectionOrder = async (sections) => {
+    try {
+      await Promise.all(sections.map((section, index) => updateSection(section.id, { displayOrder: index })))
+      setSelectedStrandDetail((current) => current ? { ...current, sections } : current)
+      setStrands((current) => current.map((strand) => strand.id === selectedStrandDetail?.id ? { ...strand, sections } : strand))
+    } catch (saveError) {
+      setError(saveError.message || 'Unable to save the section order.')
+      throw saveError
     }
   }
 
@@ -239,7 +286,6 @@ export function StrandSectionManager() {
       }
       await loadStrands(selectedSchoolYearId)
     } catch (submitError) {
-      setError(submitError.message || 'Unable to delete the selected record.')
       throw submitError
     } finally {
       setDeleteLoading(false)
@@ -255,7 +301,6 @@ export function StrandSectionManager() {
           <div className="page-kicker">Strands & Sections</div>
           <h3>Academic structure</h3>
         </div>
-        <Button onClick={handleAddStrand}>+ Add Strand</Button>
       </div>
 
       <div className="toolbar-card bar-form-card">
@@ -279,9 +324,15 @@ export function StrandSectionManager() {
             </Select>
           </div>
 
+          <Button className="bar-form-button" variant="secondary" onClick={() => { setStatusFilter('all'); setIsReordering((active) => !active) }}>
+            {isReordering ? 'Done arranging' : 'Arrange order'}
+          </Button>
+          {isReordering && <Button className="bar-form-button" onClick={saveStrandOrder} disabled={savingOrder}>{savingOrder ? 'Saving order...' : 'Save order'}</Button>}
           <Button className="bar-form-button" onClick={handleAddStrand}>+ Add Strand</Button>
         </div>
       </div>
+
+      {isReordering && <div className="reorder-hint">Drag a strand by its handle and drop it where you want it to appear. Save when finished.</div>}
 
       {error && <div className="form-error">{error}</div>}
 
@@ -299,8 +350,9 @@ export function StrandSectionManager() {
         loading={deleteLoading}
       />
 
-      <Modal isOpen={activeModal === 'strand-create'} title="Create strand" onClose={() => setActiveModal(null)}>
+      <Modal isOpen={activeModal === 'strand-create'} title="Create strand" onClose={() => { setActiveModal(null); setFormError('') }}>
         <form className="student-form" onSubmit={handleSubmitStrand}>
+          {formError && <div className="form-error" role="alert">{formError}</div>}
           <div className="field-grid">
             <label className="form-field span-2">
               <span>School Year</span>
@@ -324,7 +376,7 @@ export function StrandSectionManager() {
           </div>
 
           <div className="form-actions">
-            <Button type="button" variant="secondary" onClick={() => setActiveModal(null)}>Cancel</Button>
+            <Button type="button" variant="secondary" onClick={() => { setActiveModal(null); setFormError('') }}>Cancel</Button>
             <Button type="submit">Create Strand</Button>
           </div>
         </form>
@@ -335,9 +387,11 @@ export function StrandSectionManager() {
         schoolYearName={selectedSchoolYear?.name || ''}
         strandName={strands.find((strand) => strand.id === sectionForm.strandId)?.name || ''}
         form={sectionForm}
+        error={formError}
         onChange={(field, value) => setSectionForm((current) => ({ ...current, [field]: value }))}
         onSubmit={handleSubmitSection}
         onCancel={() => {
+          setFormError('')
           setActiveModal(selectedStrandDetail ? 'strand-details' : null)
           setSectionForm({ name: '', code: '', schoolYearId: selectedSchoolYearId, strandId: selectedStrandDetail?.id || '', status: 'active' })
         }}
@@ -366,6 +420,7 @@ export function StrandSectionManager() {
         onViewStudents={(sectionId) => navigate(`/students?schoolYearId=${selectedSchoolYearId}&strandId=${selectedStrandDetail.id}&sectionId=${sectionId}`)}
         onArchiveSection={handleArchiveSection}
         onDeleteSection={(sectionId, sectionName) => setPendingDelete({ type: 'section', id: sectionId, name: sectionName })}
+        onSaveSectionOrder={saveSectionOrder}
       />
 
       <Card className="panel-card">
@@ -392,9 +447,18 @@ export function StrandSectionManager() {
                   const totalStudents = sectionList.reduce((sum, section) => sum + (section.studentsCount ?? 0), 0)
 
                   return (
-                    <tr key={strand.id}>
+                    <tr
+                      key={strand.id}
+                      className={isReordering ? 'reorder-row' : ''}
+                      draggable={isReordering}
+                      onDragStart={() => setDraggedStrandId(strand.id)}
+                      onDragOver={(event) => { if (isReordering) event.preventDefault() }}
+                      onDrop={() => moveStrand(strand.id)}
+                      onDragEnd={() => setDraggedStrandId(null)}
+                    >
                       <td>
                         <div className="table-name-cell">
+                          {isReordering && <GripVertical className="reorder-handle" size={17} aria-hidden="true" />}
                           <span>{strand.name}</span>
                         </div>
                       </td>

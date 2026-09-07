@@ -34,7 +34,7 @@ export function DeleteConfirmationModal({ isOpen, title, message, warning, onClo
   }
 
   return (
-    <div className="modal-backdrop">
+    <div className="modal-backdrop modal-backdrop-confirmation" role="presentation">
       <div className="modal-panel delete-modal-panel">
         <div className="modal-header">
           <h3>{title}</h3>

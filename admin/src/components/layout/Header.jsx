@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, ChevronDown, LogOut, UserRound } from 'lucide-react'
+import { Bell, ChevronDown, LogOut, Menu, UserRound } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
 
-export function Header({ title, subtitle }) {
+export function Header({ title, subtitle, onMenuToggle }) {
   const navigate = useNavigate()
   const { logout, user } = useAuth()
   const [profileOpen, setProfileOpen] = useState(false)
@@ -36,7 +36,10 @@ export function Header({ title, subtitle }) {
 
   return (
     <header className="top-header">
-      <div>
+      <button type="button" className="sidebar-toggle" onClick={onMenuToggle} aria-label="Toggle navigation menu">
+        <Menu size={21} aria-hidden="true" />
+      </button>
+      <div className="header-title">
         <div className="header-kicker">{subtitle}</div>
         <h1>{title}</h1>
       </div>

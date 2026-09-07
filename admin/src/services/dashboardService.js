@@ -21,13 +21,16 @@ export const getDashboardStats = async () => {
   const strands = strandsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
   const photos = photosSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
   const yearbooks = yearbooksSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
+  const uniqueStrandCount = new Set(
+    strands.map((strand) => (strand.code || strand.name || '').trim().toLowerCase()).filter(Boolean),
+  ).size
 
   return {
     totalStudents: students.length,
     activeStudents: students.filter((student) => student.status !== 'archived').length,
     archivedStudents: students.filter((student) => student.status === 'archived').length,
     totalSchoolYears: schoolYears.length,
-    totalStrands: strands.length,
+    totalStrands: uniqueStrandCount,
     totalPhotos: photos.length,
     totalYearbooks: yearbooks.length,
     studentsBySchoolYear: schoolYears

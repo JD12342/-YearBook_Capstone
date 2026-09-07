@@ -46,8 +46,8 @@ export function StudentTable({ students = [], onSelect, onEdit, onArchive, onRes
                 </button>
               </td>
               <td>{student.schoolYearName || student.schoolYearId || '—'}</td>
-              <td>{student.strandName || student.strandId || '—'}</td>
-              <td>{student.sectionId || '—'}</td>
+              <td>{student.strandCode || student.strandName || student.strandId || '—'}</td>
+              <td>{student.sectionCode || student.sectionName || student.sectionId || '—'}</td>
               <td><Badge status={student.status || 'active'}>{student.status || 'active'}</Badge></td>
               <td>
                 <div className="inline-actions">

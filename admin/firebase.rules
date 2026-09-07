@@ -29,6 +29,22 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    match /accountRequests/{requestId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /announcements/{announcementId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /alumni/{alumniId} {
+      allow read, write: if isSignedIn();
+    }
+
+    match /schoolContent/{contentId} {
+      allow read, write: if isSignedIn();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

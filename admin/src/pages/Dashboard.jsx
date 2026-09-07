@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { BookOpenText, CalendarDays, Camera, Layers3, UserCheck, UserRoundX, Users } from 'lucide-react'
+import { ArrowRight, BookOpenText, Layers3, Users } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Card } from '../components/ui/Card.jsx'
-import { StatCard } from '../components/ui/StatCard.jsx'
 import { getDashboardStats } from '../services/dashboardService.js'
 import { isFirebaseConfigured } from '../services/firebase/firebaseConfig.js'
 
@@ -28,6 +28,7 @@ function DistributionList({ entries }) {
 }
 
 export function Dashboard() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -64,14 +65,10 @@ export function Dashboard() {
     }
   }, [])
 
-  const statCards = [
-    { title: 'TOTAL STUDENTS', value: stats.totalStudents ?? 0, description: 'All student records', icon: <Users size={22} aria-hidden="true" /> },
-    { title: 'ACTIVE STUDENTS', value: stats.activeStudents ?? 0, description: 'Current active records', icon: <UserCheck size={22} aria-hidden="true" /> },
-    { title: 'ARCHIVED STUDENTS', value: stats.archivedStudents ?? 0, description: 'Archived records', icon: <UserRoundX size={22} aria-hidden="true" /> },
-    { title: 'SCHOOL YEARS', value: stats.totalSchoolYears ?? 0, description: 'Academic years', icon: <CalendarDays size={22} aria-hidden="true" /> },
-    { title: 'STRANDS', value: stats.totalStrands ?? 0, description: 'Academic strands', icon: <Layers3 size={22} aria-hidden="true" /> },
-    { title: 'PHOTOS', value: stats.totalPhotos ?? 0, description: 'Photo metadata records', icon: <Camera size={22} aria-hidden="true" /> },
-    { title: 'YEARBOOKS', value: stats.totalYearbooks ?? 0, description: 'Yearbook foundations', icon: <BookOpenText size={22} aria-hidden="true" /> },
+  const featureCards = [
+    { title: 'Student Directory', description: 'Organize student records for every graduating class.', metric: stats.totalStudents ?? 0, metricLabel: 'student records', icon: <Users size={66} strokeWidth={1.5} />, route: '/students', tone: 'feature-forest' },
+    { title: 'Academic Setup', description: 'Manage school years, strands, and sections.', metric: stats.totalSchoolYears ?? 0, metricLabel: `${stats.totalStrands ?? 0} academic strands`, icon: <Layers3 size={66} strokeWidth={1.5} />, route: '/academic', tone: 'feature-jade' },
+    { title: 'Yearbook Studio', description: 'Prepare the records that shape each digital yearbook.', metric: stats.totalYearbooks ?? 0, metricLabel: `${stats.totalPhotos ?? 0} approved photo records`, icon: <BookOpenText size={66} strokeWidth={1.5} />, route: '/yearbooks', tone: 'feature-emerald' },
   ]
 
   return (
@@ -84,18 +81,22 @@ export function Dashboard() {
         </div>
       </div>
 
+      <div className="dashboard-feature-grid">
+        {featureCards.map((card) => (
+          <button key={card.title} type="button" className={`dashboard-feature-card ${card.tone}`} onClick={() => navigate(card.route)}>
+            <span className="dashboard-feature-icon" aria-hidden="true">{card.icon}</span>
+            <span className="dashboard-feature-content"><strong>{card.title}</strong><small>{card.description}</small><span className="dashboard-feature-metric"><b>{card.metric}</b><em>{card.metricLabel}</em></span></span>
+            <span className="dashboard-feature-footer">Open workspace <ArrowRight size={17} aria-hidden="true" /></span>
+          </button>
+        ))}
+      </div>
+
       {error && <div className="form-error">{error}</div>}
 
       {loading ? (
         <div className="empty-state">Loading dashboard statistics...</div>
       ) : (
         <>
-          <div className="stats-grid">
-            {statCards.map((card) => (
-              <StatCard key={card.title} {...card} />
-            ))}
-          </div>
-
           <div className="dashboard-grid">
             <Card className="panel-card">
               <div className="section-title-row">

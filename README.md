@@ -6,18 +6,17 @@ GradBook
 
 ## Description
 
-GradBook is a capstone project for an interactive 3D digital yearbook and alumni engagement system for Sorsogon National High School. The project is being developed in a modular way to keep the system maintainable and avoid unnecessary complexity.
+GradBook is a capstone project for a digital yearbook and alumni engagement system for Sorsogon National High School. It has separate browser experiences for the school community and school staff.
 
 ## Applications
 
-- `mobile/` — React Native application for the mobile experience
+- `client/` — React.js public client website for students, alumni, and families
 - `admin/` — React.js administration website for school staff
 
 ## Technologies
 
 The foundation is configured with:
 
-- React Native (Expo)
 - React.js (Vite)
 - Firebase Authentication
 - Firebase Firestore
@@ -25,12 +24,12 @@ The foundation is configured with:
 
 ## Running the Project
 
-### Mobile
+### Client website
 
 ```bash
-cd mobile
+cd client
 npm install
-npm start
+npm run dev
 ```
 
 ### Admin

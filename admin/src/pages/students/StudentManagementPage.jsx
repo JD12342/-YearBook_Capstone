@@ -5,7 +5,7 @@ import { Modal } from '../../components/ui/Modal.jsx'
 import { StudentForm } from '../../components/students/StudentForm.jsx'
 import { StudentTable } from '../../components/students/StudentTable.jsx'
 import { BulkStudentImport } from '../../components/students/BulkStudentImport.jsx'
-import { StudentProfileModal } from '../../components/students/StudentProfileModal.jsx'
+import { StudentProfilePanel } from '../../components/students/StudentProfilePanel.jsx'
 import { DeleteConfirmationModal } from '../../components/ui/DeleteConfirmationModal.jsx'
 import { useStudents } from '../../hooks/useStudents.js'
 import { reauthenticateAdmin } from '../../services/firebase/auth.js'
@@ -22,10 +22,8 @@ export function StudentManagementPage() {
     strands,
     sections,
     visibleStudents,
-    selectedSchoolYear,
     selectedSchoolYearId,
     setSelectedSchoolYearId,
-    selectedStrand,
     selectedStrandId,
     setSelectedStrandId,
     selectedSectionId,
@@ -36,7 +34,6 @@ export function StudentManagementPage() {
     setSearchTerm,
     selectedStudent,
     setSelectedStudentId,
-    selectedSectionOptions,
     loading,
     error,
     addStudent,
@@ -50,18 +47,25 @@ export function StudentManagementPage() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingStudent, setEditingStudent] = useState(null)
   const [isBulkOpen, setIsBulkOpen] = useState(false)
-  const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState(null)
   const [submitError, setSubmitError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
+  const [profileSaving, setProfileSaving] = useState(false)
 
   const canShowBulkButton = Boolean(selectedSchoolYearId && selectedStrandId && selectedSectionId)
 
-  const tableRows = useMemo(() => visibleStudents.map((student) => ({
-    ...student,
-    schoolYearName: schoolYears.find((year) => year.id === student.schoolYearId)?.name || '—',
-    strandName: strands.find((strand) => strand.id === student.strandId)?.name || '—',
-  })), [visibleStudents, schoolYears, strands])
+  const tableRows = useMemo(() => visibleStudents.map((student) => {
+    const strand = strands.find((entry) => entry.id === student.strandId)
+    const section = sections.find((entry) => entry.id === student.sectionId)
+    return {
+      ...student,
+      schoolYearName: schoolYears.find((year) => year.id === student.schoolYearId)?.name || '—',
+      strandName: strand?.name || '—',
+      strandCode: strand?.code || strand?.name || '—',
+      sectionName: section?.name || '—',
+      sectionCode: section?.code || section?.name || '—',
+    }
+  }), [visibleStudents, schoolYears, strands, sections])
 
   const handleFormOpen = (student = null) => {
     setSubmitError('')
@@ -113,7 +117,22 @@ export function StudentManagementPage() {
 
   const openProfile = (student) => {
     setSelectedStudentId(student.id)
-    setIsProfileOpen(true)
+  }
+
+  const selectedProfileStrand = strands.find((strand) => strand.id === selectedStudent?.strandId) ?? null
+  const selectedProfileSection = sections.find((section) => section.id === selectedStudent?.sectionId) ?? null
+
+  const saveGraduationProfile = async (profile) => {
+    if (!selectedStudent) return
+    setProfileSaving(true)
+    try {
+      await updateStudent(selectedStudent.id, { ...selectedStudent, ...profile })
+      setSuccessMessage('Graduation profile updated.')
+    } catch (profileError) {
+      setSubmitError(profileError.message || 'Unable to save the graduation profile.')
+    } finally {
+      setProfileSaving(false)
+    }
   }
 
   return (
@@ -151,8 +170,8 @@ export function StudentManagementPage() {
 
           <select value={selectedSectionId} onChange={(event) => setSelectedSectionId(event.target.value)} className="data-select">
             <option value="">All sections</option>
-            {selectedSectionOptions.map((section) => (
-              <option key={section} value={section}>{section}</option>
+            {sections.map((section) => (
+              <option key={section.id} value={section.id}>{section.name || section.code || 'Unnamed section'}</option>
             ))}
           </select>
 
@@ -162,53 +181,70 @@ export function StudentManagementPage() {
             ))}
           </select>
 
-          <Button type="button" onClick={() => handleFormOpen()}>+ Add Student</Button>
-          <Button type="button" variant="secondary" onClick={() => setIsBulkOpen(true)} disabled={!canShowBulkButton}>+ Bulk Add Students</Button>
+          <div className="student-toolbar-actions">
+            <Button type="button" onClick={() => handleFormOpen()}>+ Add Student</Button>
+            <Button type="button" variant="secondary" onClick={() => setIsBulkOpen(true)} disabled={!canShowBulkButton}>+ Bulk Add Students</Button>
+          </div>
         </div>
       </Card>
 
       {error && <div className="form-error">{error}</div>}
-      {submitError && <div className="form-error">{submitError}</div>}
+      {submitError && !isFormOpen && <div className="form-error" role="alert">{submitError}</div>}
       {successMessage && <div className="form-success">{successMessage}</div>}
 
-      <Card className="panel-card">
-        {loading ? (
-          <div className="empty-state">Loading students...</div>
-        ) : tableRows.length ? (
-          <StudentTable
-            students={tableRows}
-            onSelect={(studentId) => {
-              const nextStudent = visibleStudents.find((student) => student.id === studentId)
-              if (nextStudent) openProfile(nextStudent)
-            }}
-            onEdit={(student) => handleFormOpen(student)}
-            onArchive={async (student) => {
-              await archiveStudent(student.id)
-              setSuccessMessage('Student archived.')
-            }}
-            onRestore={async (student) => {
-              await restoreStudent(student.id)
-              setSuccessMessage('Student restored.')
-            }}
-            onDelete={(student) => setPendingDelete(student)}
-          />
-        ) : (
-          <div className="empty-state">
-            <div className="empty-state-title">No students found</div>
-            <div>No students have been added to this section yet.</div>
-            <div className="space-top">
-              <Button type="button" onClick={() => handleFormOpen()}>+ Add Student</Button>
-              <Button type="button" variant="secondary" onClick={() => setIsBulkOpen(true)} className="left-gap">+ Bulk Add Students</Button>
-            </div>
-          </div>
+      <div className={`student-directory-workspace ${selectedStudent ? 'profile-open' : ''}`}>
+        <Card className="panel-card student-list-card">
+          {loading ? (
+            <div className="empty-state">Loading students...</div>
+          ) : tableRows.length ? (
+            <StudentTable
+              students={tableRows}
+              onSelect={(studentId) => {
+                const nextStudent = visibleStudents.find((student) => student.id === studentId)
+                if (nextStudent) openProfile(nextStudent)
+              }}
+              onEdit={(student) => handleFormOpen(student)}
+              onArchive={async (student) => {
+                await archiveStudent(student.id)
+                setSuccessMessage('Student archived.')
+              }}
+              onRestore={async (student) => {
+                await restoreStudent(student.id)
+                setSuccessMessage('Student restored.')
+              }}
+              onDelete={(student) => setPendingDelete(student)}
+            />
+          ) : (
+            <div className="empty-state"><div className="empty-state-title">No students found</div><div>No students have been added to this section yet.</div></div>
+          )}
+        </Card>
+
+        {selectedStudent && (
+          <Card className="panel-card student-detail-card">
+            <StudentProfilePanel
+              student={selectedStudent}
+              schoolYear={schoolYears.find((year) => year.id === selectedStudent.schoolYearId) ?? null}
+              strand={selectedProfileStrand}
+              section={selectedProfileSection}
+              saving={profileSaving}
+              onClose={() => setSelectedStudentId('')}
+              onEditStudent={() => handleFormOpen(selectedStudent)}
+              onSaveProfile={saveGraduationProfile}
+            />
+          </Card>
         )}
-      </Card>
+      </div>
 
       <Modal isOpen={isFormOpen} title={editingStudent ? 'Edit student' : 'Add student'} onClose={() => { setIsFormOpen(false); setEditingStudent(null); setSubmitError('') }}>
+        {submitError && <div className="form-error" role="alert">{submitError}</div>}
         <StudentForm
           student={editingStudent}
           schoolYears={schoolYears}
           strands={strands}
+          sections={sections}
+          defaultSchoolYearId={selectedSchoolYearId}
+          defaultStrandId={selectedStrandId}
+          defaultSectionId={selectedSectionId}
           onSubmit={handleFormSubmit}
           onCancel={() => { setIsFormOpen(false); setEditingStudent(null); setSubmitError('') }}
           submitLabel={editingStudent ? 'Update student' : 'Create student'}
@@ -224,38 +260,6 @@ export function StudentManagementPage() {
           onImport={handleBulkImport}
         />
       </Modal>
-
-      <StudentProfileModal
-        isOpen={isProfileOpen}
-        student={selectedStudent}
-        schoolYear={selectedSchoolYear}
-        strand={selectedStrand}
-        onClose={() => setIsProfileOpen(false)}
-        onEdit={() => {
-          setIsProfileOpen(false)
-          handleFormOpen(selectedStudent)
-        }}
-        onArchive={async () => {
-          if (selectedStudent) {
-            await archiveStudent(selectedStudent.id)
-            setSuccessMessage('Student archived.')
-            setIsProfileOpen(false)
-          }
-        }}
-        onRestore={async () => {
-          if (selectedStudent) {
-            await restoreStudent(selectedStudent.id)
-            setSuccessMessage('Student restored.')
-            setIsProfileOpen(false)
-          }
-        }}
-        onDelete={() => {
-          if (selectedStudent) {
-            setPendingDelete(selectedStudent)
-            setIsProfileOpen(false)
-          }
-        }}
-      />
 
       <DeleteConfirmationModal
         isOpen={Boolean(pendingDelete)}

@@ -20,7 +20,14 @@ export const getStrands = async (schoolYearId) => {
     const snapshot = await getDocs(strandsCollection)
     const records = snapshot.docs
       .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
-      .sort((left, right) => (left.name ?? '').localeCompare(right.name ?? ''))
+      .sort((left, right) => {
+        const leftOrder = Number(left.displayOrder)
+        const rightOrder = Number(right.displayOrder)
+        if (Number.isFinite(leftOrder) && Number.isFinite(rightOrder)) return leftOrder - rightOrder
+        if (Number.isFinite(leftOrder)) return -1
+        if (Number.isFinite(rightOrder)) return 1
+        return (left.name ?? '').localeCompare(right.name ?? '')
+      })
 
     if (!schoolYearId) return records
     return records.filter((strand) => strand.schoolYearId === schoolYearId)

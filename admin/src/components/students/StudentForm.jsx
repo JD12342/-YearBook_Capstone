@@ -15,30 +15,32 @@ const defaultForm = {
   status: 'active',
 }
 
-export function StudentForm({ student = null, schoolYears = [], strands = [], onSubmit, onCancel, submitLabel = 'Save' }) {
+export function StudentForm({ student = null, schoolYears = [], strands = [], sections = [], defaultSchoolYearId = '', defaultStrandId = '', defaultSectionId = '', onSubmit, onCancel, submitLabel = 'Save' }) {
   const [form, setForm] = useState(defaultForm)
 
   const availableSections = useMemo(() => {
-    const selectedStrand = strands.find((strand) => strand.id === form.strandId)
-    return selectedStrand?.sections ?? []
-  }, [form.strandId, strands])
+    return sections.filter((section) => (
+      section.schoolYearId === form.schoolYearId && section.strandId === form.strandId
+    ))
+  }, [form.schoolYearId, form.strandId, sections])
 
   useEffect(() => {
-    const defaultSchoolYearId = schoolYears[0]?.id ?? ''
-    const defaultStrandId = strands.filter((strand) => strand.schoolYearId === defaultSchoolYearId)[0]?.id ?? (strands[0]?.id ?? '')
+    const nextSchoolYearId = defaultSchoolYearId || schoolYears[0]?.id || ''
+    const nextStrandId = defaultStrandId || strands.filter((strand) => strand.schoolYearId === nextSchoolYearId)[0]?.id || (strands[0]?.id ?? '')
+    const nextSectionId = defaultSectionId || sections.find((section) => section.schoolYearId === nextSchoolYearId && section.strandId === nextStrandId)?.id || ''
 
     if (!student) {
       setForm({
         ...defaultForm,
-        schoolYearId: defaultSchoolYearId,
-        strandId: defaultStrandId,
-        sectionId: '',
+        schoolYearId: nextSchoolYearId,
+        strandId: nextStrandId,
+        sectionId: nextSectionId,
       })
       return
     }
 
-    const nextSchoolYearId = student.schoolYearId ?? defaultSchoolYearId
-    const nextStrandId = student.strandId ?? (strands.filter((strand) => strand.schoolYearId === nextSchoolYearId)[0]?.id ?? '')
+    const studentSchoolYearId = student.schoolYearId ?? nextSchoolYearId
+    const studentStrandId = student.strandId ?? (strands.filter((strand) => strand.schoolYearId === studentSchoolYearId)[0]?.id ?? '')
 
     setForm({
       firstName: student.firstName ?? '',
@@ -46,12 +48,12 @@ export function StudentForm({ student = null, schoolYears = [], strands = [], on
       lastName: student.lastName ?? '',
       suffix: student.suffix ?? '',
       studentNumber: student.studentNumber ?? '',
-      schoolYearId: nextSchoolYearId,
-      strandId: nextStrandId,
+      schoolYearId: studentSchoolYearId,
+      strandId: studentStrandId,
       sectionId: student.sectionId ?? '',
       status: student.status ?? 'active',
     })
-  }, [schoolYears, strands, student])
+  }, [schoolYears, strands, sections, student, defaultSchoolYearId, defaultStrandId, defaultSectionId])
 
   const handleChange = (field) => (event) => {
     const value = event.target.value
@@ -61,13 +63,12 @@ export function StudentForm({ student = null, schoolYears = [], strands = [], on
       if (field === 'schoolYearId') {
         const firstStrandForYear = strands.filter((strand) => strand.schoolYearId === value)[0]?.id ?? ''
         next.strandId = firstStrandForYear
-        next.sectionId = ''
+        next.sectionId = sections.find((section) => section.schoolYearId === value && section.strandId === firstStrandForYear)?.id ?? ''
       }
 
       if (field === 'strandId') {
-        const selectedStrand = strands.find((strand) => strand.id === value)
-        const sectionValues = selectedStrand?.sections ?? []
-        next.sectionId = sectionValues.includes(current.sectionId) ? current.sectionId : ''
+        const sectionValues = sections.filter((section) => section.schoolYearId === current.schoolYearId && section.strandId === value)
+        next.sectionId = sectionValues.some((section) => section.id === current.sectionId) ? current.sectionId : (sectionValues[0]?.id ?? '')
       }
 
       return next
@@ -133,9 +134,9 @@ export function StudentForm({ student = null, schoolYears = [], strands = [], on
         <label className="form-field">
           <span>Section</span>
           <Select value={form.sectionId} onChange={handleChange('sectionId')}>
-            <option value="">No section</option>
+            <option value="">Select section</option>
             {availableSections.map((section) => (
-              <option key={section} value={section}>{section}</option>
+              <option key={section.id} value={section.id}>{section.name || section.code || 'Unnamed section'}</option>
             ))}
           </Select>
         </label>

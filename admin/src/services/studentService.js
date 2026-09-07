@@ -22,6 +22,10 @@ const normalizeRecord = (student = {}) => ({
   schoolYearId: String(student.schoolYearId ?? '').trim(),
   strandId: String(student.strandId ?? '').trim(),
   sectionId: String(student.sectionId ?? '').trim(),
+  lrn: String(student.lrn ?? '').trim(),
+  email: String(student.email ?? '').trim(),
+  credentials: String(student.credentials ?? '').trim(),
+  awards: String(student.awards ?? '').trim(),
   status: student.status || 'active',
   photoId: String(student.photoId ?? '').trim(),
 })
