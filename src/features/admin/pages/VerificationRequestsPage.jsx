@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Badge } from '../components/ui/Badge.jsx'
 import { Button } from '../components/ui/Button.jsx'
 import { Card } from '../components/ui/Card.jsx'
-import { getAdminRecords, updateAdminRecord } from '../services/adminRecordService.js'
+import { approveAccountRequest, getAdminRecords, updateAdminRecord } from '../services/adminRecordService.js'
 
 const statuses = ['all', 'pending', 'approved', 'rejected']
 
@@ -36,7 +36,8 @@ export function VerificationRequestsPage() {
     setSavingId(request.id)
     setError('')
     try {
-      await updateAdminRecord('accountRequests', request.id, { status, reviewedAt: new Date().toISOString() })
+      if (status === 'approved') await approveAccountRequest(request)
+      else await updateAdminRecord('accountRequests', request.id, { status, reviewedAt: new Date().toISOString() })
       setRequests((records) => records.map((record) => record.id === request.id ? { ...record, status } : record))
     } catch (updateError) {
       setError(updateError.message)

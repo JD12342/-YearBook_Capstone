@@ -35,6 +35,21 @@ The deployable website is generated in `dist/`. Firebase Hosting is configured t
 
 ## Firebase deployment
 
+GradBook does not trust a role selected in the browser. After Firebase Authentication verifies the email and password, the application resolves the role from either a Firebase Auth custom claim or an active `users/{uid}` Firestore document.
+
+Before publishing the stricter rules for the first time, bootstrap the first administrator through a trusted environment such as the Firebase Console or Admin SDK:
+
+```text
+Collection: users
+Document ID: <the administrator's Firebase Authentication UID>
+Fields:
+  role: Administrator
+  status: active
+  email: <administrator email>
+```
+
+Do not create administrator roles from browser code. Once the first administrator is active, approving an access request in GradBook creates the corresponding trusted user profile. Students, alumni, and staff may request an account type during registration, but that request grants no access until approval.
+
 After selecting the Firebase project in the Firebase CLI:
 
 ```bash

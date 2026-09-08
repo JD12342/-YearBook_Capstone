@@ -2,10 +2,32 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // The admin portal already requires Firebase sign-in. Keep photo files
-    // protected by that same access boundary instead of exposing them publicly.
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function hasActiveProfileRole(role) {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.status == 'active'
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function canManagePhotos() {
+      return isSignedIn() && (
+        request.auth.token.role in ['Staff', 'Administrator']
+        || request.auth.token.admin == true
+        || hasActiveProfileRole('Staff')
+        || hasActiveProfileRole('Administrator')
+      );
+    }
+
     match /photos/{allPaths=**} {
-      allow read, write: if request.auth != null;
+      allow read: if canManagePhotos();
+      allow create, update: if canManagePhotos()
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if canManagePhotos();
     }
 
     match /{allPaths=**} {

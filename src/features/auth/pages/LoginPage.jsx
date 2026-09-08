@@ -20,6 +20,7 @@ export function LoginPage() {
           error={loginForm.error}
           fields={loginForm.fields}
           isSigningUp={loginForm.isSigningUp}
+          notice={loginForm.notice}
           onSubmit={loginForm.handleSubmit}
           onToggleMode={loginForm.toggleMode}
           onUpdateField={loginForm.updateField}

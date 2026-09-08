@@ -1,12 +1,11 @@
 import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { authModeContent, signInRoles, signUpRoles } from '../data/authContent.js'
+import { authModeContent, signUpRoles } from '../data/authContent.js'
 import { Button } from '../../admin/components/ui/Button.jsx'
 import { Input } from '../../admin/components/ui/Input.jsx'
 
-export function LoginFormPanel({ error, fields, isSigningUp, onSubmit, onToggleMode, onUpdateField, passwordVisible, setPasswordVisible, submitting }) {
+export function LoginFormPanel({ error, fields, isSigningUp, notice, onSubmit, onToggleMode, onUpdateField, passwordVisible, setPasswordVisible, submitting }) {
   const content = isSigningUp ? authModeContent.signUp : authModeContent.signIn
-  const roles = isSigningUp ? signUpRoles : signInRoles
 
   return (
     <section className="login-form-panel" aria-labelledby="login-title">
@@ -23,12 +22,14 @@ export function LoginFormPanel({ error, fields, isSigningUp, onSubmit, onToggleM
             <div className="login-input-wrap"><UserRound size={18} aria-hidden="true" /><Input className="login-input" value={fields.fullName} onChange={(event) => onUpdateField('fullName', event.target.value)} placeholder="Your full name" required /></div>
           </label>
         )}
-        <label className="form-field">
-          <span>{isSigningUp ? 'Account type' : 'Continue as'}</span>
-          <select className="login-role-select" value={fields.role} onChange={(event) => onUpdateField('role', event.target.value)}>
-            {roles.map((role) => <option key={role}>{role}</option>)}
-          </select>
-        </label>
+        {isSigningUp && (
+          <label className="form-field">
+            <span>Request account type</span>
+            <select className="login-role-select" value={fields.role} onChange={(event) => onUpdateField('role', event.target.value)}>
+              {signUpRoles.map((role) => <option key={role}>{role}</option>)}
+            </select>
+          </label>
+        )}
         <label className="form-field">
           <span>Email address</span>
           <div className="login-input-wrap">
@@ -40,12 +41,13 @@ export function LoginFormPanel({ error, fields, isSigningUp, onSubmit, onToggleM
           <span>Password</span>
           <div className="login-input-wrap">
             <LockKeyhole size={18} aria-hidden="true" />
-            <Input className="login-input" type={passwordVisible ? 'text' : 'password'} autoComplete="current-password" value={fields.password} onChange={(event) => onUpdateField('password', event.target.value)} placeholder="Enter your password" required />
+            <Input className="login-input" type={passwordVisible ? 'text' : 'password'} autoComplete={isSigningUp ? 'new-password' : 'current-password'} value={fields.password} onChange={(event) => onUpdateField('password', event.target.value)} placeholder="Enter your password" required />
             <button className="login-password-toggle" type="button" aria-label={passwordVisible ? 'Hide password' : 'Show password'} aria-pressed={passwordVisible} onClick={() => setPasswordVisible((visible) => !visible)}>
               {passwordVisible ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
             </button>
           </div>
         </label>
+        {notice && <div className="form-success" role="status">{notice}</div>}
         {error && <div className="form-error" role="alert">{error}</div>}
         <label className="remember-row">
           <input type="checkbox" checked={fields.rememberMe} onChange={(event) => onUpdateField('rememberMe', event.target.checked)} />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../../auth/context/AuthContext.jsx'
 import { Header } from './Header.jsx'
 import { PageHelpButton } from './PageHelpButton.jsx'
 import { Sidebar } from './Sidebar.jsx'
@@ -19,10 +20,11 @@ const routeMeta = {
   '/content': { title: 'Content Management', subtitle: 'School Content', helpText: 'Manage announcements, alumni details, and school information shown through GradBook.' },
   '/reports': { title: 'Reports', subtitle: 'Insights', helpText: 'Reports and analytics will be available here as the workspace grows.' },
   '/settings': { title: 'Settings', subtitle: 'System', helpText: 'Configure GradBook settings and preferences when they become available.' },
-  '/profile': { title: 'Admin Profile', subtitle: 'System', helpText: 'View and manage the administrator account details.' },
+  '/profile': { title: 'Account Profile', subtitle: 'System', helpText: 'View and manage your account details.' },
 }
 
 export function AdminLayout() {
+  const { role } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -47,7 +49,7 @@ export function AdminLayout() {
 
   return (
     <div className={`admin-shell ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`.trim()}>
-      <Sidebar currentPath={currentPath} isOpen={sidebarOpen} isCollapsed={sidebarCollapsed} onClose={() => setSidebarOpen(false)} onNavigate={(key) => navigate(key)} />
+      <Sidebar currentPath={currentPath} isOpen={sidebarOpen} isCollapsed={sidebarCollapsed} onClose={() => setSidebarOpen(false)} onNavigate={(key) => navigate(key)} role={role} />
       {sidebarOpen && <button type="button" className="sidebar-scrim" aria-label="Close navigation menu" onClick={() => setSidebarOpen(false)} />}
       <div className="content-shell">
         <Header title={meta.title} subtitle={meta.subtitle} onMenuToggle={handleMenuToggle} />

@@ -19,7 +19,10 @@ export function ProtectedRoute({ allowedRoles }) {
     return <Navigate to="/login" replace state={{ from: location.pathname, error: 'Sign in to continue.' }} />
   }
 
-  if (allowedRoles?.length && !allowedRoles.includes(role)) return <Navigate to="/community" replace />
+  if (allowedRoles?.length && !allowedRoles.includes(role)) {
+    const fallbackPath = role === 'Administrator' || role === 'Staff' ? '/dashboard' : '/community'
+    return <Navigate to={fallbackPath} replace />
+  }
 
   return <Outlet />
 }

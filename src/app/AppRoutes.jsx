@@ -44,7 +44,9 @@ export function AppRoutes() {
           <Route path="/strands" element={<Navigate to="/academic?tab=strands-sections" replace />} />
           <Route path="/sections" element={<Navigate to="/academic?tab=strands-sections" replace />} />
           <Route path="/yearbooks" element={<Navigate to="/academic?tab=school-years" replace />} />
-          <Route path="/verification-requests" element={<VerificationRequestsPage />} />
+          <Route element={<ProtectedRoute allowedRoles={['Administrator']} />}>
+            <Route path="/verification-requests" element={<VerificationRequestsPage />} />
+          </Route>
           <Route path="/content" element={<ContentManagementPage />} />
           <Route path="/alumni" element={<Navigate to="/content" replace />} />
           <Route path="/reports" element={<PlaceholderPage title="Reports" description="Reports and analytics dashboards will be expanded next." />} />

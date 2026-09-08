@@ -1,8 +1,9 @@
-import { addDoc, collection, getDocs, serverTimestamp, updateDoc, doc } from 'firebase/firestore'
+import { addDoc, collection, doc, getDocs, serverTimestamp, updateDoc, writeBatch } from 'firebase/firestore'
 import { db } from './firebase/firestore.js'
 import { isFirebaseConfigured } from './firebase/firebaseConfig.js'
 
 const collectionNames = new Set(['accountRequests', 'announcements', 'alumni', 'schoolContent'])
+const approvableRoles = new Set(['Student', 'Alumni', 'Staff'])
 
 const getCollection = (name) => {
   if (!collectionNames.has(name)) throw new Error('Unsupported admin record type.')
@@ -52,5 +53,33 @@ export const updateAdminRecord = async (collectionName, recordId, payload) => {
     })
   } catch (error) {
     throw adminAccessError(error) || new Error('Unable to update this record.')
+  }
+}
+
+export const approveAccountRequest = async (request) => {
+  const role = String(request?.role || request?.accountType || '').trim()
+  if (!request?.id || !request?.uid) throw new Error('This request is missing its Firebase account identifier.')
+  if (!approvableRoles.has(role)) throw new Error('This request contains an unsupported account role.')
+
+  try {
+    const batch = writeBatch(db)
+    const reviewedAt = serverTimestamp()
+    batch.update(doc(db, 'accountRequests', request.id), {
+      status: 'approved',
+      reviewedAt,
+      updatedAt: reviewedAt,
+    })
+    batch.set(doc(db, 'users', request.uid), {
+      uid: request.uid,
+      email: request.email || '',
+      fullName: request.fullName || request.name || '',
+      role,
+      status: 'active',
+      updatedAt: reviewedAt,
+      createdAt: request.createdAt || reviewedAt,
+    }, { merge: true })
+    await batch.commit()
+  } catch (error) {
+    throw adminAccessError(error) || new Error('Unable to approve this account request.')
   }
 }

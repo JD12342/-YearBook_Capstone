@@ -5,44 +5,89 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    match /students/{studentId} {
-      allow read, write: if isSignedIn();
+    function hasActiveProfileRole(role) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.status == 'active'
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
     }
 
-    match /schoolYears/{schoolYearId} {
-      allow read, write: if isSignedIn();
+    function hasTokenRole(role) {
+      return isSignedIn() && request.auth.token.role == role;
     }
 
-    match /strands/{strandId} {
-      allow read, write: if isSignedIn();
+    function isAdministrator() {
+      return hasTokenRole('Administrator')
+        || request.auth.token.admin == true
+        || hasActiveProfileRole('Administrator');
     }
 
-    match /sections/{sectionId} {
-      allow read, write: if isSignedIn();
+    function isStaff() {
+      return hasTokenRole('Staff') || hasActiveProfileRole('Staff');
     }
 
-    match /photos/{photoId} {
-      allow read, write: if isSignedIn();
+    function canManage() {
+      return isAdministrator() || isStaff();
     }
 
-    match /yearbooks/{yearbookId} {
-      allow read, write: if isSignedIn();
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || canManage());
+      allow list: if canManage();
+      allow create, update, delete: if isAdministrator();
     }
 
     match /accountRequests/{requestId} {
-      allow read, write: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.status == 'pending'
+        && request.resource.data.role in ['Student', 'Alumni', 'Staff']
+        && request.resource.data.keys().hasOnly([
+          'uid', 'fullName', 'email', 'role', 'status', 'createdAt', 'updatedAt'
+        ]);
+      allow get, list: if isAdministrator()
+        || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdministrator();
+    }
+
+    match /students/{studentId} {
+      allow read, write: if canManage();
+    }
+
+    match /schoolYears/{schoolYearId} {
+      allow read, write: if canManage();
+    }
+
+    match /strands/{strandId} {
+      allow read, write: if canManage();
+    }
+
+    match /sections/{sectionId} {
+      allow read, write: if canManage();
+    }
+
+    match /photos/{photoId} {
+      allow read, write: if canManage();
+    }
+
+    match /yearbooks/{yearbookId} {
+      allow read: if isSignedIn();
+      allow write: if canManage();
     }
 
     match /announcements/{announcementId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if canManage();
     }
 
     match /alumni/{alumniId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if canManage();
     }
 
     match /schoolContent/{contentId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if canManage();
     }
 
     match /{document=**} {

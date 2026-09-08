@@ -25,5 +25,4 @@ export const authModeContent = {
   },
 }
 
-export const signInRoles = ['Student', 'Alumni', 'Staff', 'Administrator']
 export const signUpRoles = ['Student', 'Alumni', 'Staff']

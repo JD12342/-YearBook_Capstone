@@ -5,7 +5,7 @@ import { useAuth } from '../../../auth/context/AuthContext.jsx'
 
 export function Header({ title, subtitle, onMenuToggle }) {
   const navigate = useNavigate()
-  const { logout, user } = useAuth()
+  const { logout, role, user } = useAuth()
   const [profileOpen, setProfileOpen] = useState(false)
   const profileMenuRef = useRef(null)
 
@@ -31,8 +31,9 @@ export function Header({ title, subtitle, onMenuToggle }) {
     navigate('/login', { replace: true })
   }
 
-  const profileEmail = user?.email || 'Administrator'
+  const profileEmail = user?.email || 'GradBook account'
   const initials = profileEmail.slice(0, 2).toUpperCase()
+  const accountRole = role || 'GradBook user'
 
   return (
     <header className="top-header">
@@ -62,18 +63,18 @@ export function Header({ title, subtitle, onMenuToggle }) {
           </button>
 
           {profileOpen && (
-            <div className="account-menu" role="menu" aria-label="Administrator account menu">
+            <div className="account-menu" role="menu" aria-label={`${accountRole} account menu`}>
               <div className="account-menu-summary">
                 <span className="account-menu-avatar">{initials}</span>
                 <span>
-                  <strong>Administrator</strong>
+                  <strong>{accountRole}</strong>
                   <small>{profileEmail}</small>
                 </span>
               </div>
               <div className="account-menu-divider" />
               <button type="button" className="account-menu-item" role="menuitem" onClick={() => navigate('/profile')}>
                 <UserRound size={17} aria-hidden="true" />
-                <span><strong>Admin profile</strong><small>Account details and settings</small></span>
+                <span><strong>Account profile</strong><small>Account details and settings</small></span>
               </button>
               <button type="button" className="account-menu-item account-menu-logout" role="menuitem" onClick={handleLogout}>
                 <LogOut size={17} aria-hidden="true" />
