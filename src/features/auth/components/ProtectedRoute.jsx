@@ -20,7 +20,7 @@ export function ProtectedRoute({ allowedRoles }) {
   }
 
   if (allowedRoles?.length && !allowedRoles.includes(role)) {
-    const fallbackPath = role === 'Administrator' || role === 'Staff' ? '/dashboard' : '/community'
+    const fallbackPath = role === 'Administrator' ? '/dashboard' : '/community'
     return <Navigate to={fallbackPath} replace />
   }
 

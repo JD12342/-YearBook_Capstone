@@ -14,14 +14,21 @@ import { auth } from '../../admin/services/firebase/auth.js'
 import { db } from '../../admin/services/firebase/firestore.js'
 
 const AuthContext = createContext(null)
-const supportedRoles = new Set(['Student', 'Alumni', 'Staff', 'Administrator'])
-const requestableRoles = new Set(['Student', 'Alumni', 'Staff'])
+const supportedRoles = new Set(['User', 'Administrator'])
+const requestableProfileTypes = new Set(['Student', 'Teacher', 'Staff'])
 
 const normalizeRole = (value) => {
   const normalized = String(value || '').trim().toLowerCase()
   if (normalized === 'admin' || normalized === 'administrator') return 'Administrator'
-  if (normalized === 'staff') return 'Staff'
+  if (['user', 'student', 'teacher', 'staff', 'alumni', 'alumnus'].includes(normalized)) return 'User'
+  return ''
+}
+
+const normalizeProfileType = (value) => {
+  const normalized = String(value || '').trim().toLowerCase()
   if (normalized === 'student') return 'Student'
+  if (normalized === 'teacher') return 'Teacher'
+  if (normalized === 'staff') return 'Staff'
   if (normalized === 'alumni' || normalized === 'alumnus') return 'Alumni'
   return ''
 }
@@ -37,13 +44,22 @@ const createAccessError = (code, message) => {
   return error
 }
 
-async function resolveAuthorizedRole(firebaseUser) {
+const buildProfile = (firebaseUser, source = {}) => ({
+  uid: firebaseUser.uid,
+  fullName: source.fullName || source.name || firebaseUser.displayName || '',
+  email: source.email || firebaseUser.email || '',
+  profileType: normalizeProfileType(source.profileType || source.accountType || source.role),
+  referenceId: source.referenceId || source.studentNumber || source.employeeNumber || '',
+  status: source.status || '',
+})
+
+async function resolveAuthorizedAccount(firebaseUser) {
   let roleLookupFailed = false
+  let claimRole = ''
 
   try {
     const tokenResult = await getIdTokenResult(firebaseUser, true)
-    const claimRole = normalizeRole(tokenResult.claims.role || (tokenResult.claims.admin ? 'Administrator' : ''))
-    if (supportedRoles.has(claimRole)) return claimRole
+    claimRole = normalizeRole(tokenResult.claims.role || (tokenResult.claims.admin ? 'Administrator' : ''))
   } catch {
     roleLookupFailed = true
   }
@@ -52,20 +68,29 @@ async function resolveAuthorizedRole(firebaseUser) {
     const profileSnapshot = await getDoc(doc(db, 'users', firebaseUser.uid))
     const profile = profileSnapshot.data()
     const profileRole = normalizeRole(profile?.role)
-    if (profileSnapshot.exists() && isActiveProfile(profile) && supportedRoles.has(profileRole)) return profileRole
+    if (profileSnapshot.exists() && isActiveProfile(profile)) {
+      const assignedRole = claimRole === 'Administrator' ? claimRole : profileRole || claimRole
+      if (supportedRoles.has(assignedRole)) return { role: assignedRole, profile: buildProfile(firebaseUser, profile) }
+    }
   } catch {
     roleLookupFailed = true
+  }
+
+  if (supportedRoles.has(claimRole)) {
+    return { role: claimRole, profile: buildProfile(firebaseUser, { role: claimRole, status: 'active' }) }
   }
 
   try {
     const approvedRequests = await getDocs(query(
       collection(db, 'accountRequests'),
       where('uid', '==', firebaseUser.uid),
-      where('status', '==', 'approved'),
-      limit(1),
+      limit(10),
     ))
-    const approvedRole = normalizeRole(approvedRequests.docs[0]?.data()?.role)
-    if (supportedRoles.has(approvedRole)) return approvedRole
+    const approvedRequest = approvedRequests.docs
+      .map((requestDocument) => requestDocument.data())
+      .find((requestData) => String(requestData.status || '').toLowerCase() === 'approved')
+    const approvedRole = normalizeRole(approvedRequest?.role)
+    if (supportedRoles.has(approvedRole)) return { role: approvedRole, profile: buildProfile(firebaseUser, approvedRequest) }
   } catch {
     roleLookupFailed = true
   }
@@ -74,12 +99,13 @@ async function resolveAuthorizedRole(firebaseUser) {
     throw createAccessError('auth/role-check-failed', 'GradBook could not verify your account role. Check your connection and try again.')
   }
 
-  return ''
+  return { role: '', profile: buildProfile(firebaseUser) }
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [role, setRole] = useState('')
+  const [profile, setProfile] = useState(null)
   const [authorizationError, setAuthorizationError] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -92,23 +118,27 @@ export function AuthProvider({ children }) {
       if (!nextUser) {
         setUser(null)
         setRole('')
+        setProfile(null)
         setLoading(false)
         return
       }
 
+      const sessionUid = nextUser.uid
       try {
-        const assignedRole = await resolveAuthorizedRole(nextUser)
-        if (!active) return
+        const account = await resolveAuthorizedAccount(nextUser)
+        if (!active || auth.currentUser?.uid !== sessionUid) return
         setUser(nextUser)
-        setRole(assignedRole)
-        setAuthorizationError(assignedRole ? '' : 'Your account is awaiting approval or does not have a GradBook role yet.')
+        setRole(account.role)
+        setProfile(account.profile)
+        setAuthorizationError(account.role ? '' : 'Your account is awaiting approval or does not have a GradBook role yet.')
       } catch (error) {
-        if (!active) return
+        if (!active || auth.currentUser?.uid !== sessionUid) return
         setUser(nextUser)
         setRole('')
+        setProfile(buildProfile(nextUser))
         setAuthorizationError(error.message)
       } finally {
-        if (active) setLoading(false)
+        if (active && auth.currentUser?.uid === sessionUid) setLoading(false)
       }
     })
 
@@ -124,26 +154,31 @@ export function AuthProvider({ children }) {
     const credential = await signInWithEmailAndPassword(auth, email, password)
 
     try {
-      const assignedRole = await resolveAuthorizedRole(credential.user)
-      if (!assignedRole) {
+      const account = await resolveAuthorizedAccount(credential.user)
+      if (!account.role) {
         throw createAccessError('auth/access-not-approved', 'Your account is awaiting approval or does not have a GradBook role yet.')
       }
       setUser(credential.user)
-      setRole(assignedRole)
-      return { user: credential.user, role: assignedRole }
+      setRole(account.role)
+      setProfile(account.profile)
+      return { user: credential.user, role: account.role, profile: account.profile }
     } catch (error) {
       await signOut(auth)
       setUser(null)
       setRole('')
+      setProfile(null)
       setAuthorizationError(error.message)
       throw error
     }
   }
 
-  const register = async ({ fullName, email, password, role: requestedRole }) => {
-    const normalizedRole = normalizeRole(requestedRole)
-    if (!requestableRoles.has(normalizedRole)) {
-      throw createAccessError('auth/invalid-role', 'Choose a valid account type to request access.')
+  const register = async ({ fullName, email, password, profileType, referenceId }) => {
+    const normalizedProfileType = normalizeProfileType(profileType)
+    if (!requestableProfileTypes.has(normalizedProfileType)) {
+      throw createAccessError('auth/invalid-profile-type', 'Choose Student, Teacher, or Staff for your school profile.')
+    }
+    if (!String(referenceId || '').trim()) {
+      throw createAccessError('auth/missing-reference-id', 'Enter your student, LRN, or employee number.')
     }
 
     const credential = await createUserWithEmailAndPassword(auth, email, password)
@@ -152,7 +187,9 @@ export function AuthProvider({ children }) {
         uid: credential.user.uid,
         fullName,
         email: credential.user.email,
-        role: normalizedRole,
+        role: 'User',
+        profileType: normalizedProfileType,
+        referenceId: String(referenceId).trim(),
         status: 'pending',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -161,6 +198,7 @@ export function AuthProvider({ children }) {
       await signOut(auth)
       setUser(null)
       setRole('')
+      setProfile(null)
     }
 
     return { status: 'pending' }
@@ -170,6 +208,7 @@ export function AuthProvider({ children }) {
     await signOut(auth)
     setUser(null)
     setRole('')
+    setProfile(null)
     setAuthorizationError('')
   }
 
@@ -177,6 +216,7 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       role,
+      profile,
       loading,
       authorizationError,
       isAuthenticated: Boolean(user && role),
@@ -185,7 +225,7 @@ export function AuthProvider({ children }) {
       register,
       logout,
     }),
-    [user, role, loading, authorizationError],
+    [user, role, profile, loading, authorizationError],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -7,7 +7,8 @@ const initialFields = () => ({
   email: '',
   password: '',
   rememberMe: false,
-  role: 'Student',
+  profileType: 'Student',
+  referenceId: '',
 })
 
 export function useLoginForm() {
@@ -22,7 +23,7 @@ export function useLoginForm() {
   const [error, setError] = useState(location.state?.error || '')
   const [notice, setNotice] = useState('')
 
-  const redirectPath = location.state?.from || (authenticatedRole === 'Administrator' || authenticatedRole === 'Staff' ? '/dashboard' : '/community')
+  const redirectPath = location.state?.from || (authenticatedRole === 'Administrator' ? '/dashboard' : '/community')
   const updateField = (name, value) => {
     clearAuthorizationError()
     setError('')
@@ -38,13 +39,19 @@ export function useLoginForm() {
 
     try {
       if (isSigningUp) {
-        await register({ fullName: fields.fullName.trim(), email: fields.email.trim(), password: fields.password, role: fields.role })
+        await register({
+          fullName: fields.fullName.trim(),
+          email: fields.email.trim(),
+          password: fields.password,
+          profileType: fields.profileType,
+          referenceId: fields.referenceId.trim(),
+        })
         setFields(initialFields())
         setSearchParams({})
         setNotice('Your access request was submitted. You can sign in after an administrator approves it.')
       } else {
         const result = await login({ email: fields.email.trim(), password: fields.password, rememberMe: fields.rememberMe })
-        navigate(result.role === 'Administrator' || result.role === 'Staff' ? '/dashboard' : '/community', { replace: true })
+        navigate(result.role === 'Administrator' ? '/dashboard' : '/community', { replace: true })
       }
     } catch (loginError) {
       setError(loginError?.message || 'Unable to sign in. Please check your credentials and try again.')

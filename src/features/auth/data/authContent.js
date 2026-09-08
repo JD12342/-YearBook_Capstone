@@ -5,7 +5,7 @@ export const authBrandContent = {
   title: 'Remember the people. Celebrate the journey.',
   description: 'GradBook brings portraits, achievements, school history, and every graduating class together in one meaningful home.',
   securityTitle: 'One secure GradBook account',
-  securityDescription: 'For verified students, alumni, staff, and administrators',
+  securityDescription: 'For verified students, teachers, staff, and administrators',
 }
 
 export const authModeContent = {
@@ -25,4 +25,23 @@ export const authModeContent = {
   },
 }
 
-export const signUpRoles = ['Student', 'Alumni', 'Staff']
+export const profileTypes = [
+  {
+    value: 'Student',
+    label: 'Student',
+    referenceLabel: 'Student number / LRN',
+    referencePlaceholder: 'Enter your student number or LRN',
+  },
+  {
+    value: 'Teacher',
+    label: 'Teacher',
+    referenceLabel: 'Employee number',
+    referencePlaceholder: 'Enter your employee number',
+  },
+  {
+    value: 'Staff',
+    label: 'Staff',
+    referenceLabel: 'Employee number',
+    referencePlaceholder: 'Enter your employee number',
+  },
+]

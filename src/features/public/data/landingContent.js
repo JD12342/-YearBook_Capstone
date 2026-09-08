@@ -87,7 +87,7 @@ export const campusFilmContent = {
 
 export const footerContent = {
   description: 'Preserving the portraits, achievements, traditions, and stories that connect every SNHS generation.',
-  note: 'For the students, alumni, and staff of Sorsogon National High School.',
+  note: 'For the students, teachers, staff, and administrators of Sorsogon National High School.',
   groups: [
     { title: 'EXPLORE', links: [{ label: 'Request access', to: '/login?mode=signup' }, { label: 'Sign in', to: '/login' }] },
     { title: 'INSIDE GRADBOOK', items: ['School history', 'Class records', 'Alumni stories'] },

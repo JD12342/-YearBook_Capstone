@@ -1,14 +1,15 @@
-import { ArrowLeft, ArrowRight, Eye, EyeOff, LockKeyhole, Mail, UserRound } from 'lucide-react'
+import { ArrowLeft, ArrowRight, BadgeCheck, Eye, EyeOff, IdCard, LockKeyhole, Mail, UserRound } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { authModeContent, signUpRoles } from '../data/authContent.js'
+import { authModeContent, profileTypes } from '../data/authContent.js'
 import { Button } from '../../admin/components/ui/Button.jsx'
 import { Input } from '../../admin/components/ui/Input.jsx'
 
 export function LoginFormPanel({ error, fields, isSigningUp, notice, onSubmit, onToggleMode, onUpdateField, passwordVisible, setPasswordVisible, submitting }) {
   const content = isSigningUp ? authModeContent.signUp : authModeContent.signIn
+  const selectedProfileType = profileTypes.find((profileType) => profileType.value === fields.profileType) || profileTypes[0]
 
   return (
-    <section className="login-form-panel" aria-labelledby="login-title">
+    <section className={`login-form-panel ${isSigningUp ? 'is-signing-up' : ''}`.trim()} aria-labelledby="login-title">
       <div className="login-form-header">
         <Link className="login-back-link" to="/"><ArrowLeft size={15} /> Back to GradBook</Link>
         <span className="login-console-label">{content.label}</span>
@@ -24,10 +25,19 @@ export function LoginFormPanel({ error, fields, isSigningUp, notice, onSubmit, o
         )}
         {isSigningUp && (
           <label className="form-field">
-            <span>Request account type</span>
-            <select className="login-role-select" value={fields.role} onChange={(event) => onUpdateField('role', event.target.value)}>
-              {signUpRoles.map((role) => <option key={role}>{role}</option>)}
+            <span>I am registering as</span>
+            <select className="login-role-select" value={fields.profileType} onChange={(event) => onUpdateField('profileType', event.target.value)}>
+              {profileTypes.map((profileType) => <option key={profileType.value} value={profileType.value}>{profileType.label}</option>)}
             </select>
+          </label>
+        )}
+        {isSigningUp && (
+          <label className="form-field">
+            <span>{selectedProfileType.referenceLabel}</span>
+            <div className="login-input-wrap">
+              <IdCard size={18} aria-hidden="true" />
+              <Input className="login-input" value={fields.referenceId} onChange={(event) => onUpdateField('referenceId', event.target.value)} placeholder={selectedProfileType.referencePlaceholder} required />
+            </div>
           </label>
         )}
         <label className="form-field">
@@ -49,6 +59,7 @@ export function LoginFormPanel({ error, fields, isSigningUp, notice, onSubmit, o
         </label>
         {notice && <div className="form-success" role="status">{notice}</div>}
         {error && <div className="form-error" role="alert">{error}</div>}
+        {isSigningUp && <div className="login-profile-note"><BadgeCheck size={15} aria-hidden="true" /><span>Your selection describes your school profile only. Administrator access cannot be requested here.</span></div>}
         <label className="remember-row">
           <input type="checkbox" checked={fields.rememberMe} onChange={(event) => onUpdateField('rememberMe', event.target.checked)} />
           <span>Keep me signed in on this device</span>

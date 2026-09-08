@@ -3,7 +3,12 @@ import { db } from './firebase/firestore.js'
 import { isFirebaseConfigured } from './firebase/firebaseConfig.js'
 
 const collectionNames = new Set(['accountRequests', 'announcements', 'alumni', 'schoolContent'])
-const approvableRoles = new Set(['Student', 'Alumni', 'Staff'])
+const approvableProfileTypes = new Set(['Student', 'Teacher', 'Staff', 'Alumni'])
+
+const getProfileType = (request) => {
+  const requestedType = String(request?.profileType || request?.accountType || request?.role || '').trim()
+  return approvableProfileTypes.has(requestedType) ? requestedType : ''
+}
 
 const getCollection = (name) => {
   if (!collectionNames.has(name)) throw new Error('Unsupported admin record type.')
@@ -57,9 +62,9 @@ export const updateAdminRecord = async (collectionName, recordId, payload) => {
 }
 
 export const approveAccountRequest = async (request) => {
-  const role = String(request?.role || request?.accountType || '').trim()
+  const profileType = getProfileType(request)
   if (!request?.id || !request?.uid) throw new Error('This request is missing its Firebase account identifier.')
-  if (!approvableRoles.has(role)) throw new Error('This request contains an unsupported account role.')
+  if (!profileType) throw new Error('This request contains an unsupported school profile type.')
 
   try {
     const batch = writeBatch(db)
@@ -73,7 +78,9 @@ export const approveAccountRequest = async (request) => {
       uid: request.uid,
       email: request.email || '',
       fullName: request.fullName || request.name || '',
-      role,
+      role: 'User',
+      profileType,
+      referenceId: request.referenceId || request.studentNumber || request.employeeNumber || '',
       status: 'active',
       updatedAt: reviewedAt,
       createdAt: request.createdAt || reviewedAt,

@@ -49,7 +49,7 @@ export function VerificationRequestsPage() {
   return (
     <div className="page-stack">
       <div className="page-header-row">
-        <div><div className="page-kicker">User access</div><h2>Verification requests</h2><p className="page-description">Review account requests from students, alumni, and staff before granting access.</p></div>
+        <div><div className="page-kicker">User access</div><h2>Verification requests</h2><p className="page-description">Verify students, teachers, and staff before activating their shared User access.</p></div>
       </div>
       {error && <div className="form-error" role="alert">{error}</div>}
       <Card className="panel-card">
@@ -60,9 +60,9 @@ export function VerificationRequestsPage() {
       </Card>
       <Card className="panel-card">
         {loading ? <div className="empty-state">Loading verification requests...</div> : visibleRequests.length ? (
-          <div className="table-wrapper"><table className="data-table"><thead><tr><th>Requester</th><th>Role</th><th>Linked record</th><th>Status</th><th>Actions</th></tr></thead><tbody>{visibleRequests.map((request) => {
+          <div className="table-wrapper"><table className="data-table"><thead><tr><th>Requester</th><th>School profile</th><th>Reference ID</th><th>Status</th><th>Actions</th></tr></thead><tbody>{visibleRequests.map((request) => {
             const status = request.status || 'pending'
-            return <tr key={request.id}><td><strong>{request.fullName || request.name || 'Unnamed requester'}</strong><small className="table-subtext">{request.email || 'No email provided'}</small></td><td>{request.role || request.accountType || 'User'}</td><td>{request.linkedRecordName || request.linkedRecordId || 'Not linked'}</td><td><Badge status={status}>{status}</Badge></td><td><div className="inline-actions">{status === 'pending' && <><Button size="sm" disabled={savingId === request.id} onClick={() => updateStatus(request, 'approved')}>Approve</Button><Button size="sm" variant="secondary" disabled={savingId === request.id} onClick={() => updateStatus(request, 'rejected')}>Reject</Button></>}</div></td></tr>
+            return <tr key={request.id}><td><strong>{request.fullName || request.name || 'Unnamed requester'}</strong><small className="table-subtext">{request.email || 'No email provided'}</small></td><td>{request.profileType || request.accountType || (request.role === 'User' ? 'User' : request.role) || 'User'}</td><td>{request.referenceId || request.linkedRecordName || request.linkedRecordId || 'Not provided'}</td><td><Badge status={status}>{status}</Badge></td><td><div className="inline-actions">{status === 'pending' && <><Button size="sm" disabled={savingId === request.id} onClick={() => updateStatus(request, 'approved')}>Approve</Button><Button size="sm" variant="secondary" disabled={savingId === request.id} onClick={() => updateStatus(request, 'rejected')}>Reject</Button></>}</div></td></tr>
           })}</tbody></table></div>
         ) : <div className="empty-state"><div className="empty-state-title">No {statusFilter === 'all' ? '' : statusFilter} requests</div><div>New registration requests will appear here for administrator review.</div></div>}
       </Card>

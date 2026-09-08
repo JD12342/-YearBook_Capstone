@@ -16,18 +16,18 @@ import { StudentProfilePage } from '../features/admin/pages/students/StudentProf
 import { VerificationRequestsPage } from '../features/admin/pages/VerificationRequestsPage.jsx'
 import { ContentManagementPage } from '../features/admin/pages/ContentManagementPage.jsx'
 import { LandingPage } from '../features/public/pages/LandingPage.jsx'
-import { CommunityPortalPage } from '../features/public/pages/CommunityPortalPage.jsx'
+import { UserHomePage } from '../features/user/pages/UserHomePage.jsx'
 
 export function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route element={<ProtectedRoute allowedRoles={['Student', 'Alumni', 'Staff', 'Administrator']} />}>
-        <Route path="/community" element={<CommunityPortalPage />} />
+      <Route element={<ProtectedRoute allowedRoles={['User', 'Administrator']} />}>
+        <Route path="/community" element={<UserHomePage />} />
       </Route>
 
-      <Route element={<ProtectedRoute allowedRoles={['Staff', 'Administrator']} />}>
+      <Route element={<ProtectedRoute allowedRoles={['Administrator']} />}>
         <Route element={<AdminLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/photos" element={<PhotoManagement />} />

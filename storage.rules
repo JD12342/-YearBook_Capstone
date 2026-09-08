@@ -13,21 +13,35 @@ service firebase.storage {
         && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == role;
     }
 
-    function canManagePhotos() {
+    function isAdministrator() {
       return isSignedIn() && (
-        request.auth.token.role in ['Staff', 'Administrator']
+        request.auth.token.role == 'Administrator'
         || request.auth.token.admin == true
-        || hasActiveProfileRole('Staff')
         || hasActiveProfileRole('Administrator')
       );
     }
 
+    function canViewCommunity() {
+      return isAdministrator()
+        || (isSignedIn() && (
+          request.auth.token.role == 'User'
+          || hasActiveProfileRole('User')
+        ));
+    }
+
     match /photos/{allPaths=**} {
-      allow read: if canManagePhotos();
-      allow create, update: if canManagePhotos()
+      allow read, delete: if isAdministrator();
+      allow create, update: if isAdministrator()
         && request.resource.size < 15 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
-      allow delete: if canManagePhotos();
+    }
+
+    match /published/{allPaths=**} {
+      allow read: if canViewCommunity();
+      allow create, update: if isAdministrator()
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isAdministrator();
     }
 
     match /{allPaths=**} {
