@@ -9,13 +9,16 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from 'firebase/auth'
-import { addDoc, collection, doc, getDoc, getDocs, limit, query, serverTimestamp, where } from 'firebase/firestore'
+import { addDoc, collection, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc, where } from 'firebase/firestore'
 import { auth } from '../../admin/services/firebase/auth.js'
 import { db } from '../../admin/services/firebase/firestore.js'
 
 const AuthContext = createContext(null)
 const supportedRoles = new Set(['User', 'Administrator'])
 const requestableProfileTypes = new Set(['Student', 'Teacher', 'Staff'])
+const bootstrapAdministratorUids = new Set(['iVLZld9fcpcPQXbat8jdlmN6AsC3'])
+
+const isBootstrapAdministrator = (firebaseUser) => bootstrapAdministratorUids.has(firebaseUser?.uid)
 
 const normalizeRole = (value) => {
   const normalized = String(value || '').trim().toLowerCase()
@@ -56,6 +59,28 @@ const buildProfile = (firebaseUser, source = {}) => ({
 async function resolveAuthorizedAccount(firebaseUser) {
   let roleLookupFailed = false
   let claimRole = ''
+
+  if (isBootstrapAdministrator(firebaseUser)) {
+    const administratorProfile = buildProfile(firebaseUser, {
+      fullName: firebaseUser.displayName || 'GradBook Administrator',
+      role: 'Administrator',
+      status: 'active',
+    })
+
+    try {
+      await setDoc(doc(db, 'users', firebaseUser.uid), {
+        ...administratorProfile,
+        role: 'Administrator',
+        status: 'active',
+        updatedAt: serverTimestamp(),
+      }, { merge: true })
+    } catch {
+      // The UID still resolves locally. Publishing the matching rules enables
+      // the one-time trusted profile bootstrap in Firestore.
+    }
+
+    return { role: 'Administrator', profile: administratorProfile }
+  }
 
   try {
     const tokenResult = await getIdTokenResult(firebaseUser, true)

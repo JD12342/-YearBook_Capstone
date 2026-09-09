@@ -15,7 +15,8 @@ service firebase.storage {
 
     function isAdministrator() {
       return isSignedIn() && (
-        request.auth.token.role == 'Administrator'
+        request.auth.uid == 'iVLZld9fcpcPQXbat8jdlmN6AsC3'
+        || request.auth.token.role == 'Administrator'
         || request.auth.token.admin == true
         || hasActiveProfileRole('Administrator')
       );

@@ -16,8 +16,13 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.role == role;
     }
 
+    function isBootstrapAdministrator() {
+      return isSignedIn() && request.auth.uid == 'iVLZld9fcpcPQXbat8jdlmN6AsC3';
+    }
+
     function isAdministrator() {
-      return hasTokenRole('Administrator')
+      return isBootstrapAdministrator()
+        || hasTokenRole('Administrator')
         || request.auth.token.admin == true
         || hasActiveProfileRole('Administrator');
     }

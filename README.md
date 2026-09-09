@@ -45,18 +45,18 @@ The authorization model intentionally has only two roles:
 
 Student, Teacher, and Staff are profile types, not permission roles. Registration stores the selected `profileType` and a school reference number for administrator verification, while approved accounts always receive the `User` role.
 
-Before publishing the stricter rules for the first time, bootstrap the first administrator through a trusted environment such as the Firebase Console or Admin SDK:
+The initial administrator is bootstrapped from the exact Firebase Authentication UID `iVLZld9fcpcPQXbat8jdlmN6AsC3`. After the matching Firestore rules are published, its first successful login creates or repairs this trusted profile automatically:
 
 ```text
 Collection: users
-Document ID: <the administrator's Firebase Authentication UID>
+Document ID: iVLZld9fcpcPQXbat8jdlmN6AsC3
 Fields:
   role: Administrator
   status: active
-  email: <administrator email>
+  email: <the email attached to that Firebase UID>
 ```
 
-Do not create administrator roles from browser code. Once the first administrator is active, approving an access request in GradBook creates the corresponding trusted `User` profile. Students, teachers, and staff may describe their school profile during registration, but that request grants no access until approval.
+The bootstrap is limited to that exact server-authenticated UID and is duplicated in the application, Firestore rules, and Storage rules. Change all three locations together if the initial administrator account changes. Ordinary browser registrations cannot request an administrator role. Once the first administrator is active, approving an access request in GradBook creates the corresponding trusted `User` profile. Students, teachers, and staff may describe their school profile during registration, but that request grants no access until approval.
 
 After selecting the Firebase project in the Firebase CLI:
 
