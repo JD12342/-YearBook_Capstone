@@ -1,9 +1,9 @@
 export const userPortalNavigation = [
-  { label: 'Overview', href: '#overview' },
-  { label: 'Explore', href: '#explore' },
-  { label: 'Yearbooks', href: '#yearbooks' },
-  { label: 'School story', href: '#school-story' },
-  { label: 'Updates', href: '#updates' },
+  { label: 'Overview', to: '/community', end: true },
+  { label: 'Explore', to: '/community/explore' },
+  { label: 'Yearbooks', to: '/community/yearbooks' },
+  { label: 'School story', to: '/community/history' },
+  { label: 'Updates', to: '/community/updates' },
 ]
 
 export const userHighlights = [
@@ -12,21 +12,21 @@ export const userHighlights = [
     eyebrow: 'YEARBOOK ARCHIVE',
     title: 'Every graduating class, kept together.',
     description: 'Browse published yearbooks and revisit the portraits, achievements, and memories that defined each batch.',
-    href: '#yearbooks',
+    href: '/community/yearbooks',
   },
   {
     icon: 'landmark',
     eyebrow: 'SCHOOL HERITAGE',
     title: 'See the story behind the campus.',
     description: 'Move through the milestones, traditions, and people that continue to shape the identity of SNHS.',
-    href: '#school-story',
+    href: '/community/history',
   },
   {
     icon: 'sparkles',
     eyebrow: 'COMMUNITY STORIES',
     title: 'Stay close to what is happening now.',
     description: 'Read published school updates and discover the stories being added to the living archive.',
-    href: '#updates',
+    href: '/community/updates',
   },
 ]
 

@@ -1,4 +1,5 @@
 import { ArrowDownRight, BadgeCheck, BookOpenText } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export function UserHero({ displayName, profileType }) {
   const firstName = displayName.split(/\s+/).filter(Boolean)[0] || 'there'
@@ -10,8 +11,8 @@ export function UserHero({ displayName, profileType }) {
         <h1>Welcome back, <em>{firstName}.</em></h1>
         <p>Step into the yearbooks, school stories, portraits, and memories that keep every generation connected.</p>
         <div className="user-hero-actions">
-          <a className="user-primary-action" href="#yearbooks">Explore the archive <ArrowDownRight size={18} /></a>
-          <a className="user-text-action" href="#school-story"><BookOpenText size={17} /> Read the school story</a>
+          <Link className="user-primary-action" to="/community/yearbooks">Explore the archive <ArrowDownRight size={18} /></Link>
+          <Link className="user-text-action" to="/community/history"><BookOpenText size={17} /> Read the school story</Link>
         </div>
         <div className="user-verified-line"><BadgeCheck size={18} /><span><strong>Verified community access</strong>{profileType ? ` · ${profileType} profile` : ''}</span></div>
       </div>

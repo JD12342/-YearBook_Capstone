@@ -1,4 +1,5 @@
 import { ArrowUpRight, BookOpen, Landmark, Sparkles } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { userHighlights } from '../data/userPortalContent.js'
 
 const icons = {
@@ -18,12 +19,12 @@ export function UserHighlights() {
         {userHighlights.map((item, index) => {
           const Icon = icons[item.icon]
           return (
-            <a className={`user-highlight-card user-highlight-card-${index + 1}`} href={item.href} key={item.title}>
+            <Link className={`user-highlight-card user-highlight-card-${index + 1}`} to={item.href} key={item.title}>
               <span className="user-highlight-icon"><Icon size={22} /></span>
               <span className="user-card-index">0{index + 1}</span>
               <div><small>{item.eyebrow}</small><h3>{item.title}</h3><p>{item.description}</p></div>
               <span className="user-card-link">Discover <ArrowUpRight size={16} /></span>
-            </a>
+            </Link>
           )
         })}
       </div>

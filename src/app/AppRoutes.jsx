@@ -16,7 +16,12 @@ import { StudentProfilePage } from '../features/admin/pages/students/StudentProf
 import { VerificationRequestsPage } from '../features/admin/pages/VerificationRequestsPage.jsx'
 import { ContentManagementPage } from '../features/admin/pages/ContentManagementPage.jsx'
 import { LandingPage } from '../features/public/pages/LandingPage.jsx'
+import { UserPortalLayout } from '../features/user/layouts/UserPortalLayout.jsx'
+import { UserExplorePage } from '../features/user/pages/UserExplorePage.jsx'
+import { UserHistoryPage } from '../features/user/pages/UserHistoryPage.jsx'
 import { UserHomePage } from '../features/user/pages/UserHomePage.jsx'
+import { UserUpdatesPage } from '../features/user/pages/UserUpdatesPage.jsx'
+import { UserYearbooksPage } from '../features/user/pages/UserYearbooksPage.jsx'
 
 export function AppRoutes() {
   return (
@@ -24,7 +29,13 @@ export function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute allowedRoles={['User', 'Administrator']} />}>
-        <Route path="/community" element={<UserHomePage />} />
+        <Route path="/community" element={<UserPortalLayout />}>
+          <Route index element={<UserHomePage />} />
+          <Route path="explore" element={<UserExplorePage />} />
+          <Route path="yearbooks" element={<UserYearbooksPage />} />
+          <Route path="history" element={<UserHistoryPage />} />
+          <Route path="updates" element={<UserUpdatesPage />} />
+        </Route>
       </Route>
 
       <Route element={<ProtectedRoute allowedRoles={['Administrator']} />}>

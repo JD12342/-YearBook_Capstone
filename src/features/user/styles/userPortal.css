@@ -17,6 +17,12 @@
 }
 
 .user-portal a { color: inherit; }
+.user-portal-main { min-height: calc(100svh - 78px); }
+.user-route-page { min-height: calc(100svh - 78px); animation: user-page-enter 420ms cubic-bezier(.22,1,.36,1) both; }
+.user-route-yearbooks { background: var(--user-emerald-deep); }
+.user-route-history { display: flex; align-items: stretch; }
+.user-route-history .user-campus-story { flex: 1; }
+.user-route-updates .user-updates { min-height: calc(100svh - 78px); }
 
 .user-portal-header {
   position: sticky;
@@ -50,7 +56,8 @@
 .user-portal-header nav { display: flex; align-items: center; justify-content: center; gap: clamp(18px, 2vw, 34px); }
 .user-portal-header nav a { position: relative; color: #415e53; font-size: 0.71rem; font-weight: 750; text-decoration: none; }
 .user-portal-header nav a::after { position: absolute; right: 0; bottom: -8px; left: 0; height: 2px; border-radius: 99px; background: var(--user-emerald); content: ''; transform: scaleX(0); transition: transform 180ms ease; }
-.user-portal-header nav a:hover::after, .user-portal-header nav a:focus-visible::after { transform: scaleX(1); }
+.user-portal-header nav a:hover::after, .user-portal-header nav a:focus-visible::after, .user-portal-header nav a.is-active::after { transform: scaleX(1); }
+.user-portal-header nav a.is-active { color: var(--user-emerald-dark); }
 
 .user-account-actions { display: flex; align-items: center; gap: 9px; }
 .user-account-chip { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 5px 10px 5px 5px; border: 1px solid var(--user-line); border-radius: 99px; background: rgba(255, 255, 255, 0.62); }
@@ -103,6 +110,12 @@
 .user-content-status { display: flex; width: min(1240px, calc(100% - 48px)); min-height: 36px; align-items: center; justify-content: center; gap: 8px; margin: -18px auto 34px; border-top: 1px solid var(--user-line); border-bottom: 1px solid var(--user-line); color: var(--user-muted); font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em; text-align: center; text-transform: uppercase; }
 .user-content-status > span { width: 7px; height: 7px; border-radius: 50%; background: #c59f54; box-shadow: 0 0 0 4px rgba(197, 159, 84, 0.12); }
 .user-content-status > span.is-live { background: #10a978; box-shadow: 0 0 0 4px rgba(16, 169, 120, 0.12); }
+
+.user-overview-note { display: grid; width: min(1240px, calc(100% - 48px)); grid-template-columns: minmax(0, 1.1fr) minmax(280px, .9fr); align-items: end; gap: clamp(35px, 8vw, 110px); margin: 0 auto; padding: clamp(70px, 8vw, 112px) 0 clamp(84px, 10vw, 142px); border-top: 1px solid var(--user-line); }
+.user-overview-note > span { grid-column: 1 / -1; }
+.user-overview-note h2 { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: clamp(2.8rem, 5.6vw, 5.6rem); font-weight: 400; letter-spacing: -.06em; line-height: .94; }
+.user-overview-note h2 em { color: var(--user-emerald); font-weight: 400; }
+.user-overview-note p { margin: 0; padding-left: 25px; border-left: 1px solid var(--user-line); color: var(--user-muted); font-size: .86rem; line-height: 1.8; }
 
 .user-section { width: min(1240px, calc(100% - 48px)); margin: 0 auto; padding: clamp(75px, 9vw, 132px) 0; }
 .user-section-heading { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr); align-items: end; gap: 56px; margin-bottom: 48px; }
@@ -211,6 +224,11 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes user-page-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 1120px) {
   .user-portal-header { grid-template-columns: auto auto 1fr; }
   .user-mobile-menu { display: grid; }
@@ -233,6 +251,8 @@
   .user-hero-copy { max-width: 730px; }
   .user-hero h1 { font-size: clamp(4rem, 12vw, 7rem); }
   .user-hero-visual { min-height: min(72vw, 600px); }
+  .user-overview-note { grid-template-columns: 1fr; align-items: start; gap: 24px; }
+  .user-overview-note > span { grid-column: auto; }
   .user-section-heading { grid-template-columns: 1fr; align-items: start; gap: 22px; }
   .user-section-heading > p { max-width: 640px; }
   .user-highlight-grid { grid-template-columns: 1fr; }
@@ -266,6 +286,9 @@
   .user-hero-year { right: 18px; bottom: 18px; }
   .user-hero-year strong { font-size: 3.5rem; }
   .user-content-status { width: calc(100% - 36px); margin-top: -8px; padding: 8px; line-height: 1.45; }
+  .user-overview-note { width: calc(100% - 36px); padding: 62px 0 82px; }
+  .user-overview-note h2 { font-size: clamp(2.65rem, 13vw, 4.1rem); }
+  .user-overview-note p { padding-left: 16px; }
   .user-section { width: calc(100% - 36px); padding: 72px 0; }
   .user-section-heading { margin-bottom: 33px; }
   .user-section-heading h2 { font-size: clamp(2.55rem, 13vw, 4rem); }
@@ -294,4 +317,5 @@
   .user-portal .user-hero-copy > *,
   .user-portal .user-hero-visual { animation: none; }
   .user-highlight-card, .user-yearbook-cover { transition: none; }
+  .user-route-page { animation: none; }
 }

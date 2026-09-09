@@ -9,7 +9,7 @@ export function UserPortalFooter() {
         <div><strong>GRADBOOK</strong><span>Stories that stay with us.</span></div>
       </div>
       <p>Preserving the portraits, achievements, traditions, and stories that connect every SNHS generation.</p>
-      <div className="user-footer-actions"><Link to="/">Public landing page</Link><a href="#overview">Back to top <ArrowUp size={15} /></a></div>
+      <div className="user-footer-actions"><Link to="/">Public landing page</Link><a href="#user-portal-top">Back to top <ArrowUp size={15} /></a></div>
       <small>© {new Date().getFullYear()} Sorsogon National High School · Verified community access</small>
     </footer>
   )

@@ -1,10 +1,11 @@
 import { LayoutDashboard, LogOut, Menu, X } from 'lucide-react'
-import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { userPortalNavigation } from '../data/userPortalContent.js'
 
 export function UserPortalHeader({ profile, role, user, logout }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [signingOut, setSigningOut] = useState(false)
   const displayName = profile?.fullName || user?.email || 'GradBook member'
@@ -15,6 +16,10 @@ export function UserPortalHeader({ profile, role, user, logout }) {
     .map((part) => part[0])
     .join('')
     .toUpperCase()
+
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [location.pathname])
 
   const handleLogout = async () => {
     setSigningOut(true)
@@ -38,7 +43,16 @@ export function UserPortalHeader({ profile, role, user, logout }) {
       </button>
 
       <nav id="user-portal-navigation" className={menuOpen ? 'is-open' : ''} aria-label="Community sections">
-        {userPortalNavigation.map((item) => <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)}>{item.label}</a>)}
+        {userPortalNavigation.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) => isActive ? 'is-active' : ''}
+          >
+            {item.label}
+          </NavLink>
+        ))}
       </nav>
 
       <div className="user-account-actions">

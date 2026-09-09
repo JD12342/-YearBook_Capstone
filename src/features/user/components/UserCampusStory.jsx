@@ -1,4 +1,5 @@
 import { ArrowDownRight, PlayCircle } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export function UserCampusStory() {
   return (
@@ -18,7 +19,7 @@ export function UserCampusStory() {
           <div><strong>1903</strong><span>The opening chapter</span></div>
           <div><strong>Today</strong><span>A growing community archive</span></div>
         </div>
-        <a href="#updates">Continue through the story <ArrowDownRight size={17} /></a>
+        <Link to="/community/updates">Continue through the story <ArrowDownRight size={17} /></Link>
       </div>
     </section>
   )
