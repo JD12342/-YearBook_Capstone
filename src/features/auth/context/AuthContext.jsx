@@ -109,11 +109,10 @@ async function resolveAuthorizedAccount(firebaseUser) {
     const approvedRequests = await getDocs(query(
       collection(db, 'accountRequests'),
       where('uid', '==', firebaseUser.uid),
-      limit(10),
+      where('status', '==', 'approved'),
+      limit(1),
     ))
-    const approvedRequest = approvedRequests.docs
-      .map((requestDocument) => requestDocument.data())
-      .find((requestData) => String(requestData.status || '').toLowerCase() === 'approved')
+    const approvedRequest = approvedRequests.docs[0]?.data()
     const approvedRole = normalizeRole(approvedRequest?.role)
     if (supportedRoles.has(approvedRole)) return { role: approvedRole, profile: buildProfile(firebaseUser, approvedRequest) }
   } catch {

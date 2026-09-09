@@ -5,8 +5,11 @@ import {
   doc,
   getDoc,
   getDocs,
+  limit,
+  query,
   serverTimestamp,
   updateDoc,
+  where,
   writeBatch,
 } from 'firebase/firestore'
 import { db } from './firebase/firestore.js'
@@ -32,7 +35,17 @@ const normalizeRecord = (student = {}) => ({
 
 export const getStudents = async ({ schoolYearId, strandId, sectionId, status, search } = {}) => {
   try {
-    const snapshot = await getDocs(studentsCollection)
+    const constraints = []
+    if (schoolYearId) constraints.push(where('schoolYearId', '==', schoolYearId))
+    if (strandId) constraints.push(where('strandId', '==', strandId))
+    if (sectionId) constraints.push(where('sectionId', '==', sectionId))
+    if (status) constraints.push(where('status', '==', status))
+
+    // Bound accidental all-school reads. Normal admin use narrows this further
+    // by school year, strand, and section.
+    constraints.push(limit(500))
+
+    const snapshot = await getDocs(query(studentsCollection, ...constraints))
     const records = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
 
     const filtered = records.filter((student) => {
@@ -95,11 +108,13 @@ export const createStudent = async (studentData) => {
       throw new Error('Please complete all required student fields.')
     }
 
-    const duplicateCheck = await getDocs(studentsCollection)
-    const hasDuplicate = duplicateCheck.docs.some((docSnap) => {
-      const current = docSnap.data()
-      return current.schoolYearId === payload.schoolYearId && current.studentNumber?.toLowerCase() === payload.studentNumber.toLowerCase()
-    })
+    const duplicateCheck = await getDocs(query(
+      studentsCollection,
+      where('schoolYearId', '==', payload.schoolYearId),
+      where('studentNumber', '==', payload.studentNumber),
+      limit(1),
+    ))
+    const hasDuplicate = !duplicateCheck.empty
 
     if (hasDuplicate) {
       throw new Error(`Duplicate student number: ${payload.studentNumber}`)
@@ -167,18 +182,20 @@ export const restoreStudent = async (studentId) => {
 export const bulkCreateStudents = async (studentRecords = []) => {
   if (!studentRecords.length) return 0
 
-  const batch = writeBatch(db)
-  studentRecords.forEach((student) => {
-    const ref = doc(studentsCollection)
-    batch.set(ref, {
-      ...normalizeRecord(student),
-      status: 'active',
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+  const batchSize = 400
+  for (let start = 0; start < studentRecords.length; start += batchSize) {
+    const batch = writeBatch(db)
+    studentRecords.slice(start, start + batchSize).forEach((student) => {
+      const ref = doc(studentsCollection)
+      batch.set(ref, {
+        ...normalizeRecord(student),
+        status: 'active',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
     })
-  })
-
-  await batch.commit()
+    await batch.commit()
+  }
   return studentRecords.length
 }
 
