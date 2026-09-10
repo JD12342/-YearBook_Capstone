@@ -7,7 +7,7 @@ import { Input } from '../../components/ui/Input.jsx'
 import { Select } from '../../components/ui/Select.jsx'
 import { getSchoolYears, getStrands, getSections } from '../../services/schoolYearService.js'
 import { getStudents, updateStudent } from '../../services/studentService.js'
-import { getPhotoForStudent } from '../../services/photoService.js'
+import { getPhotoForStudent, uploadEditedPhotoRecord, uploadStudentPhotoRecord } from '../../services/photoService.js'
 import { isFirebaseConfigured } from '../../services/firebase/firebaseConfig.js'
 
 const photoManagementStateKey = 'gradbook-admin-photo-management-state'
@@ -41,6 +41,7 @@ export function PhotoManagement() {
   const [searchTerm, setSearchTerm] = useState(() => savedState.searchTerm || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [publishingStudentId, setPublishingStudentId] = useState('')
 
   useEffect(() => {
     let ignore = false
@@ -197,6 +198,41 @@ export function PhotoManagement() {
     navigate(`/photos/camera?studentId=${encodeURIComponent(student.id)}`)
   }
 
+  const hasPublishedPortrait = (photo) => photo?.status === 'approved' && String(photo.editedPath || '').includes('/approved/')
+  const publishPortrait = async (student) => {
+    if (!student.photo?.imageUrl) return
+    setPublishingStudentId(student.id)
+    setError('')
+    try {
+      const response = await fetch(student.photo.imageUrl)
+      if (!response.ok) throw new Error('The portrait could not be prepared for publishing.')
+      const blob = await response.blob()
+      const file = new File([blob], `approved-${student.id}.jpg`, { type: blob.type?.startsWith('image/') ? blob.type : 'image/jpeg' })
+      let photoId = student.photo.id
+      if (student.photo.storageOnly) {
+        const created = await uploadStudentPhotoRecord({
+          file, studentId: student.id, schoolYearId: student.schoolYearId,
+          strandId: student.strandId, sectionId: student.sectionId,
+          source: 'legacy-import', status: 'approved',
+        })
+        photoId = created.id
+      } else {
+        await uploadEditedPhotoRecord({
+          file, studentId: student.id, schoolYearId: student.schoolYearId,
+          strandId: student.strandId, sectionId: student.sectionId, photoId,
+        })
+      }
+      const linkedStudent = { ...student, photoId }
+      await updateStudent(student.id, linkedStudent)
+      const publishedPhoto = await getPhotoForStudent(linkedStudent)
+      setStudents(current => current.map(item => item.id === student.id ? { ...linkedStudent, photo: publishedPhoto } : item))
+    } catch (publishError) {
+      setError(publishError.message || 'Unable to publish this portrait. Please try again.')
+    } finally {
+      setPublishingStudentId('')
+    }
+  }
+
   return (
     <div className="page-stack">
       <div className="page-header-row">
@@ -279,7 +315,7 @@ export function PhotoManagement() {
                   <tr key={student.id}>
                     <td><div className="photo-student-cell">{student.photo?.imageUrl ? <img src={student.photo.imageUrl} alt={`Portrait of ${student.firstName || 'student'}`} /> : <span className="photo-student-placeholder">{[student.firstName, student.lastName].filter(Boolean).map((part) => part[0]).join('').toUpperCase() || 'S'}</span>}<div><strong>{[student.firstName, student.middleName, student.lastName].filter(Boolean).join(' ') || student.name || 'Unnamed student'}</strong><small>{[strands.find((strand) => strand.id === student.strandId)?.code, sections.find((section) => section.id === student.sectionId)?.code].filter(Boolean).join(' · ') || 'No class assignment'}</small></div></div></td>
                     <td>{student.photo?.imageUrl ? <span className={`photo-status photo-status-${student.photo.status || 'captured'}`}><CheckCircle2 size={14} />{student.photo.status || 'captured'}</span> : <span className="photo-status photo-status-missing">No portrait</span>}</td>
-                    <td><div className="inline-actions"><button type="button" className="table-action-button" onClick={() => openCapture(student)}>{student.photo ? 'Replace' : 'Capture'}</button>{student.photo && !student.photo.storageOnly && <button type="button" className="table-action-button alt" onClick={() => navigate(`/photos/edit/${student.photo.id}`)}>Edit</button>}</div></td>
+                    <td><div className="inline-actions"><button type="button" className="table-action-button" onClick={() => openCapture(student)}>{student.photo ? 'Replace' : 'Capture'}</button>{student.photo?.imageUrl && !hasPublishedPortrait(student.photo) && <button type="button" className="table-action-button alt" disabled={publishingStudentId === student.id} onClick={() => publishPortrait(student)}>{publishingStudentId === student.id ? 'Publishing…' : 'Approve for yearbook'}</button>}{student.photo && !student.photo.storageOnly && <button type="button" className="table-action-button alt" onClick={() => navigate(`/photos/edit/${student.photo.id}`)}>Edit</button>}</div></td>
                   </tr>
                 ))}
               </tbody>
