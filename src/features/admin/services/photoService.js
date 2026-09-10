@@ -11,7 +11,7 @@ import {
   where,
 } from 'firebase/firestore'
 import { db } from './firebase/firestore.js'
-import { getPhotoUrl, uploadEditedPhoto, uploadStudentPhoto } from './firebase/storageService.js'
+import { findStudentPhotoUrl, getPhotoUrl, uploadEditedPhoto, uploadStudentPhoto } from './firebase/storageService.js'
 
 const photosCollection = collection(db, 'photos')
 
@@ -72,8 +72,20 @@ export const getPhotoForStudent = async (student, { approvedOnly = false } = {})
       .filter((photo) => !approvedOnly || photo.status === 'approved')
       .sort((left, right) => photoTimestamp(right) - photoTimestamp(left))
     const photo = matching[0] || fallback[0]
-    if (!photo) return null
-    return { ...photo, imageUrl: await getPhotoImageUrl(photo) }
+    const imageUrl = await getPhotoImageUrl(photo)
+    if (photo && imageUrl) return { ...photo, imageUrl }
+
+    const storedImageUrl = await findStudentPhotoUrl(student)
+    return storedImageUrl ? {
+      id: `storage-${student.id}`,
+      studentId: student.id,
+      schoolYearId: student.schoolYearId,
+      strandId: student.strandId,
+      status: 'captured',
+      source: 'storage',
+      storageOnly: true,
+      imageUrl: storedImageUrl,
+    } : null
   } catch (error) {
     console.error('getPhotoForStudent error:', error)
     return null

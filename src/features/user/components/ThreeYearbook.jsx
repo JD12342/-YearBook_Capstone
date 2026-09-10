@@ -205,7 +205,8 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
         book.scale.setScalar(THREE.MathUtils.lerp(1.08, 1, openingProgress))
 
         const halfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))
-        const fittedDistance = Math.max(COVER_HEIGHT * 1.3 / (2 * halfFov), COVER_WIDTH * (1 + openingProgress) * 1.3 / (2 * halfFov * camera.aspect)) + 0.7
+        // Keep the book large while retaining a small visual breathing room.
+        const fittedDistance = Math.max(COVER_HEIGHT * 1.08 / (2 * halfFov), COVER_WIDTH * (1 + openingProgress) * 1.08 / (2 * halfFov * camera.aspect)) + 0.22
         camera.position.z = reduceMotion ? fittedDistance : THREE.MathUtils.lerp(camera.position.z, fittedDistance, 0.12)
         renderer.render(scene, camera)
         frame = requestAnimationFrame(render)

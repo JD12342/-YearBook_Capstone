@@ -75,6 +75,27 @@ export async function getPhotoUrl(storagePath) {
   return getDownloadURL(ref(storage, storagePath))
 }
 
+// Older portrait uploads may exist in Storage without a matching Firestore
+// `photos` document. Their folder still includes the student's immutable id,
+// so the admin and yearbook can recover the newest saved portrait safely.
+export async function findStudentPhotoUrl({ schoolYearId, strandId, studentId }) {
+  if (!schoolYearId || !strandId || !studentId) return ''
+  const safePart = (value) => String(value).replace(/\s+/g, '-')
+  const basePath = `photos/${safePart(schoolYearId)}/${safePart(strandId)}/${safePart(studentId)}`
+  const newestIn = async (type) => {
+    try {
+      const contents = await listAll(ref(storage, `${basePath}/${type}`))
+      const newest = [...contents.items].sort((left, right) => right.name.localeCompare(left.name))[0]
+      return newest ? await getDownloadURL(newest) : ''
+    } catch {
+      return ''
+    }
+  }
+
+  // Prefer the final edited portrait, falling back to the original capture.
+  return await newestIn('edited') || await newestIn('original')
+}
+
 export async function deleteStudentPhoto(storagePath) {
   if (!storagePath) return
   const fileRef = ref(storage, storagePath)

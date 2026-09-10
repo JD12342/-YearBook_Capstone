@@ -18,6 +18,7 @@ export function UserYearbookViewerPage() {
   const [fullscreen, setFullscreen] = useState(false)
   const [textView, setTextView] = useState(false)
   const [notice, setNotice] = useState('')
+  const [showHint, setShowHint] = useState(true)
   const viewerRef = useRef(null), audioRef = useRef(null), gesture = useRef(null), turnTimer = useRef(null), turning = useRef(false)
   const presentation = useMemo(() => getYearbookPresentation(yearbook || {}, yearbook?.schoolYearName), [yearbook])
   useEffect(() => {
@@ -28,6 +29,35 @@ export function UserYearbookViewerPage() {
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
   }, [yearbookId])
+  const saveAudioPosition = useCallback(() => {
+    const audio = audioRef.current
+    if (!audio || !yearbookId || !Number.isFinite(audio.currentTime)) return
+    localStorage.setItem(`gradbook-yearbook-audio:${yearbookId}`, JSON.stringify({ position: audio.currentTime }))
+  }, [yearbookId])
+  const restoreAndPlayAudio = useCallback(() => {
+    const audio = audioRef.current
+    if (!audio || !yearbookId) return
+    try {
+      const saved = JSON.parse(localStorage.getItem(`gradbook-yearbook-audio:${yearbookId}`) || '{}')
+      if (Number.isFinite(saved.position) && saved.position > 0 && saved.position < audio.duration) audio.currentTime = saved.position
+    } catch { /* A malformed saved value should never block playback. */ }
+    audio.play().catch(() => setNotice('Tap the music button to start the graduation song.'))
+  }, [yearbookId])
+  useEffect(() => {
+    if (!presentation.graduationSongUrl) return undefined
+    const audio = audioRef.current
+    if (!audio) return undefined
+    const restore = () => restoreAndPlayAudio()
+    audio.addEventListener('loadedmetadata', restore, { once: true })
+    if (audio.readyState >= 1) restore()
+    return () => { saveAudioPosition(); audio.removeEventListener('loadedmetadata', restore) }
+  }, [presentation.graduationSongUrl, restoreAndPlayAudio, saveAudioPosition])
+  useEffect(() => {
+    setShowHint(true)
+    if (!isOpen) return undefined
+    const timeout = window.setTimeout(() => setShowHint(false), 5000)
+    return () => window.clearTimeout(timeout)
+  }, [isOpen, textView])
   useEffect(() => {
     const update = () => {
       const isFullscreen = document.fullscreenElement === viewerRef.current
@@ -107,7 +137,7 @@ export function UserYearbookViewerPage() {
   if (error || !yearbook) return <div className="yearbook-viewer-message"><BookOpen size={32} /><h1>{error ? 'Unable to open yearbook' : 'This edition is not available yet'}</h1><p>{error || 'An administrator must save this edition with its school records and mark it Active.'}</p><Link to="/community/yearbooks">Return to the yearbook room</Link></div>
   const page = presentation.pages[pageIndex]
   return <div ref={viewerRef} className={`yearbook-viewer ${isOpen ? 'is-open' : ''} ${isExiting ? 'is-exiting' : ''}`} style={{ '--book-cover': presentation.coverColor, '--book-accent': presentation.accentColor, '--book-page': presentation.pageColor, '--book-ink': presentation.inkColor }}>
-    {presentation.graduationSongUrl && <audio ref={audioRef} src={presentation.graduationSongUrl} loop onPlay={() => setIsPlaying(true)} onPause={() => setIsPlaying(false)} onError={() => setNotice('The graduation song is unavailable.')} />}
+    {presentation.graduationSongUrl && <audio ref={audioRef} src={presentation.graduationSongUrl} loop autoPlay preload="auto" onTimeUpdate={saveAudioPosition} onPlay={() => setIsPlaying(true)} onPause={() => { saveAudioPosition(); setIsPlaying(false) }} onError={() => setNotice('The graduation song is unavailable.')} />}
     <div className="yearbook-reader-tools" aria-label="Yearbook controls">
       <button type="button" disabled={isExiting} onClick={() => { setTextView(value => !value); setIsOpen(true) }} aria-pressed={textView} aria-label={textView ? 'Show 3D view' : 'Read as text'} title={textView ? 'Show 3D view' : 'Read as text'}><BookOpen size={19} /></button>
       <button type="button" disabled={isExiting} onClick={toggleFullscreen} aria-label={fullscreen ? 'Exit full screen' : 'Enter full screen'} title={fullscreen ? 'Exit full screen' : 'Full screen'}>{fullscreen ? <Minimize size={19} /> : <Maximize size={19} />}</button>
@@ -129,7 +159,7 @@ export function UserYearbookViewerPage() {
         <ThreeYearbook presentation={presentation} isOpen={isOpen} pageIndex={pageIndex} onOpen={openBook} />
       </div>}
     </div>
-    <div className={`yearbook-reader-hint ${isOpen ? 'is-open' : ''}`}><Hand size={20} aria-hidden="true" /><span>{isOpen ? (textView ? 'Choose a spread to continue' : 'Swipe left or right to turn pages') : 'Tap the cover to open'}</span></div>
+    <div className={`yearbook-reader-hint ${isOpen ? 'is-open' : ''} ${showHint ? '' : 'is-hidden'}`}><Hand size={20} aria-hidden="true" /><span>{isOpen ? (textView ? 'Choose a spread to continue' : 'Swipe left or right to turn pages') : 'Tap the cover to open'}</span></div>
     {isOpen && <label className="yearbook-spread-picker"><span className="yearbook-screen-reader-status">Choose spread</span><select aria-label="Choose yearbook spread" value={pageIndex} onChange={event => goToPage(Number(event.target.value))}>{presentation.pages.map((item, index) => <option value={index} key={item.id}>{index + 1} / {presentation.pages.length} — {item.eyebrow || 'Pages'}</option>)}</select></label>}
     <span className="yearbook-screen-reader-status" aria-live="polite">{isOpen ? `Spread ${pageIndex + 1} of ${presentation.pages.length}${pageIndex === presentation.pages.length - 1 ? '. Last spread.' : ''}` : 'Cover'}</span>
   </div>
