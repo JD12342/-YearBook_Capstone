@@ -197,6 +197,10 @@
 .face-search-mode button > span, .face-search-mode strong, .face-search-mode small { display: block; min-width: 0; }
 .face-search-mode strong { color: var(--user-ink); font-size: .7rem; }
 .face-search-mode small { margin-top: 3px; overflow: hidden; color: var(--user-muted); font-size: .57rem; text-overflow: ellipsis; white-space: nowrap; }
+.face-search-source { display: flex; gap: 8px; margin-top: 22px; }
+.face-search-source button { display: inline-flex; min-height: 42px; align-items: center; gap: 7px; padding: 0 14px; border: 1px solid var(--user-line); border-radius: 99px; background: transparent; color: var(--user-muted); font: inherit; font-size: .65rem; font-weight: 800; cursor: pointer; }
+.face-search-source button.is-active { border-color: rgba(8,122,92,.35); background: #e8f5ed; color: var(--user-emerald-dark); }
+.face-search-source button:disabled { cursor: wait; opacity: .55; }
 .face-search-panel-title > span { display: inline-flex; align-items: center; gap: 7px; color: var(--user-emerald); font-size: .58rem; font-weight: 850; letter-spacing: .15em; }
 .face-search-panel-title h2 { margin: 10px 0 8px; font-family: Georgia, serif; font-size: clamp(1.75rem, 3vw, 2.55rem); font-weight: 400; letter-spacing: -.04em; }
 .face-search-panel-title p { margin: 0; color: var(--user-muted); font-size: .72rem; line-height: 1.65; }
@@ -206,6 +210,11 @@
 .face-search-dropzone span { color: var(--user-muted); font-size: .65rem; }
 .face-search-preview { position: relative; height: 300px; margin-top: 26px; overflow: hidden; background: #dfe8e2; }
 .face-search-preview img { width: 100%; height: 100%; object-fit: contain; }
+.face-search-camera { position: relative; height: 300px; margin-top: 18px; overflow: hidden; background: #102d24; }
+.face-search-camera video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.face-search-camera > div { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 7px; background: #eaf2ed; color: #6e887d; text-align: center; }
+.face-search-camera > div strong { color: var(--user-ink); font-family: Georgia, serif; font-size: 1.12rem; font-weight: 400; }
+.face-search-camera > div span { font-size: .63rem; }
 .face-search-preview button { position: absolute; top: 12px; right: 12px; display: grid; width: 38px; height: 38px; place-items: center; border: 1px solid rgba(255,255,255,.42); border-radius: 50%; background: rgba(4,38,28,.72); color: #fff; cursor: pointer; backdrop-filter: blur(9px); }
 .face-search-actions { display: flex; align-items: stretch; justify-content: flex-end; gap: 10px; margin-top: 16px; }
 .face-search-primary, .face-search-secondary { display: inline-flex; min-height: 47px; align-items: center; justify-content: center; gap: 8px; padding: 0 17px; border: 1px solid var(--user-emerald); font: inherit; font-size: .69rem; font-weight: 800; cursor: pointer; }
@@ -412,7 +421,7 @@
   .face-search-count { width: 132px; min-height: 132px; }
   .face-search-workspace { padding-top: 28px; }
   .face-search-upload-panel, .face-search-results-panel { padding: 22px 18px; }
-  .face-search-dropzone, .face-search-preview { min-height: 260px; height: 260px; }
+  .face-search-dropzone, .face-search-preview, .face-search-camera { min-height: 260px; height: 260px; }
   .face-search-actions { flex-direction: column; }
   .face-search-mode { grid-template-columns: 1fr; }
   .face-search-result { grid-template-columns: 84px minmax(0, 1fr); gap: 14px; padding: 13px; }
