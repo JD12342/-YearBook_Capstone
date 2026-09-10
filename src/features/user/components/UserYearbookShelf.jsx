@@ -1,7 +1,9 @@
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowUpRight, BookMarked, LibraryBig, LockKeyhole } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { YearbookCover } from '../../yearbook/components/YearbookCover.jsx'
 import { getYearbookPresentation } from '../../yearbook/data/yearbookDefaults.js'
+import { ThreeYearbook } from './ThreeYearbook.jsx'
+import { preloadYearbookCoverTexture } from './yearbook3d/yearbookTextures.js'
 
 const normalizeYearbook = (yearbook, index) => ({
   ...yearbook,
@@ -10,6 +12,27 @@ const normalizeYearbook = (yearbook, index) => ({
   status: yearbook.status === 'active' ? 'Active edition' : yearbook.status || 'Archive edition',
   tone: ['heritage', 'portraits', 'campus'][index % 3],
 })
+
+function YearbookShelfModel({ yearbook }) {
+  const presentation = useMemo(
+    () => getYearbookPresentation(yearbook, yearbook.schoolYearName),
+    [yearbook],
+  )
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    setReady(false)
+    preloadYearbookCoverTexture(presentation).then(() => {
+      if (active) setReady(true)
+    })
+    return () => { active = false }
+  }, [presentation])
+
+  return ready
+    ? <ThreeYearbook presentation={presentation} isOpen={false} pageIndex={0} interactive={false} />
+    : <span className="user-yearbook-model-loading" aria-hidden="true" />
+}
 
 export function UserYearbookShelf({ yearbooks }) {
   const visibleYearbooks = yearbooks.map(normalizeYearbook)
@@ -28,8 +51,8 @@ export function UserYearbookShelf({ yearbooks }) {
             key={yearbook.id || yearbook.title}
             style={{ '--shelf-cover': yearbook.coverColor, '--shelf-accent': yearbook.accentColor }}
           >
-            <Link className="user-yearbook-cover" to={`/community/yearbooks/${yearbook.id}`} aria-label={`Open ${yearbook.title} in the 3D reader`}>
-              <YearbookCover presentation={getYearbookPresentation(yearbook, yearbook.schoolYearName)} />
+            <Link className="user-yearbook-cover user-yearbook-cover-model" to={`/community/yearbooks/${yearbook.id}`} aria-label={`Open ${yearbook.title} in the 3D reader`}>
+              <YearbookShelfModel yearbook={yearbook} />
             </Link>
             <div className="user-yearbook-details">
               <span>{yearbook.status}</span>

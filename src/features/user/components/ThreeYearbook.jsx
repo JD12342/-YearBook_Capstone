@@ -12,16 +12,18 @@ import {
 import { updateHardcover, updatePageLeaf } from './yearbook3d/yearbookLayering.js'
 import { createYearbookTextureSet } from './yearbook3d/yearbookTextures.js'
 
-export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
+export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interactive = true }) {
   const mountRef = useRef(null)
   const isOpenRef = useRef(isOpen)
   const pageIndexRef = useRef(pageIndex)
   const onOpenRef = useRef(onOpen)
+  const interactiveRef = useRef(interactive)
   const [failed, setFailed] = useState(false)
 
   useEffect(() => { isOpenRef.current = isOpen }, [isOpen])
   useEffect(() => { pageIndexRef.current = pageIndex }, [pageIndex])
   useEffect(() => { onOpenRef.current = onOpen }, [onOpen])
+  useEffect(() => { interactiveRef.current = interactive }, [interactive])
 
   useEffect(() => {
     const mount = mountRef.current
@@ -219,12 +221,13 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
         return raycaster.intersectObject(book, true).length > 0
       }
       const handlePointerMove = (event) => {
+        if (!interactiveRef.current) return
         updatePointer(event)
         mount.classList.toggle('is-book-hovered', !isOpenRef.current && isBookHit())
       }
       const handlePointerLeave = () => mount.classList.remove('is-book-hovered')
       const handlePointerUp = (event) => {
-        if (isOpenRef.current) return
+        if (!interactiveRef.current || isOpenRef.current) return
         updatePointer(event)
         if (isBookHit()) onOpenRef.current?.()
       }
@@ -325,7 +328,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
   }
 
   const openFromKeyboard = (event) => {
-    if (!isOpen && (event.key === 'Enter' || event.key === ' ')) {
+    if (interactive && !isOpen && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault()
       onOpenRef.current?.()
     }
@@ -333,11 +336,11 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
 
   return (
     <div
-      className={`yearbook-three-canvas ${isOpen ? 'is-open' : ''}`}
+      className={`yearbook-three-canvas ${isOpen ? 'is-open' : ''} ${interactive ? '' : 'is-preview'}`}
       ref={mountRef}
-      role={!isOpen ? 'button' : 'img'}
-      tabIndex={!isOpen ? 0 : -1}
-      aria-label={isOpen ? `Open 3D yearbook, page ${pageIndex + 1}` : `Open ${presentation.title}`}
+      role={interactive && !isOpen ? 'button' : 'img'}
+      tabIndex={interactive && !isOpen ? 0 : -1}
+      aria-label={interactive ? (isOpen ? `Open 3D yearbook, page ${pageIndex + 1}` : `Open ${presentation.title}`) : `3D preview of ${presentation.title}`}
       onKeyDown={openFromKeyboard}
     />
   )
