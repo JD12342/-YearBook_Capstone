@@ -139,6 +139,16 @@ export const uploadStudentPhotoRecord = async ({
     type: 'original',
   })
 
+  // A direct "Approve" from the camera must publish a separate final file.
+  // The original capture always stays private, even when it becomes approved.
+  const uploadedApproved = status === 'approved' ? await uploadEditedPhoto({
+    file,
+    schoolYearId,
+    strandId,
+    studentId,
+    photoId,
+  }) : null
+
   const photoMetadata = {
     studentId,
     schoolYearId,
@@ -147,7 +157,7 @@ export const uploadStudentPhotoRecord = async ({
     source,
     status,
     originalPath: uploadedOriginal.path,
-    editedPath: '',
+    editedPath: uploadedApproved?.path || '',
     originalFileName: uploadedOriginal.fileName,
     mimeType: uploadedOriginal.mimeType,
   }
@@ -159,6 +169,7 @@ export const uploadStudentPhotoRecord = async ({
     id: photoIdFromFirestore,
     photoId,
     originalUrl: uploadedOriginal.url,
+    approvedUrl: uploadedApproved?.url || '',
   }
 }
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, Check, RotateCcw, SlidersHorizontal, Undo2 } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../../components/ui/Button.jsx'
-import { getPhoto, updatePhotoRecord } from '../../services/photoService.js'
+import { getPhoto, updatePhotoRecord, uploadEditedPhotoRecord } from '../../services/photoService.js'
 import { getPhotoUrl } from '../../services/firebase/storageService.js'
 import { syncYearbookForSchoolYear } from '../../services/yearbookService.js'
 
@@ -40,7 +40,7 @@ export function PhotoEditorPage() {
       try {
         const record = await getPhoto(photoId)
         if (!record) throw new Error('This photo could not be found.')
-        const url = record.downloadUrl || record.imageUrl || (record.originalPath ? await getPhotoUrl(record.originalPath) : '')
+        const url = record.downloadUrl || record.imageUrl || (record.editedPath ? await getPhotoUrl(record.editedPath) : '') || (record.originalPath ? await getPhotoUrl(record.originalPath) : '')
         if (!url) throw new Error('The source image is unavailable.')
         if (!ignore) {
           const savedEdits = record.edits || record.sessionEdits || {}
@@ -83,10 +83,26 @@ export function PhotoEditorPage() {
     setSettings(history[nextStep])
   }
   const reset = () => { setSettings(standardControls); setHistory([standardControls]); setStep(0) }
+  const createApprovedFile = async () => {
+    const response = await fetch(imageUrl)
+    if (!response.ok) throw new Error('The source portrait could not be prepared for publishing.')
+    const blob = await response.blob()
+    if (!blob.size) throw new Error('The source portrait is empty.')
+    return new File([blob], `approved-${photo.id}.jpg`, { type: blob.type?.startsWith('image/') ? blob.type : 'image/jpeg' })
+  }
   const approve = async () => {
     if (!photo) return
     setSaving(true); setError('')
     try {
+      const file = await createApprovedFile()
+      await uploadEditedPhotoRecord({
+        file,
+        studentId: photo.studentId,
+        schoolYearId: photo.schoolYearId,
+        strandId: photo.strandId,
+        sectionId: photo.sectionId,
+        photoId: photo.id,
+      })
       await updatePhotoRecord(photo.id, { status: 'approved', edits: settings })
       await syncYearbookForSchoolYear(photo.schoolYearId)
       navigate('/photos')
