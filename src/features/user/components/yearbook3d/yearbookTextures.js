@@ -15,12 +15,10 @@ function loadTextureImage(url) {
     const image = new Image()
     image.crossOrigin = 'anonymous'
     image.onload = () => {
-      const finish = () => {
-        entry.image = image
-        resolve(image)
-      }
-      if (typeof image.decode === 'function') image.decode().then(finish, finish)
-      else finish()
+      // The load event guarantees that canvas can use the pixels. Resolve here
+      // instead of awaiting decode(), which can remain pending in some browsers.
+      entry.image = image
+      resolve(image)
     }
     image.onerror = () => {
       textureImageCache.delete(url)
@@ -34,6 +32,11 @@ function loadTextureImage(url) {
 
 export function preloadYearbookCoverTexture(presentation) {
   return loadTextureImage(presentation.coverImageUrl || '/snhs-seal.png')
+}
+
+export function isYearbookCoverTextureReady(presentation) {
+  const url = presentation.coverImageUrl || '/snhs-seal.png'
+  return Boolean(textureImageCache.get(url)?.image)
 }
 
 function wrapText(context, text, maxWidth, maxLines = 6) {

@@ -1,9 +1,9 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowUpRight, BookMarked, LibraryBig, LockKeyhole } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getYearbookPresentation } from '../../yearbook/data/yearbookDefaults.js'
 import { ThreeYearbook } from './ThreeYearbook.jsx'
-import { preloadYearbookCoverTexture } from './yearbook3d/yearbookTextures.js'
+import { isYearbookCoverTextureReady, preloadYearbookCoverTexture } from './yearbook3d/yearbookTextures.js'
 
 const normalizeYearbook = (yearbook, index) => ({
   ...yearbook,
@@ -18,11 +18,20 @@ function YearbookShelfModel({ yearbook, onOpen }) {
     () => getYearbookPresentation(yearbook, yearbook.schoolYearName),
     [yearbook],
   )
+  const [ready, setReady] = useState(() => isYearbookCoverTextureReady(presentation))
+
   useEffect(() => {
-    preloadYearbookCoverTexture(presentation)
+    let active = true
+    setReady(isYearbookCoverTextureReady(presentation))
+    preloadYearbookCoverTexture(presentation).then(() => {
+      if (active) setReady(true)
+    })
+    return () => { active = false }
   }, [presentation])
 
-  return <ThreeYearbook presentation={presentation} isOpen={false} pageIndex={0} onOpen={onOpen} />
+  return ready
+    ? <ThreeYearbook presentation={presentation} isOpen={false} pageIndex={0} onOpen={onOpen} />
+    : <span className="user-yearbook-model-loading" aria-label={`Preparing 3D cover for ${presentation.title}`} />
 }
 
 export function UserYearbookShelf({ yearbooks }) {
