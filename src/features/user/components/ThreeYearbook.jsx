@@ -87,9 +87,9 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       // fore-edge, so custom cover artwork remains the focus.
       const coverBoardGap = 0.018
       const pageBlockBack = -0.035
-      // Volume is depth only: the closed book becomes thicker without stretching
-      // the trim size of either page. The page block stays visibly between covers.
-      const pageBlockDepth = Math.max(0.72, leafDefinitions.length * PAGE_LAYER_GAP + 0.32)
+      // Keep the page block close to the reference: substantial enough to read as
+      // a bound volume, while remaining narrow beside the portrait cover.
+      const pageBlockDepth = Math.max(0.52, leafDefinitions.length * PAGE_LAYER_GAP + 0.26)
       const pageBlockCenter = pageBlockBack + (pageBlockDepth / 2)
       const closedBookPageBlock = new THREE.Group()
       const pageBlockGeometry = new THREE.BoxGeometry(PAGE_WIDTH, PAGE_HEIGHT, pageBlockDepth)
@@ -101,10 +101,10 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       closedBookPageBlock.add(pageBlock)
       geometries.push(pageBlockGeometry)
 
-      // Set the fore-edge just beyond the board so the closed book reads as a
-      // stack of paper in the same way as a physical hard-cover book.
-      const visibleForeEdgeX = COVER_WIDTH + 0.03
-      const foreEdgeGeometry = new THREE.BoxGeometry(0.11, PAGE_HEIGHT - 0.1, pageBlockDepth + 0.03)
+      // The paper is inset inside the boards. The angled camera reveals the edge
+      // naturally instead of making it project beyond the cover.
+      const visibleForeEdgeX = PAGE_WIDTH - 0.012
+      const foreEdgeGeometry = new THREE.BoxGeometry(0.04, PAGE_HEIGHT - 0.12, pageBlockDepth)
       const foreEdge = new THREE.Mesh(foreEdgeGeometry, pageBlockMaterial)
       foreEdge.position.set(visibleForeEdgeX, 0, pageBlockCenter)
       foreEdge.castShadow = true
@@ -112,10 +112,17 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       closedBookPageBlock.add(foreEdge)
       geometries.push(foreEdgeGeometry)
 
-      const pageLayerGeometry = new THREE.BoxGeometry(0.114, 0.009, pageBlockDepth + 0.034)
-      for (let index = 1; index < 42; index += 1) {
+      // Page divisions run into the depth of the book. Avoid horizontal bands,
+      // which make the fore-edge resemble ruled notebook paper.
+      const pageLayerGeometry = new THREE.BoxGeometry(0.044, PAGE_HEIGHT - 0.13, 0.004)
+      const pageLayerCount = 13
+      for (let index = 1; index < pageLayerCount; index += 1) {
         const layer = new THREE.Mesh(pageLayerGeometry, pageLayerMaterial)
-        layer.position.set(visibleForeEdgeX, -PAGE_HEIGHT / 2 + (index * PAGE_HEIGHT / 42), pageBlockCenter)
+        layer.position.set(
+          visibleForeEdgeX,
+          0,
+          pageBlockBack + (index * pageBlockDepth / pageLayerCount),
+        )
         closedBookPageBlock.add(layer)
       }
       geometries.push(pageLayerGeometry)
@@ -247,7 +254,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
         const idle = (now - startedAt) * 0.00055
         book.position.x = THREE.MathUtils.lerp(-PAGE_WIDTH / 2, 0, openingProgress)
         book.position.y = reduceMotion ? 0 : Math.sin(idle) * 0.055 * (1 - openingProgress)
-        book.rotation.y = THREE.MathUtils.lerp(book.rotation.y, (-0.46 * (1 - openingProgress)) + (pointer.x * 0.045 * (1 - openingProgress)), 0.06)
+        book.rotation.y = THREE.MathUtils.lerp(book.rotation.y, (-0.38 * (1 - openingProgress)) + (pointer.x * 0.035 * (1 - openingProgress)), 0.06)
         book.rotation.x = THREE.MathUtils.lerp(book.rotation.x, -0.025 + (pointer.y * 0.025 * (1 - openingProgress)), 0.06)
         book.scale.setScalar(THREE.MathUtils.lerp(1.08, 1, openingProgress))
 
