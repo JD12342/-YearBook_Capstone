@@ -75,7 +75,8 @@ export const getPhotoForStudent = async (student, { approvedOnly = false } = {})
     const imageUrl = await getPhotoImageUrl(photo)
     if (photo && imageUrl) return { ...photo, imageUrl }
 
-    const storedImageUrl = await findStudentPhotoUrl(student)
+    // A raw Storage capture without an approval record must never reach readers.
+    const storedImageUrl = approvedOnly ? '' : await findStudentPhotoUrl(student)
     return storedImageUrl ? {
       id: `storage-${student.id}`,
       studentId: student.id,

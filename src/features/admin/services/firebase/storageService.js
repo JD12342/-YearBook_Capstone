@@ -31,7 +31,8 @@ export async function uploadEditedPhoto({ file, schoolYearId, strandId, studentI
     strandId,
     studentId,
     photoId,
-    type: 'edited',
+    // Only this final, administrator-approved file may be read by community users.
+    type: 'approved',
   })
 }
 

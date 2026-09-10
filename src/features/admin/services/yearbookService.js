@@ -13,7 +13,7 @@ import {
 import { db } from './firebase/firestore.js'
 import { DEFAULT_YEARBOOK_THEME, createDefaultYearbookPages } from '../../yearbook/data/yearbookDefaults.js'
 
-import { getPhotoForStudent } from './photoService.js'
+import { getApprovedPhotoForStudent } from './photoService.js'
 import { buildStudentPages } from '../../yearbook/data/studentPages.js'
 
 const yearbooksCollection = collection(db, 'yearbooks')
@@ -158,9 +158,8 @@ async function buildPublication(payload) {
   // Bound concurrent portrait reads for larger classes.
   for (let start = 0; start < records.length; start += 12) {
     profiles.push(...await Promise.all(records.slice(start, start + 12).map(async student => {
-      // The reader uses the existing portrait record even when an older capture was
-      // saved without copying its id back to the student document.
-      const photo = await getPhotoForStudent(student)
+      // Community yearbooks contain only the final portrait approved by an admin.
+      const photo = await getApprovedPhotoForStudent(student)
       return {
         id: student.id,
         name: [student.firstName, student.middleName, student.lastName, student.suffix].filter(Boolean).join(' '),

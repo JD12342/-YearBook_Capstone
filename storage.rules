@@ -37,11 +37,22 @@ service firebase.storage {
           && firestore.get(/databases/(default)/documents/yearbooks/$(yearbookId)).data.status == 'active');
     }
 
+    // Original camera captures are private to administrators.
     match /photos/{allPaths=**} {
       allow read, delete: if isAdministrator();
       allow create, update: if isAdministrator()
         && request.resource.size < 15 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
+    }
+
+    // The editor writes the final approved crop here. Community users can read
+    // only this published version; administrators retain all write controls.
+    match /photos/{schoolYearId}/{strandId}/{studentId}/approved/{fileName} {
+      allow read: if canViewCommunity();
+      allow create, update: if isAdministrator()
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isAdministrator();
     }
 
     match /published/{allPaths=**} {
