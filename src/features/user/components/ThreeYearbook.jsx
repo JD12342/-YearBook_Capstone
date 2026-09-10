@@ -183,11 +183,13 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       geometries.push(backCoverGeometry)
       materials.push(backCoverInsideMaterial, backCoverOuterMaterial)
 
-      const spineGeometry = new THREE.CylinderGeometry(0.15, 0.15, PAGE_HEIGHT + 0.12, 40, 1, false, Math.PI / 2, Math.PI)
-      const spineMaterial = new THREE.MeshStandardMaterial({ color: presentation.coverColor, roughness: 0.38, metalness: 0.08 })
+      const spineGeometry = new THREE.CylinderGeometry(0.25, 0.25, COVER_HEIGHT - 0.02, 48, 1, false, Math.PI / 2, Math.PI)
+      const spineMaterial = new THREE.MeshStandardMaterial({ color: presentation.coverColor, roughness: 0.56, metalness: 0.02 })
       const spine = new THREE.Mesh(spineGeometry, spineMaterial)
-      spine.position.set(-0.02, 0, pageBlockCenter)
+      const openSpineDepth = backCoverDepth + (COVER_DEPTH / 2) + 0.006
+      spine.position.set(0, 0, pageBlockCenter)
       spine.castShadow = true
+      spine.receiveShadow = true
       book.add(spine)
       geometries.push(spineGeometry)
       materials.push(spineMaterial)
@@ -257,6 +259,14 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
           backCoverDepth,
           openingProgress,
         )
+
+        // Preserve the rounded closed spine, then flatten it into a slim cloth
+        // hinge behind the spread. This removes the dark center gap without
+        // changing any page or cover geometry.
+        spine.position.z = THREE.MathUtils.lerp(pageBlockCenter, openSpineDepth, openingProgress)
+        spine.scale.x = THREE.MathUtils.lerp(1, 0.3, openingProgress)
+        spine.scale.z = THREE.MathUtils.lerp(1, 0.22, openingProgress)
+        spine.castShadow = openingProgress < 0.35
 
         // The compressed page block is a closed-book construction detail. Once the
         // cover opens, individual animated leaves take over with no solid block
