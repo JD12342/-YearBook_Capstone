@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { collectPublishedPortraits, distanceToSimilarity, rankFaceMatches } from './faceSearchService.js'
+import { collectPublishedPortraits, distanceToSimilarity, imageSimilarity, rankFaceMatches, rankImageMatches } from './faceSearchService.js'
 
 test('collectPublishedPortraits includes only unique profiles with published photos', () => {
   const profile = { id: 'student-1', name: 'Student One', photoUrl: 'approved.jpg' }
@@ -15,4 +15,12 @@ test('rankFaceMatches rejects weak candidates and sorts closest first', () => {
   assert.deepEqual(matches.map(({ id }) => id), ['first', 'second'])
   assert.ok(matches[0].similarity > matches[1].similarity)
   assert.equal(distanceToSimilarity(0.56), 44)
+})
+
+test('image similarity ranks the closest whole-image signature first', () => {
+  const same = { luminance: [-1, 1], histogram: [0.5, 0.5] }
+  const different = { luminance: [1, -1], histogram: [1, 0] }
+  assert.equal(imageSimilarity(same, same), 100)
+  const ranked = rankImageMatches([{ id: 'different', similarity: imageSimilarity(same, different) }, { id: 'same', similarity: imageSimilarity(same, same) }])
+  assert.deepEqual(ranked.map(({ id }) => id), ['same', 'different'])
 })
