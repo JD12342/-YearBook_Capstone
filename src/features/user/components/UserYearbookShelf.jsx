@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { ArrowUpRight, BookMarked, LibraryBig, LockKeyhole } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getYearbookPresentation } from '../../yearbook/data/yearbookDefaults.js'
 import { ThreeYearbook } from './ThreeYearbook.jsx'
 import { preloadYearbookCoverTexture } from './yearbook3d/yearbookTextures.js'
@@ -13,7 +13,7 @@ const normalizeYearbook = (yearbook, index) => ({
   tone: ['heritage', 'portraits', 'campus'][index % 3],
 })
 
-function YearbookShelfModel({ yearbook }) {
+function YearbookShelfModel({ yearbook, onOpen }) {
   const presentation = useMemo(
     () => getYearbookPresentation(yearbook, yearbook.schoolYearName),
     [yearbook],
@@ -22,10 +22,11 @@ function YearbookShelfModel({ yearbook }) {
     preloadYearbookCoverTexture(presentation)
   }, [presentation])
 
-  return <ThreeYearbook presentation={presentation} isOpen={false} pageIndex={0} interactive={false} />
+  return <ThreeYearbook presentation={presentation} isOpen={false} pageIndex={0} onOpen={onOpen} />
 }
 
 export function UserYearbookShelf({ yearbooks }) {
+  const navigate = useNavigate()
   const visibleYearbooks = yearbooks.map(normalizeYearbook)
 
   return (
@@ -42,9 +43,9 @@ export function UserYearbookShelf({ yearbooks }) {
             key={yearbook.id || yearbook.title}
             style={{ '--shelf-cover': yearbook.coverColor, '--shelf-accent': yearbook.accentColor }}
           >
-            <Link className="user-yearbook-cover user-yearbook-cover-model" to={`/community/yearbooks/${yearbook.id}`} aria-label={`Open ${yearbook.title} in the 3D reader`}>
-              <YearbookShelfModel yearbook={yearbook} />
-            </Link>
+            <div className="user-yearbook-model-stage">
+              <YearbookShelfModel yearbook={yearbook} onOpen={() => navigate(`/community/yearbooks/${yearbook.id}`)} />
+            </div>
             <div className="user-yearbook-details">
               <span>{yearbook.status}</span>
               <h3>{yearbook.title}</h3>
