@@ -98,18 +98,21 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       closedBookPageBlock.add(pageBlock)
       geometries.push(pageBlockGeometry)
 
-      const foreEdgeGeometry = new THREE.BoxGeometry(0.052, PAGE_HEIGHT - 0.11, pageBlockDepth + 0.02)
+      // Set the fore-edge just beyond the board so the closed book reads as a
+      // stack of paper in the same way as a physical hard-cover book.
+      const visibleForeEdgeX = COVER_WIDTH + 0.03
+      const foreEdgeGeometry = new THREE.BoxGeometry(0.11, PAGE_HEIGHT - 0.1, pageBlockDepth + 0.03)
       const foreEdge = new THREE.Mesh(foreEdgeGeometry, pageBlockMaterial)
-      foreEdge.position.set(PAGE_WIDTH + 0.007, 0, pageBlockCenter)
+      foreEdge.position.set(visibleForeEdgeX, 0, pageBlockCenter)
       foreEdge.castShadow = true
       foreEdge.receiveShadow = true
       closedBookPageBlock.add(foreEdge)
       geometries.push(foreEdgeGeometry)
 
-      const pageLayerGeometry = new THREE.BoxGeometry(0.06, 0.007, pageBlockDepth + 0.024)
+      const pageLayerGeometry = new THREE.BoxGeometry(0.114, 0.009, pageBlockDepth + 0.034)
       for (let index = 1; index < 28; index += 1) {
         const layer = new THREE.Mesh(pageLayerGeometry, pageLayerMaterial)
-        layer.position.set(PAGE_WIDTH + 0.01, -PAGE_HEIGHT / 2 + (index * PAGE_HEIGHT / 28), pageBlockCenter)
+        layer.position.set(visibleForeEdgeX, -PAGE_HEIGHT / 2 + (index * PAGE_HEIGHT / 28), pageBlockCenter)
         closedBookPageBlock.add(layer)
       }
       geometries.push(pageLayerGeometry)
