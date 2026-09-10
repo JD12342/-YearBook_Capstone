@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from './Button.jsx'
 import { Input } from './Input.jsx'
+import { Modal } from './Modal.jsx'
 
 export function DeleteConfirmationModal({ isOpen, title, message, warning, onClose, onConfirm, loading = false }) {
   const [password, setPassword] = useState('')
@@ -34,15 +35,7 @@ export function DeleteConfirmationModal({ isOpen, title, message, warning, onClo
   }
 
   return (
-    <div className="modal-backdrop modal-backdrop-confirmation" role="presentation">
-      <div className="modal-panel delete-modal-panel">
-        <div className="modal-header">
-          <h3>{title}</h3>
-          <button type="button" className="modal-close" onClick={onClose} aria-label="Close delete confirmation">
-            ×
-          </button>
-        </div>
-
+    <Modal isOpen={isOpen} title={title} onClose={() => { if (!loading) onClose() }} panelClassName="delete-modal-panel">
         <p className="delete-modal-copy">{message}</p>
         {warning && <div className="delete-warning">{warning}</div>}
 
@@ -62,13 +55,12 @@ export function DeleteConfirmationModal({ isOpen, title, message, warning, onClo
           {error && <div className="form-error">{error}</div>}
 
           <div className="form-actions">
-            <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>Cancel</Button>
             <Button type="submit" variant="danger" disabled={loading}>
               {loading ? 'Deleting...' : 'Delete'}
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   )
 }

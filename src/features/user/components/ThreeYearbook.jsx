@@ -44,17 +44,19 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
       renderer.outputColorSpace = THREE.SRGBColorSpace
-      renderer.toneMapping = THREE.ACESFilmicToneMapping
+      renderer.toneMapping = THREE.NoToneMapping
       renderer.toneMappingExposure = 1.08
       renderer.shadowMap.enabled = true
-      renderer.shadowMap.type = THREE.PCFSoftShadowMap
+      renderer.shadowMap.type = THREE.PCFShadowMap
       mount.appendChild(renderer.domElement)
 
       scene.add(new THREE.HemisphereLight(0xfff7df, 0x08271f, 2.45))
       const keyLight = new THREE.DirectionalLight(0xfffbef, 3.8)
       keyLight.position.set(-4.5, 6, 8)
       keyLight.castShadow = true
-      keyLight.shadow.mapSize.set(1024, 1024)
+      keyLight.shadow.mapSize.set(2048, 2048)
+      keyLight.shadow.radius = 4
+      keyLight.shadow.normalBias = 0.025
       scene.add(keyLight)
 
       const rimLight = new THREE.PointLight(presentation.accentColor, 18, 16)
@@ -64,8 +66,6 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       const book = new THREE.Group()
       scene.add(book)
 
-      const pageGeometry = createPageGeometry()
-      geometries.push(pageGeometry)
       const {
         leaves: leafDefinitions,
         textures,
@@ -82,8 +82,10 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       materials.push(paperEdgeMaterial, coverEdgeMaterial)
 
       const leaves = leafDefinitions.map((definition, index) => {
-        const frontMaterial = new THREE.MeshStandardMaterial({ map: definition.front, roughness: 0.86, metalness: 0 })
-        const backMaterial = new THREE.MeshStandardMaterial({ map: definition.back, roughness: 0.86, metalness: 0 })
+        const pageGeometry = createPageGeometry()
+        geometries.push(pageGeometry)
+        const frontMaterial = new THREE.MeshBasicMaterial({ map: definition.front })
+        const backMaterial = new THREE.MeshBasicMaterial({ map: definition.back })
         materials.push(frontMaterial, backMaterial)
 
         const mesh = new THREE.Mesh(
@@ -98,13 +100,13 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
         group.position.z = (leafDefinitions.length - index) * PAGE_LAYER_GAP
         group.add(mesh)
         book.add(group)
-        return { group, currentAngle: 0, fromAngle: 0, targetAngle: 0, transitionStartedAt: performance.now() }
+        return { group, geometry: pageGeometry, currentAngle: 0, fromAngle: 0, targetAngle: 0, transitionStartedAt: performance.now() }
       })
 
       const frontCoverGeometry = new THREE.BoxGeometry(COVER_WIDTH, COVER_HEIGHT, COVER_DEPTH)
       frontCoverGeometry.translate(COVER_WIDTH / 2, 0, 0)
-      const frontCoverMaterial = new THREE.MeshStandardMaterial({ map: coverTexture, roughness: 0.58, metalness: 0 })
-      const frontCoverInsideMaterial = new THREE.MeshStandardMaterial({ map: insideFrontCoverTexture, roughness: 0.66, metalness: 0 })
+      const frontCoverMaterial = new THREE.MeshStandardMaterial({ map: coverTexture, roughness: 0.38, metalness: 0.06 })
+      const frontCoverInsideMaterial = new THREE.MeshStandardMaterial({ map: insideFrontCoverTexture, roughness: 0.62 })
       const frontCover = new THREE.Mesh(frontCoverGeometry, [coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, frontCoverMaterial, frontCoverInsideMaterial])
       frontCover.position.z = getClosedCoverCenterDepth(leafDefinitions.length)
       frontCover.castShadow = true
@@ -118,8 +120,8 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
 
       const backCoverGeometry = new THREE.BoxGeometry(COVER_WIDTH, COVER_HEIGHT, COVER_DEPTH)
       backCoverGeometry.translate(COVER_WIDTH / 2, 0, 0)
-      const backCoverInsideMaterial = new THREE.MeshStandardMaterial({ map: insideBackCoverTexture, roughness: 0.66, metalness: 0 })
-      const backCoverOuterMaterial = new THREE.MeshStandardMaterial({ map: backCoverTexture, roughness: 0.6, metalness: 0 })
+      const backCoverInsideMaterial = new THREE.MeshStandardMaterial({ map: insideBackCoverTexture, roughness: 0.62 })
+      const backCoverOuterMaterial = new THREE.MeshStandardMaterial({ map: backCoverTexture, roughness: 0.4, metalness: 0.04 })
       const backCover = new THREE.Mesh(backCoverGeometry, [coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, backCoverInsideMaterial, backCoverOuterMaterial])
       backCover.position.z = -(COVER_DEPTH / 2) - 0.02
       backCover.castShadow = true
@@ -128,8 +130,8 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       geometries.push(backCoverGeometry)
       materials.push(backCoverInsideMaterial, backCoverOuterMaterial)
 
-      const spineGeometry = new THREE.CylinderGeometry(0.13, 0.13, PAGE_HEIGHT + 0.12, 24, 1, false, Math.PI / 2, Math.PI)
-      const spineMaterial = new THREE.MeshStandardMaterial({ color: presentation.coverColor, roughness: 0.7 })
+      const spineGeometry = new THREE.CylinderGeometry(0.15, 0.15, PAGE_HEIGHT + 0.12, 40, 1, false, Math.PI / 2, Math.PI)
+      const spineMaterial = new THREE.MeshStandardMaterial({ color: presentation.coverColor, roughness: 0.38, metalness: 0.08 })
       const spine = new THREE.Mesh(spineGeometry, spineMaterial)
       spine.position.set(-0.02, 0, -0.055)
       spine.castShadow = true
@@ -138,7 +140,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       materials.push(spineMaterial)
 
       const floorGeometry = new THREE.PlaneGeometry(13, 8)
-      const floorMaterial = new THREE.ShadowMaterial({ color: 0x00160f, opacity: 0.32 })
+      const floorMaterial = new THREE.ShadowMaterial({ color: 0x00160f, opacity: 0.26 })
       const floor = new THREE.Mesh(floorGeometry, floorMaterial)
       floor.position.set(0, -3.02, -0.7)
       floor.rotation.x = -Math.PI / 2
@@ -180,7 +182,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
         const aspect = width / height
         renderer.setSize(width, height, false)
         camera.aspect = aspect
-        camera.position.z = aspect < 1 ? 12.8 / Math.max(aspect, 0.38) : 11.7
+        camera.position.z = 11.7
         camera.position.y = aspect < 0.72 ? 0 : 0.2
         camera.lookAt(0, 0, 0)
         camera.updateProjectionMatrix()
@@ -199,9 +201,12 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
         book.position.x = THREE.MathUtils.lerp(-PAGE_WIDTH / 2, 0, openingProgress)
         book.position.y = reduceMotion ? 0 : Math.sin(idle) * 0.055 * (1 - openingProgress)
         book.rotation.y = THREE.MathUtils.lerp(book.rotation.y, (-0.22 * (1 - openingProgress)) + (pointer.x * 0.045 * (1 - openingProgress)), 0.06)
-        book.rotation.x = THREE.MathUtils.lerp(book.rotation.x, -0.045 + (pointer.y * 0.025 * (1 - openingProgress)), 0.06)
+        book.rotation.x = THREE.MathUtils.lerp(book.rotation.x, -0.025 + (pointer.y * 0.025 * (1 - openingProgress)), 0.06)
         book.scale.setScalar(THREE.MathUtils.lerp(1.08, 1, openingProgress))
 
+        const halfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))
+        const fittedDistance = Math.max(COVER_HEIGHT * 1.3 / (2 * halfFov), COVER_WIDTH * (1 + openingProgress) * 1.3 / (2 * halfFov * camera.aspect)) + 0.7
+        camera.position.z = reduceMotion ? fittedDistance : THREE.MathUtils.lerp(camera.position.z, fittedDistance, 0.12)
         renderer.render(scene, camera)
         frame = requestAnimationFrame(render)
       }

@@ -10,6 +10,8 @@ import {
   serverTimestamp,
   updateDoc,
   writeBatch,
+  where,
+  limit,
 } from 'firebase/firestore'
 import { db } from './firebase/firestore.js'
 
@@ -87,9 +89,11 @@ export const archiveSchoolYear = async (schoolYearId) => {
 
 export const deleteSchoolYear = async (schoolYearId) => {
   try {
+    const linked = await getDocs(query(collection(db, 'yearbooks'), where('schoolYearId', '==', schoolYearId), limit(1)))
+    if (!linked.empty) throw new Error('Delete the linked yearbook first, or archive this school year to keep its records together.')
     await deleteDoc(doc(db, 'schoolYears', schoolYearId))
   } catch (error) {
-    throw new Error('Unable to delete school year.')
+    throw new Error(error.message || 'Unable to delete school year.')
   }
 }
 

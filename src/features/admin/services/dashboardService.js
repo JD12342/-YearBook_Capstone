@@ -22,13 +22,13 @@ const aggregateByLabel = (entries) => Array.from(entries.reduce((totals, entry) 
 
 export const getDashboardStats = async () => {
   try {
-    const [yearsSnap, strandsSnap, totalStudents, archivedStudents, approvedPhotos, totalYearbooks] = await Promise.all([
+    const [yearsSnap, strandsSnap, totalStudents, archivedStudents, approvedPhotos, yearbooksSnap] = await Promise.all([
       getDocs(schoolYearsCollection),
       getDocs(strandsCollection),
       countDocuments(studentsCollection),
       countDocuments(query(studentsCollection, where('status', '==', 'archived'))),
       countDocuments(query(photosCollection, where('status', '==', 'approved'))),
-      countDocuments(yearbooksCollection),
+      getDocs(yearbooksCollection),
     ])
 
     const schoolYears = yearsSnap.docs.map((document) => ({ id: document.id, ...document.data() }))
@@ -53,7 +53,7 @@ export const getDashboardStats = async () => {
       totalSchoolYears: schoolYears.length,
       totalStrands: new Set(strands.map((strand) => (strand.code || strand.name || '').trim().toLowerCase()).filter(Boolean)).size,
       totalPhotos: approvedPhotos,
-      totalYearbooks,
+      totalYearbooks: yearbooksSnap.docs.filter(book => schoolYears.some(year => year.id === book.data().schoolYearId)).length,
       studentsBySchoolYear: yearCounts.filter((entry) => entry.value > 0),
       studentsByStrand: aggregateByLabel(strandCounts),
       studentsWithoutPhotos,

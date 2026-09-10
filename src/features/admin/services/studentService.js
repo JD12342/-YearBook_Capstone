@@ -13,6 +13,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db } from './firebase/firestore.js'
+import { syncYearbookForSchoolYear } from './yearbookService.js'
 
 const studentsCollection = collection(db, 'students')
 
@@ -126,6 +127,7 @@ export const createStudent = async (studentData) => {
       updatedAt: serverTimestamp(),
     })
 
+    await syncYearbookForSchoolYear(payload.schoolYearId)
     return ref.id
   } catch (error) {
     console.error('createStudent error:', error)
@@ -140,6 +142,7 @@ export const updateStudent = async (studentId, updates) => {
       ...payload,
       updatedAt: serverTimestamp(),
     })
+    await syncYearbookForSchoolYear(payload.schoolYearId)
   } catch (error) {
     console.error('updateStudent error:', error)
     throw new Error(error.message || 'Unable to update student record.')
@@ -148,7 +151,9 @@ export const updateStudent = async (studentId, updates) => {
 
 export const deleteStudent = async (studentId) => {
   try {
+    const existing = await getDoc(doc(db, 'students', studentId))
     await deleteDoc(doc(db, 'students', studentId))
+    if (existing.exists()) await syncYearbookForSchoolYear(existing.data().schoolYearId)
   } catch (error) {
     console.error('deleteStudent error:', error)
     throw new Error('Unable to permanently delete this student.')
@@ -157,10 +162,12 @@ export const deleteStudent = async (studentId) => {
 
 export const archiveStudent = async (studentId) => {
   try {
+    const existing = await getDoc(doc(db, 'students', studentId))
     await updateDoc(doc(db, 'students', studentId), {
       status: 'archived',
       updatedAt: serverTimestamp(),
     })
+    if (existing.exists()) await syncYearbookForSchoolYear(existing.data().schoolYearId)
   } catch (error) {
     console.error('archiveStudent error:', error)
     throw new Error('Unable to archive this student.')
@@ -169,10 +176,12 @@ export const archiveStudent = async (studentId) => {
 
 export const restoreStudent = async (studentId) => {
   try {
+    const existing = await getDoc(doc(db, 'students', studentId))
     await updateDoc(doc(db, 'students', studentId), {
       status: 'active',
       updatedAt: serverTimestamp(),
     })
+    if (existing.exists()) await syncYearbookForSchoolYear(existing.data().schoolYearId)
   } catch (error) {
     console.error('restoreStudent error:', error)
     throw new Error('Unable to restore this student.')
@@ -196,6 +205,7 @@ export const bulkCreateStudents = async (studentRecords = []) => {
     })
     await batch.commit()
   }
+  await Promise.all([...new Set(studentRecords.map((student) => student.schoolYearId).filter(Boolean))].map(syncYearbookForSchoolYear))
   return studentRecords.length
 }
 

@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { Button } from '../../components/ui/Button.jsx'
 import { getPhoto, updatePhotoRecord } from '../../services/photoService.js'
 import { getPhotoUrl } from '../../services/firebase/storageService.js'
+import { syncYearbookForSchoolYear } from '../../services/yearbookService.js'
 
 const standardControls = {
   exposure: 2, contrast: 4, saturation: 3, vibrance: 1, clarity: 0,
@@ -87,6 +88,7 @@ export function PhotoEditorPage() {
     setSaving(true); setError('')
     try {
       await updatePhotoRecord(photo.id, { status: 'approved', edits: settings })
+      await syncYearbookForSchoolYear(photo.schoolYearId)
       navigate('/photos')
     } catch {
       setError('Unable to approve this photo. Please try again.')

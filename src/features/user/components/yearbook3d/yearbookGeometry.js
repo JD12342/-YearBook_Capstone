@@ -10,9 +10,33 @@ export const COVER_HEIGHT = PAGE_HEIGHT + 0.26
 export const COVER_DEPTH = 0.11
 
 export function createPageGeometry() {
-  const geometry = new THREE.BoxGeometry(PAGE_WIDTH, PAGE_HEIGHT, PAGE_DEPTH)
+  // Dense horizontal segments let the turning sheet bend and ripple rather
+  // than behaving like a rigid card.
+  const geometry = new THREE.BoxGeometry(PAGE_WIDTH, PAGE_HEIGHT, PAGE_DEPTH, 40, 2, 1)
   geometry.translate(PAGE_WIDTH / 2, 0, 0)
+  geometry.userData.restPosition = geometry.attributes.position.array.slice()
   return geometry
+}
+
+export function deformPageGeometry(geometry, turnProgress, direction = 1) {
+  const position = geometry.attributes.position
+  const rest = geometry.userData.restPosition
+  if (!rest) return
+
+  const flex = Math.sin(turnProgress * Math.PI)
+  for (let index = 0; index < position.count; index += 1) {
+    const offset = index * 3
+    const x = rest[offset]
+    const y = rest[offset + 1]
+    const normalizedX = x / PAGE_WIDTH
+    // The spine remains stable while the outer edge lifts in a broad arc.
+    const arc = Math.sin(normalizedX * Math.PI) * flex * 0.34 * direction
+    // Two smaller waves remove the flat, cardboard-like surface.
+    const ripple = Math.sin(normalizedX * Math.PI * 3.5 + (y / PAGE_HEIGHT) * 1.6) * flex * 0.018
+    position.setXYZ(index, x, y, rest[offset + 2] + arc + ripple)
+  }
+  position.needsUpdate = true
+  geometry.computeVertexNormals()
 }
 
 export function getClosedCoverCenterDepth(pageCount) {

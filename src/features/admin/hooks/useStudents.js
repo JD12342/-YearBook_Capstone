@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { getSchoolYears, getStrands, getSections } from '../services/schoolYearService.js'
-import { getApprovedPhotoForStudent } from '../services/photoService.js'
+import { getPhotoForStudent } from '../services/photoService.js'
 import {
   archiveStudent as archiveStudentRecord,
   bulkCreateStudents,
@@ -72,11 +72,11 @@ export function useStudents() {
 
       const enriched = await Promise.all(
         records.map(async (student) => {
-          const photo = await getApprovedPhotoForStudent(student)
+          const photo = await getPhotoForStudent(student)
           return {
             ...student,
             approvedPhotoUrl: photo?.imageUrl || '',
-            photoStatus: photo ? 'approved' : 'No approved photo',
+            photoStatus: photo?.status || 'No photo',
           }
         }),
       )

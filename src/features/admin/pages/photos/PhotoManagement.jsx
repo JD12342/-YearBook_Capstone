@@ -1,4 +1,4 @@
-import { Camera, Search } from 'lucide-react'
+import { Camera, CheckCircle2, Image as ImageIcon, Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/Button.jsx'
@@ -6,7 +6,8 @@ import { Card } from '../../components/ui/Card.jsx'
 import { Input } from '../../components/ui/Input.jsx'
 import { Select } from '../../components/ui/Select.jsx'
 import { getSchoolYears, getStrands, getSections } from '../../services/schoolYearService.js'
-import { getStudents } from '../../services/studentService.js'
+import { getStudents, updateStudent } from '../../services/studentService.js'
+import { getPhotoForStudent } from '../../services/photoService.js'
 import { isFirebaseConfigured } from '../../services/firebase/firebaseConfig.js'
 
 const photoManagementStateKey = 'gradbook-admin-photo-management-state'
@@ -17,6 +18,14 @@ const readPhotoManagementState = () => {
   } catch {
     return {}
   }
+}
+
+const attachLegacyPhoto = async (student) => {
+  const photo = await getPhotoForStudent(student)
+  if (photo?.id && photo.id !== student.photoId) {
+    await updateStudent(student.id, { ...student, photoId: photo.id })
+  }
+  return { ...student, photoId: photo?.id || student.photoId, photo }
 }
 
 export function PhotoManagement() {
@@ -59,9 +68,11 @@ export function PhotoManagement() {
 
         if (ignore) return
 
+        const withPhotos = await Promise.all(activeStudents.map(attachLegacyPhoto))
+        if (ignore) return
         setSchoolYears(years)
         setSelectedSchoolYearId((current) => current || years[0]?.id || '')
-        setStudents(activeStudents)
+        setStudents(withPhotos)
       } catch (loadError) {
         if (!ignore) setError(loadError.message || 'Unable to load photo data.')
       } finally {
@@ -150,7 +161,8 @@ export function PhotoManagement() {
           search: searchTerm || undefined,
         })
 
-        if (!ignore) setStudents(records)
+        const withPhotos = await Promise.all(records.map(attachLegacyPhoto))
+        if (!ignore) setStudents(withPhotos)
       } catch (error) {
         if (!ignore) setStudents([])
       }
@@ -236,18 +248,14 @@ export function PhotoManagement() {
         </div>
       </Card>
 
-      <div className="stats-grid compact-grid">
-        <div className="mini-stat-card"><div className="mini-stat-label">Total Students</div><div className="mini-stat-value">{students.length}</div></div>
-        <div className="mini-stat-card"><div className="mini-stat-label">Captured</div><div className="mini-stat-value">{students.filter((student) => student.status === 'captured').length}</div></div>
-        <div className="mini-stat-card"><div className="mini-stat-label">Pending</div><div className="mini-stat-value">{students.filter((student) => student.status === 'pending').length}</div></div>
-        <div className="mini-stat-card"><div className="mini-stat-label">Editing</div><div className="mini-stat-value">{students.filter((student) => student.status === 'editing').length}</div></div>
-        <div className="mini-stat-card"><div className="mini-stat-label">Approved</div><div className="mini-stat-value">{students.filter((student) => student.status === 'approved').length}</div></div>
-        <div className="mini-stat-card"><div className="mini-stat-label">Retake Needed</div><div className="mini-stat-value">{students.filter((student) => student.status === 'retake_needed').length}</div></div>
+      <div className="photo-workspace-summary">
+        <ImageIcon size={22} />
+        <div><strong>{filteredStudents.filter((student) => student.photo?.imageUrl).length} of {filteredStudents.length} portraits ready</strong><span>Each saved portrait appears beside its student. Unlinked legacy photo records are matched automatically.</span></div>
       </div>
 
       <Card className="panel-card">
         <div className="section-title-row">
-          <div><h3>Photo sessions</h3><span className="panel-caption">Start a fast, consistent capture session or open an existing photo for detailed editing.</span></div>
+          <div><h3>Student portraits</h3><span className="panel-caption">Capture a portrait or review the photo already linked to each student.</span></div>
           <Button type="button" disabled={!filteredStudents.length} onClick={() => openCapture(filteredStudents[0])}>
             <Camera size={16} />
             Start photo session
@@ -262,22 +270,16 @@ export function PhotoManagement() {
               <thead>
                 <tr>
                   <th>Student</th>
-                  <th>Strand</th>
-                  <th>Section</th>
                   <th>Status</th>
-                  <th>Source</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredStudents.map((student) => (
                   <tr key={student.id}>
-                    <td>{[student.firstName, student.middleName, student.lastName].filter(Boolean).join(' ') || student.name || 'Unnamed student'}</td>
-                    <td>{strands.find((strand) => strand.id === student.strandId)?.code || '—'}</td>
-                    <td>{sections.find((section) => section.id === student.sectionId)?.code || '—'}</td>
-                    <td><span className="badge badge-neutral">{student.status || 'active'}</span></td>
-                    <td>{student.photoId ? 'Captured' : 'Not captured'}</td>
-                    <td><div className="inline-actions"><button type="button" className="table-action-button" onClick={() => openCapture(student)}>Capture</button>{student.photoId && <button type="button" className="table-action-button alt" onClick={() => navigate(`/photos/edit/${student.photoId}`)}>Edit</button>}</div></td>
+                    <td><div className="photo-student-cell">{student.photo?.imageUrl ? <img src={student.photo.imageUrl} alt={`Portrait of ${student.firstName || 'student'}`} /> : <span className="photo-student-placeholder">{[student.firstName, student.lastName].filter(Boolean).map((part) => part[0]).join('').toUpperCase() || 'S'}</span>}<div><strong>{[student.firstName, student.middleName, student.lastName].filter(Boolean).join(' ') || student.name || 'Unnamed student'}</strong><small>{[strands.find((strand) => strand.id === student.strandId)?.code, sections.find((section) => section.id === student.sectionId)?.code].filter(Boolean).join(' · ') || 'No class assignment'}</small></div></div></td>
+                    <td>{student.photo?.imageUrl ? <span className={`photo-status photo-status-${student.photo.status || 'captured'}`}><CheckCircle2 size={14} />{student.photo.status || 'captured'}</span> : <span className="photo-status photo-status-missing">No portrait</span>}</td>
+                    <td><div className="inline-actions"><button type="button" className="table-action-button" onClick={() => openCapture(student)}>{student.photo ? 'Replace' : 'Capture'}</button>{student.photo && <button type="button" className="table-action-button alt" onClick={() => navigate(`/photos/edit/${student.photo.id}`)}>Edit</button>}</div></td>
                   </tr>
                 ))}
               </tbody>

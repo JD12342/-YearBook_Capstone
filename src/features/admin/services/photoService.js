@@ -42,6 +42,44 @@ export const getPhoto = async (photoId) => {
   }
 }
 
+const photoTimestamp = (photo) => Number(photo?.updatedAt?.seconds ?? photo?.createdAt?.seconds ?? 0)
+
+export const getPhotoImageUrl = async (photo) => {
+  if (!photo) return ''
+  return photo.downloadUrl
+    || photo.imageUrl
+    || (photo.editedPath ? await getPhotoUrl(photo.editedPath) : '')
+    || (photo.originalPath ? await getPhotoUrl(photo.originalPath) : '')
+    || ''
+}
+
+// A few older captures were written to `photos` but their id was not copied
+// to the student document. Look up the ownership record as a safe fallback.
+export const getPhotoForStudent = async (student, { approvedOnly = false } = {}) => {
+  if (!student?.id) return null
+
+  try {
+    const linked = student.photoId ? await getPhoto(student.photoId) : null
+    const records = linked?.studentId === student.id ? [linked] : await getDocs(query(photosCollection, where('studentId', '==', student.id)))
+      .then((snapshot) => snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() })))
+    const matching = records
+      .filter((photo) => !student.schoolYearId || !photo.schoolYearId || photo.schoolYearId === student.schoolYearId)
+      .filter((photo) => !approvedOnly || photo.status === 'approved')
+      .sort((left, right) => photoTimestamp(right) - photoTimestamp(left))
+    // Legacy photo records sometimes stored a display year instead of the school-year id.
+    // Student ownership remains the source of truth, so use that portrait as a fallback.
+    const fallback = records
+      .filter((photo) => !approvedOnly || photo.status === 'approved')
+      .sort((left, right) => photoTimestamp(right) - photoTimestamp(left))
+    const photo = matching[0] || fallback[0]
+    if (!photo) return null
+    return { ...photo, imageUrl: await getPhotoImageUrl(photo) }
+  } catch (error) {
+    console.error('getPhotoForStudent error:', error)
+    return null
+  }
+}
+
 export const createPhotoRecord = async (photoData) => {
   try {
     const ref = await addDoc(photosCollection, {
@@ -143,20 +181,5 @@ export const uploadEditedPhotoRecord = async ({
 }
 
 export const getApprovedPhotoForStudent = async (student) => {
-  if (!student?.photoId) return null
-
-  try {
-    const photoDoc = await getPhoto(student.photoId)
-    if (!photoDoc || photoDoc.status !== 'approved') return null
-
-    const imageUrl = photoDoc.downloadUrl || photoDoc.imageUrl || (photoDoc.editedPath ? await getPhotoUrl(photoDoc.editedPath) : null) || (photoDoc.originalPath ? await getPhotoUrl(photoDoc.originalPath) : null)
-
-    return {
-      ...photoDoc,
-      imageUrl,
-    }
-  } catch (error) {
-    console.error('getApprovedPhotoForStudent error:', error)
-    return null
-  }
+  return getPhotoForStudent(student, { approvedOnly: true })
 }

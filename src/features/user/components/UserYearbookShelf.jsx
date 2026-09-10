@@ -1,5 +1,7 @@
 import { ArrowUpRight, BookMarked, LibraryBig, LockKeyhole } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { YearbookCover } from '../../yearbook/components/YearbookCover.jsx'
+import { getYearbookPresentation } from '../../yearbook/data/yearbookDefaults.js'
 
 const normalizeYearbook = (yearbook, index) => ({
   ...yearbook,
@@ -20,18 +22,14 @@ export function UserYearbookShelf({ yearbooks }) {
       </div>
 
       {visibleYearbooks.length ? <div className="user-yearbook-shelf">
-        {visibleYearbooks.map((yearbook, index) => (
+        {visibleYearbooks.map((yearbook) => (
           <article
             className={`user-yearbook-card tone-${yearbook.tone || 'heritage'}`}
             key={yearbook.id || yearbook.title}
             style={{ '--shelf-cover': yearbook.coverColor, '--shelf-accent': yearbook.accentColor }}
           >
             <Link className="user-yearbook-cover" to={`/community/yearbooks/${yearbook.id}`} aria-label={`Open ${yearbook.title} in the 3D reader`}>
-              {yearbook.coverImageUrl && <span className="user-yearbook-cover-image" style={{ backgroundImage: `url(${yearbook.coverImageUrl})` }} />}
-              <span className="user-yearbook-number">{String(index + 1).padStart(2, '0')}</span>
-              <img src="/snhs-seal.png" alt="" />
-              <div><small>SORSOGON NATIONAL HIGH SCHOOL</small><strong>{yearbook.coverTitle || 'GRAD BOOK'}</strong></div>
-              <span className="user-yearbook-mark">ARCHIVE</span>
+              <YearbookCover presentation={getYearbookPresentation(yearbook, yearbook.schoolYearName)} />
             </Link>
             <div className="user-yearbook-details">
               <span>{yearbook.status}</span>

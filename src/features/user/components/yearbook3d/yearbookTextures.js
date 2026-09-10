@@ -1,14 +1,8 @@
 import * as THREE from 'three'
+import { paintYearbookCover, coverTextColor } from '../../../yearbook/data/coverArtwork.js'
 
 const TEXTURE_WIDTH = 768
 const TEXTURE_HEIGHT = 1024
-
-const PROFILE_FALLBACKS = [
-  ['STUDENT NAME', 'What made this school year unforgettable?', 'The friendships, lessons, and everyday moments gave this year a story worth remembering.'],
-  ['STUDENT NAME', 'What lesson will you carry forward?', 'Growth begins when we stay curious, support one another, and keep moving through every challenge.'],
-  ['STUDENT NAME', 'What will you miss most about the campus?', 'I will miss the familiar halls, shared laughter, and the people who made each ordinary day meaningful.'],
-  ['STUDENT NAME', 'What message would you leave for your class?', 'Remember where we started, celebrate how far we came, and meet the future with courage.'],
-].map(([name, question, answer]) => ({ name, question, answer }))
 
 function wrapText(context, text, maxWidth, maxLines = 6) {
   const words = String(text || '').trim().split(/\s+/).filter(Boolean)
@@ -89,90 +83,38 @@ function createCanvasTexture(paint, imageUrl = '') {
   texture.anisotropy = 4
 
   let active = true
-  let image
-  paint(context, null)
-  texture.needsUpdate = true
-
-  if (imageUrl) {
-    image = new Image()
-    image.crossOrigin = 'anonymous'
-    image.onload = () => {
-      if (!active) return
-      paint(context, image)
-      texture.needsUpdate = true
-    }
-    image.onerror = () => {
-      if (!active) return
-      paint(context, null)
-      texture.needsUpdate = true
-    }
-    image.src = imageUrl
+  const sources = Array.isArray(imageUrl) ? imageUrl : [imageUrl]
+  const images = sources.map(() => null)
+  const repaint = () => {
+    if (!active) return
+    paint(context, Array.isArray(imageUrl) ? images : images[0])
+    texture.needsUpdate = true
   }
-
+  repaint()
+  const pending = sources.map((url, index) => {
+    if (!url) return null
+    const image = new Image()
+    image.crossOrigin = 'anonymous'
+    image.onload = () => { images[index] = image; repaint() }
+    image.onerror = () => { images[index] = null; repaint() }
+    image.src = url
+    return image
+  })
   texture.userData.cancelImageLoad = () => {
     active = false
-    if (image) image.src = ''
+    pending.forEach(image => { if (image) { image.onload = null; image.onerror = null; image.src = '' } })
   }
   return texture
 }
 
 function createCoverTexture(presentation) {
-  const customCoverUrl = presentation.coverImageUrl || ''
-  return createCanvasTexture((context, image) => {
-    if (customCoverUrl && image) {
-      context.fillStyle = presentation.coverColor
-      context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
-      drawImageCover(context, image, 0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
-      return
-    }
-
-    const seal = customCoverUrl ? null : image
-    const coverInk = presentation.inkColor || '#17372d'
-    const gradient = context.createLinearGradient(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
-    gradient.addColorStop(0, '#d8c99c')
-    gradient.addColorStop(1, '#b7a875')
-    context.fillStyle = gradient
-    context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
-    context.strokeStyle = coverInk
-    context.globalAlpha = 0.34
-    context.lineWidth = 2
-    context.strokeRect(30, 30, TEXTURE_WIDTH - 60, TEXTURE_HEIGHT - 60)
-    context.beginPath()
-    context.arc(635, 112, 225, 0, Math.PI * 2)
-    context.stroke()
-    context.globalAlpha = 1
-
-    if (seal) drawImageCover(context, seal, 62, 67, 92, 92)
-
-    context.fillStyle = '#fffdf4'
-    context.textAlign = 'right'
-    context.font = '700 18px Arial'
-    context.fillText(String(presentation.editionNumber || '01').padStart(2, '0'), 704, 102)
-    context.textAlign = 'left'
-    context.font = '700 17px Arial'
-    context.fillText('SORSOGON NATIONAL HIGH SCHOOL', 60, 690)
-    context.font = '500 94px Georgia'
-    const titleLines = wrapText(context, String(presentation.coverTitle || 'GRAD BOOK').toUpperCase(), 510, 3)
-    drawLines(context, titleLines, 60, 808 - ((titleLines.length - 1) * 92), 94)
-
-    context.save()
-    context.translate(686, 867)
-    context.rotate(Math.PI / 2)
-    context.strokeStyle = '#fffdf4'
-    context.lineWidth = 2
-    context.strokeRect(-58, -19, 116, 38)
-    context.textAlign = 'center'
-    context.font = '700 14px Arial'
-    context.letterSpacing = '2px'
-    context.fillText('ARCHIVE', 0, 6)
-    context.restore()
-  }, customCoverUrl || '/snhs-seal.png')
+  return createCanvasTexture((context, image) => paintYearbookCover(context, presentation, image), presentation.coverImageUrl || '/snhs-seal.png')
 }
 
 function createInsideCoverTexture(presentation, label) {
   return createCanvasTexture((context, seal) => {
     const gradient = context.createLinearGradient(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
-    gradient.addColorStop(0, '#075f49')
+    gradient.addColorStop(0, presentation.coverColor)
     gradient.addColorStop(1, presentation.coverColor)
     context.fillStyle = gradient
     context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
@@ -188,7 +130,7 @@ function createInsideCoverTexture(presentation, label) {
       drawImageCover(context, seal, 304, 330, 160, 160)
       context.restore()
     }
-    context.fillStyle = '#fffaf0'
+    context.fillStyle = coverTextColor(presentation.coverColor)
     context.textAlign = 'center'
     context.font = '500 34px Georgia'
     context.fillText(label, TEXTURE_WIDTH / 2, 565)
@@ -200,10 +142,10 @@ function createInsideCoverTexture(presentation, label) {
 
 function createBackCoverTexture(presentation) {
   return createCanvasTexture((context, seal) => {
-    const coverInk = presentation.inkColor || '#17372d'
+    const coverInk = coverTextColor(presentation.coverColor)
     const gradient = context.createLinearGradient(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
-    gradient.addColorStop(0, '#b7a875')
-    gradient.addColorStop(1, '#d8c99c')
+    gradient.addColorStop(0, presentation.coverColor)
+    gradient.addColorStop(1, presentation.coverColor)
     context.fillStyle = gradient
     context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
     context.strokeStyle = coverInk
@@ -232,7 +174,7 @@ function createEndpaperTexture(presentation) {
     context.globalAlpha = 0.12
     if (seal) drawImageCover(context, seal, 214, 340, 340, 340)
     context.restore()
-    context.fillStyle = presentation.coverColor
+    context.fillStyle = presentation.inkColor
     context.textAlign = 'center'
     context.font = '700 16px Arial'
     context.fillText('SORSOGON NATIONAL HIGH SCHOOL', TEXTURE_WIDTH / 2, 760)
@@ -245,18 +187,19 @@ function createEndpaperTexture(presentation) {
 
 function createProfilePageTexture(presentation, page, pageNumber, side) {
   const artworkUrl = side === 'left' ? page.leftPageImageUrl : page.rightPageImageUrl
-  const profiles = Array.isArray(page.profiles) && page.profiles.length ? page.profiles : PROFILE_FALLBACKS
-  const startIndex = side === 'left' ? 0 : 2
-  const visibleProfiles = [profiles[startIndex] || PROFILE_FALLBACKS[startIndex], profiles[startIndex + 1] || PROFILE_FALLBACKS[startIndex + 1]]
+  const profiles = Array.isArray(page.profiles) ? page.profiles : []
+  // One portrait per physical page: left then right, continuing on the next spread.
+  const visibleProfiles = profiles.slice(side === 'left' ? 0 : 1, side === 'left' ? 1 : 2)
 
-  return createCanvasTexture((context, artwork) => {
+  return createCanvasTexture((context, images) => {
+    const artwork = images?.[0]
     if (artworkUrl && artwork) {
       drawImageCover(context, artwork, 0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
       return
     }
 
     drawPaper(context, presentation)
-    context.fillStyle = presentation.coverColor
+    context.fillStyle = presentation.inkColor
     context.textAlign = 'left'
     context.font = '700 16px Arial'
     context.fillText('THE GRADUATING CLASS', 56, 82)
@@ -266,31 +209,46 @@ function createProfilePageTexture(presentation, page, pageNumber, side) {
     context.fillText(String(pageNumber).padStart(2, '0'), 708, 82)
     context.globalAlpha = 1
 
+    if (!visibleProfiles.length) {
+      context.textAlign = 'center'
+      context.fillStyle = presentation.inkColor
+      context.font = '28px Georgia'
+      context.fillText(profiles.length ? 'End of class records' : 'No student records published yet.', 384, 480)
+    }
     visibleProfiles.forEach((profile, index) => {
-      const rowTop = 126 + (index * 430)
+      const rowTop = 154 + (index * 430)
       const photoX = 56
       const photoY = rowTop
-      const detailsX = 308
-      const portraitGradient = context.createLinearGradient(photoX, photoY, photoX, photoY + 330)
+      const portraitWidth = 230
+      const portraitHeight = 288
+      const detailsX = 322
+      const portraitGradient = context.createLinearGradient(photoX, photoY, photoX, photoY + portraitHeight)
       portraitGradient.addColorStop(0, '#d7d8d3')
       portraitGradient.addColorStop(1, '#b9bcb8')
       context.fillStyle = portraitGradient
-      context.fillRect(photoX, photoY, 220, 330)
+      context.fillRect(photoX, photoY, portraitWidth, portraitHeight)
+      if (images?.[index + 1]) drawImageCover(context, images[index + 1], photoX, photoY, portraitWidth, portraitHeight)
+      else {
+        context.fillStyle = presentation.inkColor
+        context.font = '16px Arial'
+        context.textAlign = 'center'
+        context.fillText('Portrait not available', photoX + (portraitWidth / 2), photoY + (portraitHeight / 2))
+      }
       context.fillStyle = presentation.inkColor
       context.textAlign = 'left'
       context.font = '600 31px Georgia'
-      const nameEnd = drawLines(context, wrapText(context, String(profile?.name || 'STUDENT NAME').toUpperCase(), 392, 2), detailsX, rowTop + 38, 34)
+      const nameEnd = drawLines(context, wrapText(context, String(profile.name || '').toUpperCase(), 392, 2), detailsX, rowTop + 38, 34)
       context.fillStyle = presentation.accentColor
       context.fillRect(detailsX, nameEnd + 5, 86, 8)
       context.fillStyle = presentation.inkColor
       context.font = '700 18px Arial'
-      const questionEnd = drawLines(context, wrapText(context, profile?.question, 392, 4), detailsX, nameEnd + 54, 25)
+      const questionEnd = drawLines(context, wrapText(context, [profile.strand, profile.section].filter(Boolean).join(' · '), 392, 4), detailsX, nameEnd + 54, 25)
       context.globalAlpha = 0.78
       context.font = '19px Arial'
-      drawLines(context, wrapText(context, profile?.answer, 392, 7), detailsX, questionEnd + 24, 27)
+      drawLines(context, wrapText(context, profile.awards ? `Awards: ${profile.awards}` : '', 392, 7), detailsX, questionEnd + 24, 27)
       context.globalAlpha = 1
     })
-  }, artworkUrl || '')
+  }, [artworkUrl || '', ...visibleProfiles.map(profile => profile.photoUrl || '')])
 }
 
 function createEditorialPageTexture(presentation, page, pageNumber, side) {
@@ -305,7 +263,7 @@ function createEditorialPageTexture(presentation, page, pageNumber, side) {
 
     drawPaper(context, presentation)
     if (side === 'left') {
-      context.fillStyle = presentation.coverColor
+      context.fillStyle = presentation.inkColor
       context.textAlign = 'left'
       context.font = '700 17px Arial'
       context.fillText(String(page.eyebrow || '').toUpperCase(), 76, 104)
@@ -316,11 +274,11 @@ function createEditorialPageTexture(presentation, page, pageNumber, side) {
         context.restore()
       }
       context.fillStyle = presentation.inkColor
-      context.font = '500 70px Georgia'
-      const titleEnd = drawLines(context, wrapText(context, page.title, 590, 4), 76, 520, 72)
+      context.font = '500 64px Georgia'
+      const titleEnd = drawLines(context, wrapText(context, page.title, 590, 3), 76, 400, 66)
       context.globalAlpha = 0.78
       context.font = '26px Arial'
-      drawLines(context, wrapText(context, page.body, 590, 6), 76, titleEnd + 28, 40)
+      drawLines(context, wrapText(context, page.body, 590, 6), 76, titleEnd + 36, 36)
       context.globalAlpha = 1
     } else {
       if (image) drawImageCover(context, image, 0, 0, TEXTURE_WIDTH, 610)
@@ -333,7 +291,7 @@ function createEditorialPageTexture(presentation, page, pageNumber, side) {
       context.textAlign = 'left'
       context.font = '500 54px Georgia'
       drawLines(context, wrapText(context, `“${page.quote}”`, 580, 5), 78, 690, 58)
-      context.fillStyle = presentation.coverColor
+      context.fillStyle = presentation.inkColor
       context.font = '700 14px Arial'
       context.fillText(`SORSOGON NATIONAL HIGH SCHOOL · ${presentation.coverSubtitle}`.toUpperCase(), 78, 942)
     }
@@ -348,7 +306,7 @@ function createEditorialPageTexture(presentation, page, pageNumber, side) {
 function createClosingTexture(presentation) {
   return createCanvasTexture((context) => {
     drawPaper(context, presentation)
-    context.fillStyle = presentation.coverColor
+    context.fillStyle = presentation.inkColor
     context.textAlign = 'center'
     context.font = '500 62px Georgia'
     context.fillText('The story continues.', TEXTURE_WIDTH / 2, 470)

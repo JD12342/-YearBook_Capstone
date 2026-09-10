@@ -23,7 +23,7 @@ const readPublishedRecords = async (collectionName, status, recordLimit = 8) => 
 export const loadActiveYearbook = async (yearbookId) => {
   if (!isFirebaseConfigured || !yearbookId) return null
   const snapshot = await getDoc(doc(db, 'yearbooks', yearbookId))
-  if (!snapshot.exists() || snapshot.data().status !== 'active') return null
+  if (!snapshot.exists() || (snapshot.data().status !== 'active' || snapshot.data().recordsVersion !== 1)) return null
   return { id: snapshot.id, ...snapshot.data() }
 }
 
@@ -42,7 +42,7 @@ export const loadUserPortalContent = async () => {
   const records = (result) => result.status === 'fulfilled' ? result.value : []
   const content = {
     announcements: records(announcements),
-    yearbooks: records(yearbooks),
+    yearbooks: records(yearbooks).filter(book => book.recordsVersion === 1 && book.schoolYearId && book.schoolYearName),
     stories: records(stories),
     alumni: records(alumni),
   }

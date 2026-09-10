@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import {
+  deformPageGeometry,
   PAGE_LAYER_GAP,
   PAGE_TURN_CLEARANCE,
 } from './yearbookGeometry.js'
@@ -57,5 +58,5 @@ export function updatePageLeaf({ leaf, leafIndex, leafCount, requestedPage, now,
 
   const sideProgress = Math.min(1, Math.abs(leaf.currentAngle) / Math.PI)
   leaf.group.position.z = getPageDepth({ leafIndex, leafCount, sideProgress })
-
+  deformPageGeometry(leaf.geometry, sideProgress, leaf.currentAngle < 0 ? -1 : 1)
 }
