@@ -5,9 +5,9 @@ export const PAGE_HEIGHT = 5.08
 export const PAGE_DEPTH = 0.018
 export const PAGE_LAYER_GAP = PAGE_DEPTH * 1.45
 export const PAGE_TURN_CLEARANCE = PAGE_DEPTH * 4
-export const COVER_WIDTH = PAGE_WIDTH + 0.2
-export const COVER_HEIGHT = PAGE_HEIGHT + 0.26
-export const COVER_DEPTH = 0.11
+export const COVER_WIDTH = PAGE_WIDTH + 0.1
+export const COVER_HEIGHT = PAGE_HEIGHT + 0.1
+export const COVER_DEPTH = 0.1
 
 export function createPageGeometry() {
   // Dense horizontal segments let the turning sheet bend and ripple rather
