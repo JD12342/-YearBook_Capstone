@@ -186,8 +186,9 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       const spineGeometry = new THREE.CylinderGeometry(0.25, 0.25, COVER_HEIGHT - 0.02, 48, 1, false, Math.PI / 2, Math.PI)
       const spineMaterial = new THREE.MeshStandardMaterial({ color: presentation.coverColor, roughness: 0.56, metalness: 0.02 })
       const spine = new THREE.Mesh(spineGeometry, spineMaterial)
+      const closedSpineDepth = frontCoverClosedDepth - (COVER_DEPTH * 0.12)
       const openSpineDepth = backCoverDepth + (COVER_DEPTH / 2) + 0.006
-      spine.position.set(0, 0, pageBlockCenter)
+      spine.position.set(0, 0, closedSpineDepth)
       spine.castShadow = true
       spine.receiveShadow = true
       book.add(spine)
@@ -263,7 +264,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
         // Preserve the rounded closed spine, then flatten it into a slim cloth
         // hinge behind the spread. This removes the dark center gap without
         // changing any page or cover geometry.
-        spine.position.z = THREE.MathUtils.lerp(pageBlockCenter, openSpineDepth, openingProgress)
+        spine.position.z = THREE.MathUtils.lerp(closedSpineDepth, openSpineDepth, openingProgress)
         spine.scale.x = THREE.MathUtils.lerp(1, 0.3, openingProgress)
         spine.scale.z = THREE.MathUtils.lerp(1, 0.22, openingProgress)
         spine.castShadow = openingProgress < 0.35
