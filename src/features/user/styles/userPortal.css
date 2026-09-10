@@ -159,7 +159,6 @@
 .user-yearbook-card:first-child .user-yearbook-cover-model { align-self: start; }
 .user-yearbook-cover-model::before, .user-yearbook-cover-model::after { display: none; }
 .user-yearbook-cover-model .yearbook-three-canvas { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-.user-yearbook-model-loading { position: absolute; inset: 0; background: radial-gradient(circle at 50% 46%, rgba(255,255,255,.1), transparent 42%); }
 .user-yearbook-cover::before { position: absolute; inset: 14px; border: 1px solid rgba(20, 55, 44, .33); content: ''; }
 .user-yearbook-cover::after { position: absolute; top: -70px; right: -40px; width: 260px; height: 260px; border: 1px solid rgba(20,55,44,.22); border-radius: 50%; content: ''; }
 .user-yearbook-cover-image { position: absolute; inset: 0; background-position: center; background-size: cover; filter: saturate(.72); opacity: .28; }

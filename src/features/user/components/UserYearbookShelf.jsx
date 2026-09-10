@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { ArrowUpRight, BookMarked, LibraryBig, LockKeyhole } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { getYearbookPresentation } from '../../yearbook/data/yearbookDefaults.js'
@@ -18,20 +18,11 @@ function YearbookShelfModel({ yearbook }) {
     () => getYearbookPresentation(yearbook, yearbook.schoolYearName),
     [yearbook],
   )
-  const [ready, setReady] = useState(false)
-
   useEffect(() => {
-    let active = true
-    setReady(false)
-    preloadYearbookCoverTexture(presentation).then(() => {
-      if (active) setReady(true)
-    })
-    return () => { active = false }
+    preloadYearbookCoverTexture(presentation)
   }, [presentation])
 
-  return ready
-    ? <ThreeYearbook presentation={presentation} isOpen={false} pageIndex={0} interactive={false} />
-    : <span className="user-yearbook-model-loading" aria-hidden="true" />
+  return <ThreeYearbook presentation={presentation} isOpen={false} pageIndex={0} interactive={false} />
 }
 
 export function UserYearbookShelf({ yearbooks }) {
