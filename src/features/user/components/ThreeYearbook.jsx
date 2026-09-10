@@ -79,7 +79,38 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
 
       const paperEdgeMaterial = new THREE.MeshStandardMaterial({ color: '#d9ccb0', roughness: 0.94 })
       const coverEdgeMaterial = new THREE.MeshStandardMaterial({ color: presentation.coverColor, roughness: 0.7 })
-      materials.push(paperEdgeMaterial, coverEdgeMaterial)
+      const pageBlockMaterial = new THREE.MeshStandardMaterial({ color: '#eee9dd', roughness: 0.92 })
+      const pageLayerMaterial = new THREE.MeshStandardMaterial({ color: '#c9c0ac', roughness: 1 })
+      materials.push(paperEdgeMaterial, coverEdgeMaterial, pageBlockMaterial, pageLayerMaterial)
+
+      // The page block is intentionally neutral, like the exposed paper in the
+      // reference book. It sits between the two boards and is visible only at the
+      // fore-edge, so custom cover artwork remains the focus.
+      const pageBlockDepth = Math.max(0.19, leafDefinitions.length * PAGE_LAYER_GAP + 0.07)
+      const pageBlockGeometry = new THREE.BoxGeometry(PAGE_WIDTH, PAGE_HEIGHT, pageBlockDepth)
+      pageBlockGeometry.translate(PAGE_WIDTH / 2, 0, 0)
+      const pageBlock = new THREE.Mesh(pageBlockGeometry, pageBlockMaterial)
+      pageBlock.position.z = (pageBlockDepth / 2) - 0.014
+      pageBlock.castShadow = true
+      pageBlock.receiveShadow = true
+      book.add(pageBlock)
+      geometries.push(pageBlockGeometry)
+
+      const foreEdgeGeometry = new THREE.BoxGeometry(0.052, PAGE_HEIGHT - 0.11, pageBlockDepth + 0.02)
+      const foreEdge = new THREE.Mesh(foreEdgeGeometry, pageBlockMaterial)
+      foreEdge.position.set(PAGE_WIDTH + 0.007, 0, (pageBlockDepth / 2) - 0.014)
+      foreEdge.castShadow = true
+      foreEdge.receiveShadow = true
+      book.add(foreEdge)
+      geometries.push(foreEdgeGeometry)
+
+      const pageLayerGeometry = new THREE.BoxGeometry(0.06, 0.007, pageBlockDepth + 0.024)
+      for (let index = 1; index < 28; index += 1) {
+        const layer = new THREE.Mesh(pageLayerGeometry, pageLayerMaterial)
+        layer.position.set(PAGE_WIDTH + 0.01, -PAGE_HEIGHT / 2 + (index * PAGE_HEIGHT / 28), (pageBlockDepth / 2) - 0.014)
+        book.add(layer)
+      }
+      geometries.push(pageLayerGeometry)
 
       const leaves = leafDefinitions.map((definition, index) => {
         const pageGeometry = createPageGeometry()
@@ -123,7 +154,8 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       const backCoverInsideMaterial = new THREE.MeshStandardMaterial({ map: insideBackCoverTexture, roughness: 0.62 })
       const backCoverOuterMaterial = new THREE.MeshStandardMaterial({ map: backCoverTexture, roughness: 0.4, metalness: 0.04 })
       const backCover = new THREE.Mesh(backCoverGeometry, [coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, backCoverInsideMaterial, backCoverOuterMaterial])
-      backCover.position.z = -(COVER_DEPTH / 2) - 0.02
+      // A small gap lets the rear board read separately behind the page block.
+      backCover.position.z = -(COVER_DEPTH / 2) - 0.055
       backCover.castShadow = true
       backCover.receiveShadow = true
       book.add(backCover)
