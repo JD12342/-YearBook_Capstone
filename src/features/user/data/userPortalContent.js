@@ -2,6 +2,7 @@ export const userPortalNavigation = [
   { label: 'Overview', to: '/community', end: true },
   { label: 'Explore', to: '/community/explore' },
   { label: 'Yearbooks', to: '/community/yearbooks' },
+  { label: 'Face search', to: '/community/face-search' },
   { label: 'School story', to: '/community/history' },
   { label: 'Updates', to: '/community/updates' },
 ]
