@@ -85,8 +85,11 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       // The page block is intentionally neutral, like the exposed paper in the
       // reference book. It sits between the two boards and is visible only at the
       // fore-edge, so custom cover artwork remains the focus.
+      const coverBoardGap = 0.018
       const pageBlockBack = -0.035
-      const pageBlockDepth = Math.max(0.36, leafDefinitions.length * PAGE_LAYER_GAP + 0.16)
+      // Volume is depth only: the closed book becomes thicker without stretching
+      // the trim size of either page. The page block stays visibly between covers.
+      const pageBlockDepth = Math.max(0.72, leafDefinitions.length * PAGE_LAYER_GAP + 0.32)
       const pageBlockCenter = pageBlockBack + (pageBlockDepth / 2)
       const closedBookPageBlock = new THREE.Group()
       const pageBlockGeometry = new THREE.BoxGeometry(PAGE_WIDTH, PAGE_HEIGHT, pageBlockDepth)
@@ -110,9 +113,9 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       geometries.push(foreEdgeGeometry)
 
       const pageLayerGeometry = new THREE.BoxGeometry(0.114, 0.009, pageBlockDepth + 0.034)
-      for (let index = 1; index < 28; index += 1) {
+      for (let index = 1; index < 42; index += 1) {
         const layer = new THREE.Mesh(pageLayerGeometry, pageLayerMaterial)
-        layer.position.set(visibleForeEdgeX, -PAGE_HEIGHT / 2 + (index * PAGE_HEIGHT / 28), pageBlockCenter)
+        layer.position.set(visibleForeEdgeX, -PAGE_HEIGHT / 2 + (index * PAGE_HEIGHT / 42), pageBlockCenter)
         closedBookPageBlock.add(layer)
       }
       geometries.push(pageLayerGeometry)
@@ -145,7 +148,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       const frontCoverMaterial = new THREE.MeshStandardMaterial({ map: coverTexture, roughness: 0.38, metalness: 0.06 })
       const frontCoverInsideMaterial = new THREE.MeshStandardMaterial({ map: insideFrontCoverTexture, roughness: 0.62 })
       const frontCover = new THREE.Mesh(frontCoverGeometry, [coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, frontCoverMaterial, frontCoverInsideMaterial])
-      frontCover.position.z = pageBlockBack + pageBlockDepth + (COVER_DEPTH / 2) + 0.018
+      frontCover.position.z = pageBlockBack + pageBlockDepth + (COVER_DEPTH / 2) + coverBoardGap
       frontCover.castShadow = true
       frontCover.receiveShadow = true
       const frontCoverGroup = new THREE.Group()
@@ -160,8 +163,9 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       const backCoverInsideMaterial = new THREE.MeshStandardMaterial({ map: insideBackCoverTexture, roughness: 0.62 })
       const backCoverOuterMaterial = new THREE.MeshStandardMaterial({ map: backCoverTexture, roughness: 0.4, metalness: 0.04 })
       const backCover = new THREE.Mesh(backCoverGeometry, [coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, backCoverInsideMaterial, backCoverOuterMaterial])
-      // A small gap lets the rear board read separately behind the page block.
-      backCover.position.z = -(COVER_DEPTH / 2) - 0.055
+      // The same measured gap on each side keeps both boards aligned around
+      // the thicker paper block.
+      backCover.position.z = pageBlockBack - (COVER_DEPTH / 2) - coverBoardGap
       backCover.castShadow = true
       backCover.receiveShadow = true
       book.add(backCover)
@@ -171,7 +175,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       const spineGeometry = new THREE.CylinderGeometry(0.15, 0.15, PAGE_HEIGHT + 0.12, 40, 1, false, Math.PI / 2, Math.PI)
       const spineMaterial = new THREE.MeshStandardMaterial({ color: presentation.coverColor, roughness: 0.38, metalness: 0.08 })
       const spine = new THREE.Mesh(spineGeometry, spineMaterial)
-      spine.position.set(-0.02, 0, -0.055)
+      spine.position.set(-0.02, 0, pageBlockCenter)
       spine.castShadow = true
       book.add(spine)
       geometries.push(spineGeometry)
@@ -243,7 +247,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
         const idle = (now - startedAt) * 0.00055
         book.position.x = THREE.MathUtils.lerp(-PAGE_WIDTH / 2, 0, openingProgress)
         book.position.y = reduceMotion ? 0 : Math.sin(idle) * 0.055 * (1 - openingProgress)
-        book.rotation.y = THREE.MathUtils.lerp(book.rotation.y, (-0.31 * (1 - openingProgress)) + (pointer.x * 0.045 * (1 - openingProgress)), 0.06)
+        book.rotation.y = THREE.MathUtils.lerp(book.rotation.y, (-0.46 * (1 - openingProgress)) + (pointer.x * 0.045 * (1 - openingProgress)), 0.06)
         book.rotation.x = THREE.MathUtils.lerp(book.rotation.x, -0.025 + (pointer.y * 0.025 * (1 - openingProgress)), 0.06)
         book.scale.setScalar(THREE.MathUtils.lerp(1.08, 1, openingProgress))
 
