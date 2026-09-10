@@ -12,7 +12,6 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { db } from './firebase/firestore.js'
-import { createYearbook } from './yearbookService.js'
 
 const schoolYearsCollection = collection(db, 'schoolYears')
 const strandsCollection = collection(db, 'strands')
@@ -58,23 +57,8 @@ export const createSchoolYear = async (payload) => {
       updatedAt: serverTimestamp(),
     })
 
-    try {
-      await createYearbook({
-        title: `Graduation Yearbook ${schoolYearName}`,
-        schoolYearId: ref.id,
-        status: 'draft',
-      })
-    } catch (yearbookError) {
-      throw new Error(
-        'School year was created successfully, but the corresponding yearbook could not be created. Please verify the school year record and create the yearbook foundation manually if needed.',
-      )
-    }
-
     return ref.id
   } catch (error) {
-    if (error.message?.startsWith('School year was created successfully')) {
-      throw error
-    }
     throw new Error('Unable to create school year.')
   }
 }

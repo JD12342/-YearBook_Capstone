@@ -168,15 +168,52 @@ The image bytes are stored in Firebase Storage, not inside Firestore.
 photos/{schoolYearId}/{strandId}/{studentId}/original/{photoId}.jpg
 photos/{schoolYearId}/{strandId}/{studentId}/edited/{photoId}.jpg
 published/{...approved community assets}
+yearbooks/{yearbookId}/cover/{asset}
+yearbooks/{yearbookId}/pages/{pageId}-{left|right}/{asset}
+yearbooks/{yearbookId}/song/{asset}
 ```
 
-### `yearbooks/{yearbookId}`
+### `yearbooks/{schoolYearId}`
+
+Each school year has one yearbook. New records use the school-year document ID as the yearbook document ID. Only a yearbook with `status: 'active'` appears in the community portal.
 
 ```js
 {
   schoolYearId: string,
   title: string,
-  status: 'draft' | 'published' | 'archived',
+  schoolYearName: string,
+  status: 'draft' | 'active' | 'archived',
+  coverTitle: string,
+  coverSubtitle: string,
+  coverColor: string,       // default #087a5c
+  accentColor: string,      // default #d7b866
+  pageColor: string,        // default #f7f0dc
+  inkColor: string,         // default #17372d
+  coverImageUrl?: string,
+  coverImagePath?: string,
+  graduationSongUrl?: string,
+  graduationSongPath?: string,
+  graduationSongName?: string,
+  pages: [
+    {
+      id: string,
+      eyebrow: string,
+      title: string,
+      body: string,
+      quote: string,
+      layout?: 'profiles' | string,
+      leftPageImageUrl?: string,  // full-page custom artwork
+      leftPageImagePath?: string,
+      rightPageImageUrl?: string, // full-page custom artwork
+      rightPageImagePath?: string,
+      profiles?: Array<{
+        id: string,
+        name: string,
+        question: string,
+        answer: string
+      }>
+    }
+  ],
   createdAt: Timestamp,
   updatedAt: Timestamp
 }

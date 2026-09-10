@@ -27,14 +27,19 @@ export function UserPortalLayout() {
   }, [location.pathname])
 
   const displayName = profile?.fullName || user?.displayName || user?.email?.split('@')[0] || 'GradBook member'
+  const isImmersiveYearbook = /^\/community\/yearbooks\/[^/]+\/?$/.test(location.pathname)
+  const isYearbookSpace = /^\/community\/yearbooks(?:\/|$)/.test(location.pathname)
 
   return (
-    <div className="user-portal" id="user-portal-top">
-      <UserPortalHeader profile={profile} role={role} user={user} logout={logout} />
-      <main className="user-portal-main">
+    <div
+      className={`user-portal ${isYearbookSpace ? 'is-yearbook-space' : ''} ${isImmersiveYearbook ? 'is-immersive' : ''}`}
+      id="user-portal-top"
+    >
+      {!isImmersiveYearbook && <UserPortalHeader profile={profile} role={role} user={user} logout={logout} />}
+      <main className={`user-portal-main ${isImmersiveYearbook ? 'user-portal-main-immersive' : ''}`}>
         <Outlet context={{ content, contentReady, displayName, profile }} />
       </main>
-      <UserPortalFooter />
+      {!isImmersiveYearbook && <UserPortalFooter />}
     </div>
   )
 }

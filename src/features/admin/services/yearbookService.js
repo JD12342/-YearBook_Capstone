@@ -1,16 +1,18 @@
 import {
-  addDoc,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   getDocs,
-  orderBy,
+  limit,
   query,
   serverTimestamp,
+  setDoc,
   updateDoc,
   where,
 } from 'firebase/firestore'
 import { db } from './firebase/firestore.js'
+import { DEFAULT_YEARBOOK_THEME, createDefaultYearbookPages } from '../../yearbook/data/yearbookDefaults.js'
 
 const yearbooksCollection = collection(db, 'yearbooks')
 
@@ -39,10 +41,18 @@ export const getYearbookById = async (yearbookId) => {
 
 export const createYearbook = async (payload) => {
   try {
-    const ref = await addDoc(yearbooksCollection, {
+    const existing = await getDocs(query(yearbooksCollection, where('schoolYearId', '==', payload.schoolYearId), limit(1)))
+    if (!existing.empty) return existing.docs[0].id
+
+    const ref = doc(yearbooksCollection, payload.schoolYearId)
+    await setDoc(ref, {
+      ...DEFAULT_YEARBOOK_THEME,
       ...payload,
       title: payload.title?.trim(),
       status: payload.status || 'draft',
+      coverTitle: payload.coverTitle || 'GRAD BOOK',
+      coverSubtitle: payload.coverSubtitle || payload.schoolYearName || '',
+      pages: payload.pages || createDefaultYearbookPages(payload.schoolYearName),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     })
@@ -71,5 +81,13 @@ export const archiveYearbook = async (yearbookId) => {
     })
   } catch (error) {
     throw new Error('Unable to archive yearbook.')
+  }
+}
+
+export const deleteYearbook = async (yearbookId) => {
+  try {
+    await deleteDoc(doc(db, 'yearbooks', yearbookId))
+  } catch {
+    throw new Error('Unable to delete yearbook.')
   }
 }

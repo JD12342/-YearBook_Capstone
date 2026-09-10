@@ -245,7 +245,7 @@ export function SchoolYearManager() {
               <tbody>
                 {filteredSchoolYears.map((schoolYear) => {
                   const yearbookStatus = schoolYear.yearbook?.status || 'draft'
-                  const isYearbookArchived = yearbookStatus === 'archived'
+                  const isYearbookActive = yearbookStatus === 'active'
 
                   return (
                     <tr
@@ -266,10 +266,10 @@ export function SchoolYearManager() {
                       <td>
                         <div className="inline-actions">
                           <button type="button" className="table-action-button" onClick={() => setSelectedSchoolYear(schoolYear)}>View</button>
-                          {isYearbookArchived ? (
-                            <button type="button" className="table-action-button alt" onClick={() => handleYearbookStatusChange(schoolYear.id, 'active')}>Activate</button>
-                          ) : (
+                          {isYearbookActive ? (
                             <button type="button" className="table-action-button alt" onClick={() => handleYearbookStatusChange(schoolYear.id, 'archived')}>Archive</button>
+                          ) : (
+                            <button type="button" className="table-action-button alt" onClick={() => handleYearbookStatusChange(schoolYear.id, 'active')}>Activate</button>
                           )}
                           <button type="button" className="table-action-button danger" onClick={() => setPendingDelete({ id: schoolYear.id, name: schoolYear.name })}>Delete</button>
                         </div>

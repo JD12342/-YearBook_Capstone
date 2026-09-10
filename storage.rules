@@ -30,6 +30,13 @@ service firebase.storage {
         ));
     }
 
+    function canViewYearbook(yearbookId) {
+      return isAdministrator()
+        || (canViewCommunity()
+          && firestore.exists(/databases/(default)/documents/yearbooks/$(yearbookId))
+          && firestore.get(/databases/(default)/documents/yearbooks/$(yearbookId)).data.status == 'active');
+    }
+
     match /photos/{allPaths=**} {
       allow read, delete: if isAdministrator();
       allow create, update: if isAdministrator()
@@ -42,6 +49,14 @@ service firebase.storage {
       allow create, update: if isAdministrator()
         && request.resource.size < 15 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
+      allow delete: if isAdministrator();
+    }
+
+    match /yearbooks/{yearbookId}/{allPaths=**} {
+      allow read: if canViewYearbook(yearbookId);
+      allow create, update: if isAdministrator()
+        && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType.matches('(image|audio)/.*');
       allow delete: if isAdministrator();
     }
 

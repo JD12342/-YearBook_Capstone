@@ -76,7 +76,7 @@ service cloud.firestore {
 
     match /yearbooks/{yearbookId} {
       allow read: if isAdministrator()
-        || (isUser() && resource.data.status == 'published');
+        || (isUser() && resource.data.status == 'active');
       allow write: if isAdministrator();
     }
 

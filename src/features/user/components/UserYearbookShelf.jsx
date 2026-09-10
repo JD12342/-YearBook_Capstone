@@ -1,16 +1,16 @@
-import { BookMarked, LockKeyhole } from 'lucide-react'
-import { previewYearbooks } from '../data/userPortalContent.js'
+import { ArrowUpRight, BookMarked, LibraryBig, LockKeyhole } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 const normalizeYearbook = (yearbook, index) => ({
   ...yearbook,
   title: yearbook.title || `Published yearbook ${index + 1}`,
   subtitle: yearbook.description || yearbook.schoolYear || yearbook.schoolYearName || 'Published school collection',
-  status: yearbook.status === 'published' ? 'Published edition' : yearbook.status || 'Archive edition',
+  status: yearbook.status === 'active' ? 'Active edition' : yearbook.status || 'Archive edition',
   tone: ['heritage', 'portraits', 'campus'][index % 3],
 })
 
-export function UserYearbookShelf({ yearbooks, isPreview }) {
-  const visibleYearbooks = yearbooks.length ? yearbooks.slice(0, 6).map(normalizeYearbook) : previewYearbooks
+export function UserYearbookShelf({ yearbooks }) {
+  const visibleYearbooks = yearbooks.map(normalizeYearbook)
 
   return (
     <section className="user-yearbook-section" id="yearbooks" data-reveal>
@@ -19,24 +19,29 @@ export function UserYearbookShelf({ yearbooks, isPreview }) {
         <div className="user-readonly-note"><LockKeyhole size={16} /><span>Read-only community view</span></div>
       </div>
 
-      <div className="user-yearbook-shelf">
+      {visibleYearbooks.length ? <div className="user-yearbook-shelf">
         {visibleYearbooks.map((yearbook, index) => (
-          <article className={`user-yearbook-card tone-${yearbook.tone || 'heritage'}`} key={yearbook.id || yearbook.title}>
-            <div className="user-yearbook-cover">
+          <article
+            className={`user-yearbook-card tone-${yearbook.tone || 'heritage'}`}
+            key={yearbook.id || yearbook.title}
+            style={{ '--shelf-cover': yearbook.coverColor, '--shelf-accent': yearbook.accentColor }}
+          >
+            <Link className="user-yearbook-cover" to={`/community/yearbooks/${yearbook.id}`} aria-label={`Open ${yearbook.title} in the 3D reader`}>
+              {yearbook.coverImageUrl && <span className="user-yearbook-cover-image" style={{ backgroundImage: `url(${yearbook.coverImageUrl})` }} />}
               <span className="user-yearbook-number">{String(index + 1).padStart(2, '0')}</span>
               <img src="/snhs-seal.png" alt="" />
-              <div><small>SORSOGON NATIONAL HIGH SCHOOL</small><strong>GRAD<br />BOOK</strong></div>
+              <div><small>SORSOGON NATIONAL HIGH SCHOOL</small><strong>{yearbook.coverTitle || 'GRAD BOOK'}</strong></div>
               <span className="user-yearbook-mark">ARCHIVE</span>
-            </div>
+            </Link>
             <div className="user-yearbook-details">
               <span>{yearbook.status}</span>
               <h3>{yearbook.title}</h3>
               <p>{yearbook.subtitle}</p>
-              <div className="user-yearbook-availability"><BookMarked size={15} />{isPreview && !yearbooks.length ? 'Preview layout' : 'Available to view'}</div>
+              <Link className="user-yearbook-availability" to={`/community/yearbooks/${yearbook.id}`}><BookMarked size={15} />Open 3D yearbook<ArrowUpRight size={14} /></Link>
             </div>
           </article>
         ))}
-      </div>
+      </div> : <div className="user-yearbook-empty"><LibraryBig size={34} /><div><strong>No active yearbooks yet.</strong><p>An edition will appear here only after an administrator creates it and marks it Active.</p></div></div>}
     </section>
   )
 }

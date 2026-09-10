@@ -409,6 +409,78 @@ button { cursor: pointer; }
   padding: 18px 20px 20px;
 }
 
+.modal-panel.yearbook-editor-modal {
+  width: min(100%, 980px);
+  max-height: 92vh;
+  padding: 22px;
+}
+
+.yearbook-editor-form,
+.yearbook-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.yearbook-editor-form { gap: 20px; }
+.yearbook-editor-section { padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: #fbfdfc; }
+.yearbook-editor-section-heading { display: flex; align-items: flex-start; gap: 10px; color: var(--emerald-700); }
+.yearbook-editor-section-heading strong, .yearbook-editor-section-heading span { display: block; }
+.yearbook-editor-section-heading strong { color: var(--text); font-size: .95rem; }
+.yearbook-editor-section-heading span { margin-top: 3px; color: var(--muted); font-size: .75rem; line-height: 1.5; }
+.yearbook-cover-editor-grid { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 22px; align-items: stretch; }
+.yearbook-admin-cover {
+  position: relative;
+  display: flex;
+  min-height: 255px;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+  padding: 18px;
+  border: 3px solid var(--admin-accent, #d7b866);
+  border-radius: 3px 12px 12px 3px;
+  background: linear-gradient(145deg, color-mix(in srgb, var(--admin-cover, #087a5c), white 7%), var(--admin-cover, #087a5c));
+  background-position: center;
+  background-size: cover;
+  box-shadow: 10px 13px 24px rgba(15, 68, 51, .17);
+  color: #fffaf0;
+}
+.yearbook-admin-cover::before { position: absolute; inset: 9px; border: 1px solid color-mix(in srgb, var(--admin-accent, #d7b866), transparent 20%); content: ''; }
+.yearbook-admin-cover > * { position: relative; z-index: 1; }
+.yearbook-admin-cover img { position: absolute; top: 18px; left: 18px; width: 38px; height: 38px; object-fit: contain; }
+.yearbook-admin-cover small { color: var(--admin-accent, #d7b866); font-size: .46rem; font-weight: 850; letter-spacing: .12em; }
+.yearbook-admin-cover strong { margin-top: 8px; font-family: Georgia, serif; font-size: 2.25rem; font-weight: 400; letter-spacing: -.055em; line-height: .9; }
+.yearbook-admin-cover span { margin-top: 12px; color: var(--admin-accent, #d7b866); font-size: .58rem; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+.yearbook-admin-cover.has-custom-artwork > * { visibility: hidden; }
+.yearbook-admin-cover.has-custom-artwork::before { border-color: rgba(255,255,255,.48); }
+.yearbook-color-field { width: 100%; min-height: 40px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); cursor: pointer; }
+.yearbook-upload-field { display: flex; min-height: 58px; align-items: center; gap: 11px; padding: 10px 12px; border: 1px dashed rgba(5, 120, 87, .3); border-radius: 11px; background: #f0fdf7; color: var(--emerald-700); cursor: pointer; }
+.yearbook-upload-field > span { min-width: 0; flex: 1; }
+.yearbook-upload-field strong, .yearbook-upload-field small { display: block; }
+.yearbook-upload-field strong { color: var(--text); font-size: .8rem; }
+.yearbook-upload-field small { margin-top: 3px; overflow: hidden; color: var(--muted); font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.yearbook-upload-field input { max-width: 235px; color: var(--muted); font-size: .72rem; }
+.yearbook-admin-pages { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; }
+.yearbook-admin-pages fieldset { min-width: 0; margin: 0; padding: 13px; border: 1px solid var(--line); border-radius: 11px; background: #fff; }
+.yearbook-admin-pages legend { padding: 0 5px; color: var(--emerald-700); font-size: .67rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.yearbook-admin-pages .form-field + .form-field { margin-top: 10px; }
+.yearbook-admin-pages .content-textarea { min-height: 115px; }
+.yearbook-quote-field { min-height: 72px; resize: vertical; }
+.yearbook-page-artwork-grid { display: grid; gap: 8px; margin-top: 13px; }
+.yearbook-page-artwork-grid .yearbook-upload-field { align-items: flex-start; flex-direction: column; }
+.yearbook-page-artwork-grid .yearbook-upload-field input { width: 100%; max-width: none; }
+.yearbook-artwork-note { margin: 8px 0 0; color: var(--muted); font-size: .67rem; line-height: 1.45; }
+.yearbook-editor-actions { position: sticky; z-index: 2; bottom: -20px; margin: 0 -22px -22px; padding: 14px 22px; border-top: 1px solid var(--line); background: rgba(255,255,255,.96); backdrop-filter: blur(12px); }
+.yearbook-table-cover { display: grid; width: 42px; height: 55px; place-items: end center; padding: 5px 2px; border: 2px solid; border-radius: 2px 6px 6px 2px; box-shadow: 4px 5px 8px rgba(15, 68, 51, .12); color: #fff; font-family: Georgia, serif; font-size: .68rem; }
+.yearbook-asset-summary { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: .73rem; }
+
+@media (max-width: 760px) {
+  .yearbook-cover-editor-grid, .yearbook-admin-pages { grid-template-columns: 1fr; }
+  .yearbook-admin-cover { width: min(210px, 100%); margin: 0 auto; }
+  .yearbook-upload-field { align-items: flex-start; flex-wrap: wrap; }
+  .yearbook-upload-field input { width: 100%; max-width: none; }
+}
+
 .delete-modal-panel {
   width: min(100%, 420px);
   padding: 18px 18px 16px;

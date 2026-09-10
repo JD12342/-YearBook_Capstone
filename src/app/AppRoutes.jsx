@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from '../features/auth/components/ProtectedRoute.jsx'
 import { AdminLayout } from '../features/admin/components/layout/AdminLayout.jsx'
@@ -23,6 +24,8 @@ import { UserHomePage } from '../features/user/pages/UserHomePage.jsx'
 import { UserUpdatesPage } from '../features/user/pages/UserUpdatesPage.jsx'
 import { UserYearbooksPage } from '../features/user/pages/UserYearbooksPage.jsx'
 
+const UserYearbookViewerPage = lazy(() => import('../features/user/pages/UserYearbookViewerPage.jsx').then((module) => ({ default: module.UserYearbookViewerPage })))
+
 export function AppRoutes() {
   return (
     <Routes>
@@ -33,6 +36,7 @@ export function AppRoutes() {
           <Route index element={<UserHomePage />} />
           <Route path="explore" element={<UserExplorePage />} />
           <Route path="yearbooks" element={<UserYearbooksPage />} />
+          <Route path="yearbooks/:yearbookId" element={<Suspense fallback={<div className="yearbook-viewer-message">Opening the 3D yearbook…</div>}><UserYearbookViewerPage /></Suspense>} />
           <Route path="history" element={<UserHistoryPage />} />
           <Route path="updates" element={<UserUpdatesPage />} />
         </Route>
@@ -54,7 +58,7 @@ export function AppRoutes() {
           <Route path="/school-years" element={<Navigate to="/academic?tab=school-years" replace />} />
           <Route path="/strands" element={<Navigate to="/academic?tab=strands-sections" replace />} />
           <Route path="/sections" element={<Navigate to="/academic?tab=strands-sections" replace />} />
-          <Route path="/yearbooks" element={<Navigate to="/academic?tab=school-years" replace />} />
+          <Route path="/yearbooks" element={<Navigate to="/academic?tab=yearbooks" replace />} />
           <Route element={<ProtectedRoute allowedRoles={['Administrator']} />}>
             <Route path="/verification-requests" element={<VerificationRequestsPage />} />
           </Route>

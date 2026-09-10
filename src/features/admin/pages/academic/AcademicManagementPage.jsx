@@ -3,10 +3,12 @@ import { useSearchParams } from 'react-router-dom'
 import { AcademicTabs } from '../../components/academic/AcademicTabs.jsx'
 import { SchoolYearManager } from '../../components/academic/SchoolYearManager.jsx'
 import { StrandSectionManager } from '../../components/academic/StrandSectionManager.jsx'
+import { YearbookManager } from '../../components/academic/YearbookManager.jsx'
 
 const tabs = [
   { label: 'School Years', value: 'school-years' },
   { label: 'Strands & Sections', value: 'strands-sections' },
+  { label: 'Yearbook Studio', value: 'yearbooks' },
 ]
 
 export function AcademicManagementPage() {
@@ -23,6 +25,8 @@ export function AcademicManagementPage() {
     switch (activeTab) {
       case 'strands-sections':
         return <StrandSectionManager />
+      case 'yearbooks':
+        return <YearbookManager />
       case 'school-years':
       default:
         return <SchoolYearManager />

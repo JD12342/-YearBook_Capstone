@@ -8,7 +8,7 @@ export function UserYearbooksPage() {
 
   return (
     <div className="user-route-page user-route-yearbooks">
-      <UserYearbookShelf yearbooks={content.yearbooks} isPreview={!content.yearbooks.length} />
+      <UserYearbookShelf yearbooks={content.yearbooks} />
     </div>
   )
 }

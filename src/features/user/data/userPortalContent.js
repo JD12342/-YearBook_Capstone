@@ -30,12 +30,6 @@ export const userHighlights = [
   },
 ]
 
-export const previewYearbooks = [
-  { id: 'preview-heritage', title: 'The Heritage Collection', subtitle: 'School milestones and lasting traditions', status: 'Archive preview', tone: 'heritage' },
-  { id: 'preview-portraits', title: 'Graduating Class Portraits', subtitle: 'The people behind every school year', status: 'Archive preview', tone: 'portraits' },
-  { id: 'preview-campus', title: 'Campus Memories', subtitle: 'Clubs, celebrations, and everyday school life', status: 'Archive preview', tone: 'campus' },
-]
-
 export const previewStories = [
   {
     id: 'preview-story',
