@@ -87,13 +87,14 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       // reference book. It sits between the two boards and is visible only at the
       // fore-edge, so custom cover artwork remains the focus.
       const pageBlockDepth = Math.max(0.19, leafDefinitions.length * PAGE_LAYER_GAP + 0.07)
+      const closedBookPageBlock = new THREE.Group()
       const pageBlockGeometry = new THREE.BoxGeometry(PAGE_WIDTH, PAGE_HEIGHT, pageBlockDepth)
       pageBlockGeometry.translate(PAGE_WIDTH / 2, 0, 0)
       const pageBlock = new THREE.Mesh(pageBlockGeometry, pageBlockMaterial)
       pageBlock.position.z = (pageBlockDepth / 2) - 0.014
       pageBlock.castShadow = true
       pageBlock.receiveShadow = true
-      book.add(pageBlock)
+      closedBookPageBlock.add(pageBlock)
       geometries.push(pageBlockGeometry)
 
       const foreEdgeGeometry = new THREE.BoxGeometry(0.052, PAGE_HEIGHT - 0.11, pageBlockDepth + 0.02)
@@ -101,16 +102,17 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       foreEdge.position.set(PAGE_WIDTH + 0.007, 0, (pageBlockDepth / 2) - 0.014)
       foreEdge.castShadow = true
       foreEdge.receiveShadow = true
-      book.add(foreEdge)
+      closedBookPageBlock.add(foreEdge)
       geometries.push(foreEdgeGeometry)
 
       const pageLayerGeometry = new THREE.BoxGeometry(0.06, 0.007, pageBlockDepth + 0.024)
       for (let index = 1; index < 28; index += 1) {
         const layer = new THREE.Mesh(pageLayerGeometry, pageLayerMaterial)
         layer.position.set(PAGE_WIDTH + 0.01, -PAGE_HEIGHT / 2 + (index * PAGE_HEIGHT / 28), (pageBlockDepth / 2) - 0.014)
-        book.add(layer)
+        closedBookPageBlock.add(layer)
       }
       geometries.push(pageLayerGeometry)
+      book.add(closedBookPageBlock)
 
       const leaves = leafDefinitions.map((definition, index) => {
         const pageGeometry = createPageGeometry()
@@ -229,10 +231,15 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
         const openingProgress = updateHardcover({ cover: frontCoverState, isOpen: isOpenRef.current, now, reduceMotion })
         leaves.forEach((leaf, leafIndex) => updatePageLeaf({ leaf, leafIndex, leafCount: leaves.length, requestedPage, now, reduceMotion }))
 
+        // The compressed page block is a closed-book construction detail. Once the
+        // cover opens, individual animated leaves take over with no solid block
+        // behind them, so the two-page spread cannot be covered or overlap.
+        closedBookPageBlock.visible = openingProgress < 0.025
+
         const idle = (now - startedAt) * 0.00055
         book.position.x = THREE.MathUtils.lerp(-PAGE_WIDTH / 2, 0, openingProgress)
         book.position.y = reduceMotion ? 0 : Math.sin(idle) * 0.055 * (1 - openingProgress)
-        book.rotation.y = THREE.MathUtils.lerp(book.rotation.y, (-0.22 * (1 - openingProgress)) + (pointer.x * 0.045 * (1 - openingProgress)), 0.06)
+        book.rotation.y = THREE.MathUtils.lerp(book.rotation.y, (-0.31 * (1 - openingProgress)) + (pointer.x * 0.045 * (1 - openingProgress)), 0.06)
         book.rotation.x = THREE.MathUtils.lerp(book.rotation.x, -0.025 + (pointer.y * 0.025 * (1 - openingProgress)), 0.06)
         book.scale.setScalar(THREE.MathUtils.lerp(1.08, 1, openingProgress))
 
