@@ -3,6 +3,38 @@ import { paintYearbookCover, coverTextColor } from '../../../yearbook/data/cover
 
 const TEXTURE_WIDTH = 768
 const TEXTURE_HEIGHT = 1024
+const textureImageCache = new Map()
+
+function loadTextureImage(url) {
+  if (!url) return Promise.resolve(null)
+  const cached = textureImageCache.get(url)
+  if (cached) return cached.promise
+
+  const entry = { image: null, promise: null }
+  entry.promise = new Promise(resolve => {
+    const image = new Image()
+    image.crossOrigin = 'anonymous'
+    image.onload = () => {
+      const finish = () => {
+        entry.image = image
+        resolve(image)
+      }
+      if (typeof image.decode === 'function') image.decode().then(finish, finish)
+      else finish()
+    }
+    image.onerror = () => {
+      textureImageCache.delete(url)
+      resolve(null)
+    }
+    image.src = url
+  })
+  textureImageCache.set(url, entry)
+  return entry.promise
+}
+
+export function preloadYearbookCoverTexture(presentation) {
+  return loadTextureImage(presentation.coverImageUrl || '/snhs-seal.png')
+}
 
 function wrapText(context, text, maxWidth, maxLines = 6) {
   const words = String(text || '').trim().split(/\s+/).filter(Boolean)
@@ -84,25 +116,23 @@ function createCanvasTexture(paint, imageUrl = '') {
 
   let active = true
   const sources = Array.isArray(imageUrl) ? imageUrl : [imageUrl]
-  const images = sources.map(() => null)
+  const images = sources.map(url => textureImageCache.get(url)?.image || null)
   const repaint = () => {
     if (!active) return
     paint(context, Array.isArray(imageUrl) ? images : images[0])
     texture.needsUpdate = true
   }
   repaint()
-  const pending = sources.map((url, index) => {
-    if (!url) return null
-    const image = new Image()
-    image.crossOrigin = 'anonymous'
-    image.onload = () => { images[index] = image; repaint() }
-    image.onerror = () => { images[index] = null; repaint() }
-    image.src = url
-    return image
+  sources.forEach((url, index) => {
+    if (!url || images[index]) return
+    loadTextureImage(url).then(image => {
+      if (!active || !image) return
+      images[index] = image
+      repaint()
+    })
   })
   texture.userData.cancelImageLoad = () => {
     active = false
-    pending.forEach(image => { if (image) { image.onload = null; image.onerror = null; image.src = '' } })
   }
   return texture
 }

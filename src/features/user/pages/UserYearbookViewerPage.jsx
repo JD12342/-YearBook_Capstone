@@ -3,6 +3,7 @@ import { BookOpen, Hand, Maximize, Minimize, Pause, Play, X } from 'lucide-react
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { loadActiveYearbook } from '../services/userPortalService.js'
 import { ThreeYearbook } from '../components/ThreeYearbook.jsx'
+import { preloadYearbookCoverTexture } from '../components/yearbook3d/yearbookTextures.js'
 import { getYearbookPresentation } from '../../yearbook/data/yearbookDefaults.js'
 
 export function UserYearbookViewerPage() {
@@ -23,7 +24,13 @@ export function UserYearbookViewerPage() {
   useEffect(() => {
     let active = true
     setLoading(true); setError(''); setYearbook(null); setIsOpen(false); setPageIndex(0)
-    loadActiveYearbook(yearbookId).then(record => { if (active) setYearbook(record) })
+    loadActiveYearbook(yearbookId).then(async record => {
+      if (record) {
+        const preparedPresentation = getYearbookPresentation(record, record.schoolYearName)
+        await preloadYearbookCoverTexture(preparedPresentation)
+      }
+      if (active) setYearbook(record)
+    })
       .catch(() => { if (active) setError('We could not load this edition. Check your connection and try again.') })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
