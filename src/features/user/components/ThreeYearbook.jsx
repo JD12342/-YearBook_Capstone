@@ -8,7 +8,6 @@ import {
   PAGE_LAYER_GAP,
   PAGE_WIDTH,
   createPageGeometry,
-  getClosedCoverCenterDepth,
 } from './yearbook3d/yearbookGeometry.js'
 import { updateHardcover, updatePageLeaf } from './yearbook3d/yearbookLayering.js'
 import { createYearbookTextureSet } from './yearbook3d/yearbookTextures.js'
@@ -86,12 +85,14 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       // The page block is intentionally neutral, like the exposed paper in the
       // reference book. It sits between the two boards and is visible only at the
       // fore-edge, so custom cover artwork remains the focus.
-      const pageBlockDepth = Math.max(0.19, leafDefinitions.length * PAGE_LAYER_GAP + 0.07)
+      const pageBlockBack = -0.035
+      const pageBlockDepth = Math.max(0.36, leafDefinitions.length * PAGE_LAYER_GAP + 0.16)
+      const pageBlockCenter = pageBlockBack + (pageBlockDepth / 2)
       const closedBookPageBlock = new THREE.Group()
       const pageBlockGeometry = new THREE.BoxGeometry(PAGE_WIDTH, PAGE_HEIGHT, pageBlockDepth)
       pageBlockGeometry.translate(PAGE_WIDTH / 2, 0, 0)
       const pageBlock = new THREE.Mesh(pageBlockGeometry, pageBlockMaterial)
-      pageBlock.position.z = (pageBlockDepth / 2) - 0.014
+      pageBlock.position.z = pageBlockCenter
       pageBlock.castShadow = true
       pageBlock.receiveShadow = true
       closedBookPageBlock.add(pageBlock)
@@ -99,7 +100,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
 
       const foreEdgeGeometry = new THREE.BoxGeometry(0.052, PAGE_HEIGHT - 0.11, pageBlockDepth + 0.02)
       const foreEdge = new THREE.Mesh(foreEdgeGeometry, pageBlockMaterial)
-      foreEdge.position.set(PAGE_WIDTH + 0.007, 0, (pageBlockDepth / 2) - 0.014)
+      foreEdge.position.set(PAGE_WIDTH + 0.007, 0, pageBlockCenter)
       foreEdge.castShadow = true
       foreEdge.receiveShadow = true
       closedBookPageBlock.add(foreEdge)
@@ -108,7 +109,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       const pageLayerGeometry = new THREE.BoxGeometry(0.06, 0.007, pageBlockDepth + 0.024)
       for (let index = 1; index < 28; index += 1) {
         const layer = new THREE.Mesh(pageLayerGeometry, pageLayerMaterial)
-        layer.position.set(PAGE_WIDTH + 0.01, -PAGE_HEIGHT / 2 + (index * PAGE_HEIGHT / 28), (pageBlockDepth / 2) - 0.014)
+        layer.position.set(PAGE_WIDTH + 0.01, -PAGE_HEIGHT / 2 + (index * PAGE_HEIGHT / 28), pageBlockCenter)
         closedBookPageBlock.add(layer)
       }
       geometries.push(pageLayerGeometry)
@@ -141,7 +142,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       const frontCoverMaterial = new THREE.MeshStandardMaterial({ map: coverTexture, roughness: 0.38, metalness: 0.06 })
       const frontCoverInsideMaterial = new THREE.MeshStandardMaterial({ map: insideFrontCoverTexture, roughness: 0.62 })
       const frontCover = new THREE.Mesh(frontCoverGeometry, [coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, frontCoverMaterial, frontCoverInsideMaterial])
-      frontCover.position.z = getClosedCoverCenterDepth(leafDefinitions.length)
+      frontCover.position.z = pageBlockBack + pageBlockDepth + (COVER_DEPTH / 2) + 0.018
       frontCover.castShadow = true
       frontCover.receiveShadow = true
       const frontCoverGroup = new THREE.Group()
