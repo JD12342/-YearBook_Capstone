@@ -91,6 +91,8 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       // a bound volume, while remaining narrow beside the portrait cover.
       const pageBlockDepth = Math.max(0.52, leafDefinitions.length * PAGE_LAYER_GAP + 0.26)
       const pageBlockCenter = pageBlockBack + (pageBlockDepth / 2)
+      const backCoverDepth = pageBlockBack - (COVER_DEPTH / 2) - coverBoardGap
+      const frontCoverClosedDepth = pageBlockBack + pageBlockDepth + (COVER_DEPTH / 2) + coverBoardGap
       const closedBookPageBlock = new THREE.Group()
       const pageBlockGeometry = new THREE.BoxGeometry(PAGE_WIDTH, PAGE_HEIGHT, pageBlockDepth)
       pageBlockGeometry.translate(PAGE_WIDTH / 2, 0, 0)
@@ -155,10 +157,12 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       const frontCoverMaterial = new THREE.MeshStandardMaterial({ map: coverTexture, roughness: 0.38, metalness: 0.06 })
       const frontCoverInsideMaterial = new THREE.MeshStandardMaterial({ map: insideFrontCoverTexture, roughness: 0.62 })
       const frontCover = new THREE.Mesh(frontCoverGeometry, [coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, frontCoverMaterial, frontCoverInsideMaterial])
-      frontCover.position.z = pageBlockBack + pageBlockDepth + (COVER_DEPTH / 2) + coverBoardGap
       frontCover.castShadow = true
       frontCover.receiveShadow = true
       const frontCoverGroup = new THREE.Group()
+      // Store the closed-book depth on the hinge group instead of the mesh.
+      // This keeps the spine edge fixed while the board rotates.
+      frontCoverGroup.position.z = frontCoverClosedDepth
       frontCoverGroup.add(frontCover)
       book.add(frontCoverGroup)
       const frontCoverState = { group: frontCoverGroup, currentAngle: 0, fromAngle: 0, targetAngle: 0, transitionStartedAt: performance.now() }
@@ -172,7 +176,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       const backCover = new THREE.Mesh(backCoverGeometry, [coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, coverEdgeMaterial, backCoverInsideMaterial, backCoverOuterMaterial])
       // The same measured gap on each side keeps both boards aligned around
       // the thicker paper block.
-      backCover.position.z = pageBlockBack - (COVER_DEPTH / 2) - coverBoardGap
+      backCover.position.z = backCoverDepth
       backCover.castShadow = true
       backCover.receiveShadow = true
       book.add(backCover)
@@ -245,6 +249,14 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
         const requestedPage = isOpenRef.current ? pageIndexRef.current + 1 : 0
         const openingProgress = updateHardcover({ cover: frontCoverState, isOpen: isOpenRef.current, now, reduceMotion })
         leaves.forEach((leaf, leafIndex) => updatePageLeaf({ leaf, leafIndex, leafCount: leaves.length, requestedPage, now, reduceMotion }))
+
+        // As the front board opens, place it behind the left page at the same
+        // depth as the back board. Both halves then keep the same footprint.
+        frontCoverGroup.position.z = THREE.MathUtils.lerp(
+          frontCoverClosedDepth,
+          backCoverDepth,
+          openingProgress,
+        )
 
         // The compressed page block is a closed-book construction detail. Once the
         // cover opens, individual animated leaves take over with no solid block
