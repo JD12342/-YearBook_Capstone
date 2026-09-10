@@ -79,38 +79,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
 
       const paperEdgeMaterial = new THREE.MeshStandardMaterial({ color: '#d9ccb0', roughness: 0.94 })
       const coverEdgeMaterial = new THREE.MeshStandardMaterial({ color: presentation.coverColor, roughness: 0.7 })
-      const pageBlockMaterial = new THREE.MeshStandardMaterial({ color: '#e6dcc6', roughness: 0.9, metalness: 0.01 })
-      const pageGrooveMaterial = new THREE.MeshStandardMaterial({ color: '#bba982', roughness: 1 })
-      materials.push(paperEdgeMaterial, coverEdgeMaterial, pageBlockMaterial, pageGrooveMaterial)
-
-      // A real book has a compressed page block inside its boards. The individual
-      // leaves animate above it, while this visible fore-edge gives the closed
-      // cover and back cover their believable weight.
-      const pageBlockDepth = Math.max(0.18, leafDefinitions.length * PAGE_LAYER_GAP + 0.055)
-      const pageBlockGeometry = new THREE.BoxGeometry(PAGE_WIDTH, PAGE_HEIGHT, pageBlockDepth)
-      pageBlockGeometry.translate(PAGE_WIDTH / 2, 0, 0)
-      const pageBlock = new THREE.Mesh(pageBlockGeometry, pageBlockMaterial)
-      pageBlock.position.z = (pageBlockDepth / 2) - 0.01
-      pageBlock.castShadow = true
-      pageBlock.receiveShadow = true
-      book.add(pageBlock)
-      geometries.push(pageBlockGeometry)
-
-      const foreEdgeGeometry = new THREE.BoxGeometry(0.075, PAGE_HEIGHT - 0.08, pageBlockDepth + 0.032)
-      const foreEdge = new THREE.Mesh(foreEdgeGeometry, pageBlockMaterial)
-      foreEdge.position.set(PAGE_WIDTH + 0.018, 0, (pageBlockDepth / 2) - 0.01)
-      foreEdge.castShadow = true
-      foreEdge.receiveShadow = true
-      book.add(foreEdge)
-      geometries.push(foreEdgeGeometry)
-
-      const pageGrooveGeometry = new THREE.BoxGeometry(0.087, 0.012, pageBlockDepth + 0.04)
-      for (let index = 1; index < 20; index += 1) {
-        const groove = new THREE.Mesh(pageGrooveGeometry, pageGrooveMaterial)
-        groove.position.set(PAGE_WIDTH + 0.021, -PAGE_HEIGHT / 2 + (index * PAGE_HEIGHT / 20), (pageBlockDepth / 2) - 0.01)
-        book.add(groove)
-      }
-      geometries.push(pageGrooveGeometry)
+      materials.push(paperEdgeMaterial, coverEdgeMaterial)
 
       const leaves = leafDefinitions.map((definition, index) => {
         const pageGeometry = createPageGeometry()
@@ -144,26 +113,10 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation }) {
       frontCover.receiveShadow = true
       const frontCoverGroup = new THREE.Group()
       frontCoverGroup.add(frontCover)
-
-      // Slim board rails remain visible around custom cover artwork, making the
-      // cover read as a hardcover board instead of a flat image plane.
-      const coverRailDepth = COVER_DEPTH + 0.028
-      const coverRailMaterial = new THREE.MeshStandardMaterial({ color: presentation.coverColor, roughness: 0.5, metalness: 0.05 })
-      const rails = [
-        [new THREE.BoxGeometry(COVER_WIDTH + 0.025, 0.075, coverRailDepth), COVER_WIDTH / 2, COVER_HEIGHT / 2 - 0.012, frontCover.position.z],
-        [new THREE.BoxGeometry(COVER_WIDTH + 0.025, 0.075, coverRailDepth), COVER_WIDTH / 2, -COVER_HEIGHT / 2 + 0.012, frontCover.position.z],
-        [new THREE.BoxGeometry(0.075, COVER_HEIGHT, coverRailDepth), COVER_WIDTH - 0.012, 0, frontCover.position.z],
-      ]
-      rails.forEach(([geometry, x, y, z]) => {
-        const rail = new THREE.Mesh(geometry, coverRailMaterial)
-        rail.position.set(x, y, z)
-        frontCoverGroup.add(rail)
-        geometries.push(geometry)
-      })
       book.add(frontCoverGroup)
       const frontCoverState = { group: frontCoverGroup, currentAngle: 0, fromAngle: 0, targetAngle: 0, transitionStartedAt: performance.now() }
       geometries.push(frontCoverGeometry)
-      materials.push(frontCoverMaterial, frontCoverInsideMaterial, coverRailMaterial)
+      materials.push(frontCoverMaterial, frontCoverInsideMaterial)
 
       const backCoverGeometry = new THREE.BoxGeometry(COVER_WIDTH, COVER_HEIGHT, COVER_DEPTH)
       backCoverGeometry.translate(COVER_WIDTH / 2, 0, 0)
