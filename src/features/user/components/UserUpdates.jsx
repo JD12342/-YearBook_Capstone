@@ -20,7 +20,7 @@ export function UserUpdates({ announcements, stories, alumniCount }) {
 
       <div className="user-updates-layout">
         <article className="user-feature-story">
-          <img src="/school.jpg" alt="The Sorsogon National High School campus" />
+          <img src={leadStory.imageUrl || '/school.jpg'} alt={leadStory.imageUrl ? leadStory.title : 'The Sorsogon National High School campus'} />
           <div className="user-feature-story-shade" aria-hidden="true" />
           <div className="user-feature-story-copy">
             <span>{leadStory.category || 'SCHOOL STORY'}</span>

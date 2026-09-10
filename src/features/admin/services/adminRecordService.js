@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, getDocs, serverTimestamp, updateDoc, writeBatch } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, serverTimestamp, updateDoc, writeBatch } from 'firebase/firestore'
 import { db } from './firebase/firestore.js'
 import { isFirebaseConfigured } from './firebase/firebaseConfig.js'
 
@@ -37,6 +37,22 @@ export const getAdminRecords = async (collectionName) => {
   }
 }
 
+const sortRecords = (records) => records.sort((left, right) => Number(right.updatedAt?.seconds ?? right.createdAt?.seconds ?? 0) - Number(left.updatedAt?.seconds ?? left.createdAt?.seconds ?? 0))
+
+export const subscribeAdminRecords = (collectionName, onRecords, onError) => {
+  let recordsCollection
+  try {
+    recordsCollection = getCollection(collectionName)
+  } catch (error) {
+    onError?.(error)
+    return () => {}
+  }
+
+  return onSnapshot(recordsCollection, (snapshot) => {
+    onRecords(sortRecords(snapshot.docs.map((record) => ({ id: record.id, ...record.data() }))))
+  }, (error) => onError?.(adminAccessError(error) || new Error('Unable to keep these records synchronized.')))
+}
+
 export const createAdminRecord = async (collectionName, payload) => {
   try {
     const record = await addDoc(getCollection(collectionName), {
@@ -58,6 +74,22 @@ export const updateAdminRecord = async (collectionName, recordId, payload) => {
     })
   } catch (error) {
     throw adminAccessError(error) || new Error('Unable to update this record.')
+  }
+}
+
+export const updateAdminRecordStatus = async (collectionName, recordId, status) => {
+  const publicationStatus = status === 'published' || status === 'active'
+  return updateAdminRecord(collectionName, recordId, {
+    status,
+    ...(publicationStatus ? { publishedAt: serverTimestamp() } : {}),
+  })
+}
+
+export const deleteAdminRecord = async (collectionName, recordId) => {
+  try {
+    await deleteDoc(doc(db, collectionName, recordId))
+  } catch (error) {
+    throw adminAccessError(error) || new Error('Unable to delete this record.')
   }
 }
 

@@ -275,7 +275,7 @@
 
 .user-campus-story { display: grid; width: min(1440px, 100%); min-height: 720px; grid-template-columns: minmax(0, 1.12fr) minmax(380px, 0.88fr); margin: 0 auto; }
 .user-campus-film { position: relative; min-height: 650px; overflow: hidden; background: #17352b; }
-.user-campus-film video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.user-campus-film video, .user-campus-film > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .user-campus-film-shade { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 52%, rgba(4,30,22,.64)); }
 .user-film-label { position: absolute; bottom: 28px; left: 30px; display: inline-flex; align-items: center; gap: 8px; color: #fff; font-size: 0.63rem; font-weight: 800; letter-spacing: 0.14em; }
 .user-campus-copy { display: flex; flex-direction: column; justify-content: center; padding: clamp(55px, 7vw, 105px); background: var(--user-beige); }
@@ -317,6 +317,16 @@
 .user-portal-footer > p { max-width: 490px; margin: 0; color: #a8c6b9; font-family: Georgia, serif; font-size: 0.8rem; line-height: 1.7; }
 .user-footer-actions { display: flex; align-items: center; justify-content: flex-end; gap: 19px; }
 .user-footer-actions a { display: inline-flex; align-items: center; gap: 6px; color: #dcece5; font-size: 0.65rem; font-weight: 750; text-decoration: none; }
+.user-alumni-directory { border-top: 1px solid var(--user-line); }
+.user-alumni-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; background: var(--user-line); }
+.user-alumni-card { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 18px; min-height: 190px; padding: 22px; background: rgba(255,255,255,.72); }
+.user-alumni-photo { display: grid; width: 92px; aspect-ratio: 4 / 5; place-items: center; overflow: hidden; background: #dceae2; color: var(--user-emerald); }
+.user-alumni-photo img { width: 100%; height: 100%; object-fit: cover; }
+.user-alumni-card > div:last-child { align-self: center; min-width: 0; }
+.user-alumni-card span { display: inline-flex; align-items: center; gap: 5px; color: var(--user-emerald); font-size: .57rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.user-alumni-card h3 { margin: 8px 0 4px; font-family: Georgia, serif; font-size: 1.3rem; font-weight: 400; }
+.user-alumni-card strong { color: #36564a; font-size: .65rem; }
+.user-alumni-card p { display: -webkit-box; margin: 9px 0 0; overflow: hidden; color: var(--user-muted); font-size: .67rem; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .user-portal-footer > small { grid-column: 1 / -1; padding-top: 23px; border-top: 1px solid rgba(255,255,255,.12); color: #65877a; font-size: 0.58rem; }
 
 .user-portal .user-hero-copy > *,
@@ -369,6 +379,7 @@
   .user-section-heading { grid-template-columns: 1fr; align-items: start; gap: 22px; }
   .user-section-heading > p { max-width: 640px; }
   .user-highlight-grid { grid-template-columns: 1fr; }
+  .user-alumni-grid { grid-template-columns: 1fr 1fr; }
   .user-highlight-card { min-height: 285px; }
   .user-yearbook-shelf { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .face-search-workspace { grid-template-columns: 1fr; }
@@ -412,6 +423,7 @@
   .user-section-heading h2 { font-size: clamp(2.55rem, 13vw, 4rem); }
   .user-section-heading > p { padding-left: 16px; }
   .user-highlight-card { min-height: 300px; padding: 24px; }
+  .user-alumni-grid { grid-template-columns: 1fr; }
   .user-yearbook-section { padding: 72px 18px; }
   .user-yearbook-heading { align-items: flex-start; flex-direction: column; }
   .user-yearbook-heading h2 { font-size: clamp(2.65rem, 13vw, 4.2rem); }

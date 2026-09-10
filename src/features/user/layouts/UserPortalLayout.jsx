@@ -3,7 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../auth/context/AuthContext.jsx'
 import { UserPortalFooter } from '../components/UserPortalFooter.jsx'
 import { UserPortalHeader } from '../components/UserPortalHeader.jsx'
-import { loadUserPortalContent } from '../services/userPortalService.js'
+import { subscribeUserPortalContent } from '../services/userPortalService.js'
 import '../styles/userPortal.css'
 
 const emptyContent = { announcements: [], yearbooks: [], stories: [], alumni: [], hasLiveContent: false }
@@ -15,11 +15,7 @@ export function UserPortalLayout() {
   const [contentReady, setContentReady] = useState(false)
 
   useEffect(() => {
-    let active = true
-    loadUserPortalContent()
-      .then((nextContent) => { if (active) setContent(nextContent) })
-      .finally(() => { if (active) setContentReady(true) })
-    return () => { active = false }
+    return subscribeUserPortalContent(setContent, () => setContentReady(true))
   }, [])
 
   useEffect(() => {

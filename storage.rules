@@ -71,6 +71,21 @@ service firebase.storage {
       allow delete: if isAdministrator();
     }
 
+    function canViewPublishedContent(collectionName, recordId) {
+      return canViewCommunity()
+        && collectionName in ['announcements', 'alumni', 'schoolContent']
+        && firestore.exists(/databases/(default)/documents/$(collectionName)/$(recordId))
+        && firestore.get(/databases/(default)/documents/$(collectionName)/$(recordId)).data.status in ['published', 'active'];
+    }
+
+    match /content/{collectionName}/{recordId}/{fileName} {
+      allow read: if isAdministrator() || canViewPublishedContent(collectionName, recordId);
+      allow create, update: if isAdministrator()
+        && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isAdministrator();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

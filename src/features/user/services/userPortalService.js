@@ -1,4 +1,4 @@
-import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, limit, onSnapshot, query, where } from 'firebase/firestore'
 import { db } from '../../admin/services/firebase/firestore.js'
 import { isFirebaseConfigured } from '../../admin/services/firebase/firebaseConfig.js'
 
@@ -51,4 +51,44 @@ export const loadUserPortalContent = async () => {
     ...content,
     hasLiveContent: Object.values(content).some((items) => items.length > 0),
   }
+}
+
+export const subscribeUserPortalContent = (onContent, onReady) => {
+  if (!isFirebaseConfigured) {
+    onContent({ announcements: [], yearbooks: [], stories: [], alumni: [], hasLiveContent: false })
+    onReady?.()
+    return () => {}
+  }
+
+  const definitions = [
+    ['announcements', 'announcements', 'published'],
+    ['yearbooks', 'yearbooks', 'active'],
+    ['stories', 'schoolContent', 'published'],
+    ['alumni', 'alumni', 'active'],
+  ]
+  const content = { announcements: [], yearbooks: [], stories: [], alumni: [] }
+  const initialized = new Set()
+  let readySent = false
+
+  const emit = () => onContent({
+    ...content,
+    yearbooks: content.yearbooks.filter((book) => book.recordsVersion === 1 && book.schoolYearId && book.schoolYearName),
+    hasLiveContent: Object.values(content).some((items) => items.length > 0),
+  })
+
+  const unsubscribers = definitions.map(([key, collectionName, status]) => onSnapshot(
+    query(collection(db, collectionName), where('status', '==', status)),
+    (snapshot) => {
+      content[key] = snapshot.docs.map((record) => ({ id: record.id, ...record.data() })).sort(newestFirst)
+      initialized.add(key)
+      emit()
+      if (initialized.size === definitions.length && !readySent) { readySent = true; onReady?.() }
+    },
+    () => {
+      initialized.add(key)
+      if (initialized.size === definitions.length && !readySent) { readySent = true; onReady?.() }
+    },
+  ))
+
+  return () => unsubscribers.forEach((unsubscribe) => unsubscribe())
 }
