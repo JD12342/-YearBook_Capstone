@@ -16,6 +16,7 @@ import { StudentManagementPage } from '../features/admin/pages/students/StudentM
 import { StudentProfilePage } from '../features/admin/pages/students/StudentProfilePage.jsx'
 import { VerificationRequestsPage } from '../features/admin/pages/VerificationRequestsPage.jsx'
 import { ContentManagementPage } from '../features/admin/pages/ContentManagementPage.jsx'
+import { ReportsPage } from '../features/admin/pages/ReportsPage.jsx'
 import { LandingPage } from '../features/public/pages/LandingPage.jsx'
 import { UserPortalLayout } from '../features/user/layouts/UserPortalLayout.jsx'
 import { UserExplorePage } from '../features/user/pages/UserExplorePage.jsx'
@@ -66,7 +67,7 @@ export function AppRoutes() {
           </Route>
           <Route path="/content" element={<ContentManagementPage />} />
           <Route path="/alumni" element={<Navigate to="/content" replace />} />
-          <Route path="/reports" element={<PlaceholderPage title="Reports" description="Reports and analytics dashboards will be expanded next." />} />
+          <Route path="/reports" element={<ReportsPage />} />
           <Route path="/settings" element={<PlaceholderPage title="Settings" description="System configuration is planned for a later update." />} />
           <Route path="/profile" element={<PlaceholderPage title="Admin Profile" description="Profile management is not yet implemented." />} />
           <Route path="/logout" element={<Navigate to="/dashboard" replace />} />
