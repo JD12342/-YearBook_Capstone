@@ -34,6 +34,12 @@ npm run build
 
 The deployable website is generated in `dist/`. Firebase Hosting is configured to serve the application and route all browser paths through React Router.
 
+## Vercel deployment
+
+The repository includes a Vercel configuration for Vite builds, direct-link React Router support, production headers, and static asset caching. Add the Firebase values from `.env.example` to the Vercel project before deploying. The production build stops with a clear error if any required Firebase value is missing.
+
+Follow the complete [Vercel deployment guide](docs/VERCEL_DEPLOYMENT.md), including the required Firebase Authorized Domains and Firebase rules steps.
+
 ## Firebase deployment
 
 GradBook does not trust a role selected in the browser. After Firebase Authentication verifies the email and password, the application resolves the role from either a Firebase Auth custom claim or an active `users/{uid}` Firestore document.

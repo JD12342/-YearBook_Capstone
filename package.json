@@ -7,7 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
+    "test": "node --test src/features/yearbook/data/yearbook.test.js src/features/user/services/faceSearchService.test.js",
+    "check": "npm run lint && npm test && npm run build",
     "preview": "vite preview"
+  },
+  "engines": {
+    "node": ">=20.19.0"
   },
   "dependencies": {
     "@vladmandic/face-api": "^1.7.15",
