@@ -426,8 +426,8 @@
   .user-alumni-grid { grid-template-columns: 1fr; }
   .user-yearbook-section { padding: 72px 18px; }
   .user-yearbook-heading { align-items: flex-start; flex-direction: column; }
-  .user-yearbook-heading h2 { font-size: clamp(2.65rem, 13vw, 4.2rem); }
-  .user-yearbook-shelf { grid-template-columns: 1fr; gap: 58px; }
+  .user-yearbook-heading h2 { max-width: 10ch; font-size: clamp(2.5rem, 11.5vw, 3.55rem); line-height: .98; }
+  .user-yearbook-shelf { grid-template-columns: 1fr; gap: 48px; }
   .user-face-search-page { padding: 46px 18px 70px; }
   .face-search-hero { grid-template-columns: 1fr; gap: 25px; }
   .face-search-count { width: 132px; min-height: 132px; }
@@ -440,7 +440,7 @@
   .face-search-result img { width: 84px; }
   .user-yearbook-card { display: flex; min-height: 0; flex-direction: column; gap: 0; }
   .user-yearbook-details { align-self: stretch; padding-top: 22px; }
-  .user-yearbook-model-stage { width: 100%; height: min(118vw, 530px); min-height: min(118vw, 530px); max-height: 530px; }
+  .user-yearbook-model-stage { width: min(100%, 350px); height: min(106vw, 430px); min-height: 350px; max-height: 430px; margin: 0 auto; }
   .user-campus-film { min-height: 82vw; }
   .user-campus-copy { padding: 64px 22px; }
   .user-campus-copy h2 { font-size: clamp(2.7rem, 13vw, 4rem); }
@@ -509,7 +509,7 @@
 .yearbook-viewer button:focus-visible, .yearbook-viewer select:focus-visible { outline: 3px solid #f0d797; outline-offset: 3px; }
 @media (max-width: 680px) {
   .user-yearbook-cover { min-height: 0; max-height: none; }
-  .user-yearbook-model-stage { height: min(118vw, 530px); min-height: min(118vw, 530px); }
+  .user-yearbook-model-stage { width: min(100%, 350px); height: min(106vw, 430px); min-height: 350px; margin-inline: auto; }
   .yearbook-reader-tools { top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); gap: 5px; }
   .yearbook-reader-tools button { width: 39px; height: 39px; }
   .yearbook-reader-hint { bottom: max(14px, env(safe-area-inset-bottom)); padding: 9px 13px; font-size: .72rem; }

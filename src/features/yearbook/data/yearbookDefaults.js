@@ -1,5 +1,6 @@
 export const DEFAULT_YEARBOOK_THEME = {
   coverColor: '#087a5c',
+  coverColorEnabled: true,
   accentColor: '#d7b866',
   pageColor: '#f7f0dc',
   inkColor: '#17372d',

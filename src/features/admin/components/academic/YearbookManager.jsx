@@ -31,6 +31,7 @@ const createEditorForm = (yearbook, schoolYearName = '') => {
     coverTitle: presentation.coverTitle,
     coverSubtitle: presentation.coverSubtitle || schoolYearName,
     coverColor: presentation.coverColor,
+    coverColorEnabled: presentation.coverColorEnabled !== false,
     accentColor: presentation.accentColor,
     pageColor: presentation.pageColor,
     inkColor: presentation.inkColor,
@@ -301,7 +302,8 @@ export function YearbookManager() {
                 <div className="field-grid">
                   <label className="form-field span-2"><span>Cover title</span><Input maxLength={80} value={form.coverTitle} onChange={(event) => setForm((current) => ({ ...current, coverTitle: event.target.value }))} required /></label>
                   <label className="form-field span-2"><span>Cover subtitle</span><Input maxLength={100} value={form.coverSubtitle} onChange={(event) => setForm((current) => ({ ...current, coverSubtitle: event.target.value }))} /></label>
-                  <label className="form-field"><span>Cover color</span><input className="yearbook-color-field" type="color" value={form.coverColor} onChange={(event) => setForm((current) => ({ ...current, coverColor: event.target.value }))} /></label>
+                  <div className="form-field span-2"><span>Cover finish</span><div className="yearbook-cover-finish" role="group" aria-label="Cover finish"><button type="button" aria-pressed={form.coverColorEnabled} onClick={() => setForm((current) => ({ ...current, coverColorEnabled: true }))}>Use cover color</button><button type="button" aria-pressed={!form.coverColorEnabled} disabled={!coverFile && !form.coverImageUrl} onClick={() => setForm((current) => ({ ...current, coverColorEnabled: false }))}>Original artwork · no color</button></div><small className="yearbook-cover-finish-help">No color keeps an uploaded cover image in its original colors. A neutral book edge is used around it.</small></div>
+                  <label className={`form-field${form.coverColorEnabled ? '' : ' is-disabled'}`}><span>Cover color</span><input className="yearbook-color-field" type="color" value={form.coverColor} disabled={!form.coverColorEnabled} onChange={(event) => setForm((current) => ({ ...current, coverColor: event.target.value }))} /></label>
                   <label className="form-field"><span>Accent color</span><input className="yearbook-color-field" type="color" value={form.accentColor} onChange={(event) => setForm((current) => ({ ...current, accentColor: event.target.value }))} /></label>
                   <label className="form-field"><span>Page color</span><input className="yearbook-color-field" type="color" value={form.pageColor} onChange={(event) => setForm((current) => ({ ...current, pageColor: event.target.value }))} /></label>
                   <label className="form-field"><span>Page text</span><input className="yearbook-color-field" type="color" value={form.inkColor} onChange={(event) => setForm((current) => ({ ...current, inkColor: event.target.value }))} /></label>
@@ -314,8 +316,8 @@ export function YearbookManager() {
                 selectedFile={coverFile}
                 onChange={setCoverFile}
               />
-              {(coverFile || form.coverImageUrl) && <Button type="button" variant="secondary" onClick={() => { setCoverFile(null); setForm(current => ({ ...current, coverImageUrl: '', coverImagePath: '' })) }}>Use designed cover instead</Button>}
-              <p className="yearbook-artwork-note">Use portrait artwork with a 3:4 ratio for the best fit. When uploaded, this image fills the physical front cover and replaces the default archival design.</p>
+              {(coverFile || form.coverImageUrl) && <Button type="button" variant="secondary" onClick={() => { setCoverFile(null); setForm(current => ({ ...current, coverImageUrl: '', coverImagePath: '', coverColorEnabled: true })) }}>Use designed cover instead</Button>}
+              <p className="yearbook-artwork-note">Use portrait artwork with a 3:4 ratio for the best fit. Choose “Original artwork · no color” to show the uploaded image without a color tint.</p>
             </section>
 
             <section className="yearbook-editor-section" hidden={editorTab !== 'pages'}>

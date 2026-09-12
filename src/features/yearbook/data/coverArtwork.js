@@ -1,6 +1,10 @@
 export const COVER_ART_WIDTH = 768
 export const COVER_ART_HEIGHT = 1024
 
+export function coverSurfaceColor(presentation = {}) {
+  return presentation.coverColorEnabled === false ? '#e8e3d7' : (presentation.coverColor || '#087a5c')
+}
+
 export function coverTextColor(color = '#087a5c') {
   const rgb = color.replace('#', '').match(/.{2}/g)?.map(v => parseInt(v, 16) / 255) || [0, 0, 0]
   const linear = rgb.map(v => v <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4)
@@ -9,17 +13,26 @@ export function coverTextColor(color = '#087a5c') {
 
 export function paintYearbookCover(context, presentation, image) {
   const width = COVER_ART_WIDTH, height = COVER_ART_HEIGHT
+  const surfaceColor = coverSurfaceColor(presentation)
   context.save()
   context.clearRect(0, 0, width, height)
-  context.fillStyle = presentation.coverColor || '#087a5c'
+  context.fillStyle = surfaceColor
   context.fillRect(0, 0, width, height)
   if (presentation.coverImageUrl && image) {
     const scale = Math.max(width / image.width, height / image.height)
     context.drawImage(image, (width - image.width * scale) / 2, (height - image.height * scale) / 2, image.width * scale, image.height * scale)
+    if (presentation.coverColorEnabled !== false) {
+      context.save()
+      context.globalCompositeOperation = 'multiply'
+      context.globalAlpha = 0.24
+      context.fillStyle = presentation.coverColor || '#087a5c'
+      context.fillRect(0, 0, width, height)
+      context.restore()
+    }
     context.restore()
     return
   }
-  const ink = coverTextColor(presentation.coverColor)
+  const ink = coverTextColor(surfaceColor)
   context.strokeStyle = presentation.accentColor || '#d7b866'
   context.lineWidth = 2
   context.strokeRect(30, 30, width - 60, height - 60)

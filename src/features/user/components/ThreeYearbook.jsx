@@ -11,6 +11,7 @@ import {
 } from './yearbook3d/yearbookGeometry.js'
 import { updateHardcover, updatePageLeaf } from './yearbook3d/yearbookLayering.js'
 import { createYearbookTextureSet } from './yearbook3d/yearbookTextures.js'
+import { coverSurfaceColor } from '../../yearbook/data/coverArtwork.js'
 
 export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interactive = true }) {
   const mountRef = useRef(null)
@@ -79,7 +80,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
       textures.forEach((texture) => { texture.anisotropy = maxAnisotropy })
 
       const paperEdgeMaterial = new THREE.MeshStandardMaterial({ color: '#d9ccb0', roughness: 0.94 })
-      const coverEdgeMaterial = new THREE.MeshStandardMaterial({ color: presentation.coverColor, roughness: 0.7 })
+      const coverEdgeMaterial = new THREE.MeshStandardMaterial({ color: coverSurfaceColor(presentation), roughness: 0.7 })
       const pageBlockMaterial = new THREE.MeshStandardMaterial({ color: '#eee9dd', roughness: 0.92 })
       const pageLayerMaterial = new THREE.MeshStandardMaterial({ color: '#c9c0ac', roughness: 1 })
       materials.push(paperEdgeMaterial, coverEdgeMaterial, pageBlockMaterial, pageLayerMaterial)
@@ -186,7 +187,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
       materials.push(backCoverInsideMaterial, backCoverOuterMaterial)
 
       const spineGeometry = new THREE.CylinderGeometry(0.25, 0.25, COVER_HEIGHT - 0.02, 48, 1, false, Math.PI / 2, Math.PI)
-      const spineMaterial = new THREE.MeshStandardMaterial({ color: presentation.coverColor, roughness: 0.56, metalness: 0.02 })
+      const spineMaterial = new THREE.MeshStandardMaterial({ color: coverSurfaceColor(presentation), roughness: 0.56, metalness: 0.02 })
       const spine = new THREE.Mesh(spineGeometry, spineMaterial)
       const closedSpineDepth = frontCoverClosedDepth - (COVER_DEPTH * 0.12)
       const openSpineDepth = backCoverDepth + (COVER_DEPTH / 2) + 0.006

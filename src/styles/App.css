@@ -454,6 +454,12 @@ button { cursor: pointer; }
 .yearbook-admin-cover.has-custom-artwork > * { visibility: hidden; }
 .yearbook-admin-cover.has-custom-artwork::before { border-color: rgba(255,255,255,.48); }
 .yearbook-color-field { width: 100%; min-height: 40px; padding: 4px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); cursor: pointer; }
+.form-field.is-disabled { opacity: .56; }
+.yearbook-cover-finish { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.yearbook-cover-finish button { min-height: 42px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: #52675e; font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.yearbook-cover-finish button[aria-pressed='true'] { border-color: #70bea1; background: #e7f7ef; color: #075a43; box-shadow: inset 0 0 0 1px #70bea1; }
+.yearbook-cover-finish button:disabled { opacity: .45; cursor: not-allowed; }
+.yearbook-cover-finish-help { margin-top: 7px; color: var(--muted); font-size: .72rem; line-height: 1.45; }
 .yearbook-upload-field { display: flex; min-height: 58px; align-items: center; gap: 11px; padding: 10px 12px; border: 1px dashed rgba(5, 120, 87, .3); border-radius: 11px; background: #f0fdf7; color: var(--emerald-700); cursor: pointer; }
 .yearbook-upload-field > span { min-width: 0; flex: 1; }
 .yearbook-upload-field strong, .yearbook-upload-field small { display: block; }
@@ -1948,6 +1954,7 @@ button { cursor: pointer; }
   .yearbook-editor-scroll { padding: 16px; }
   .yearbook-cover-editor-grid, .yearbook-page-artwork-grid { grid-template-columns: 1fr; }
   .yearbook-preview-art { max-width: 185px; }
+  .yearbook-cover-finish { grid-template-columns: 1fr; }
   .yearbook-editor-actions { padding: 12px 16px; flex-wrap: wrap; }
   .yearbook-editor-actions > span { width: 100%; }
   .yearbook-record-notice { flex-wrap: wrap; }

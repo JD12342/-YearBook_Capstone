@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { buildStudentPages } from './studentPages.js'
 import { createDefaultYearbookPages, getYearbookPresentation } from './yearbookDefaults.js'
-import { coverTextColor, paintYearbookCover } from './coverArtwork.js'
+import { coverSurfaceColor, coverTextColor, paintYearbookCover } from './coverArtwork.js'
 
 test('unverified legacy student samples never reach the reader', () => {
   const pages = [{ id: 'portraits', profiles: [{ name: 'STUDENT NAME', answer: 'Invented answer' }] }]
@@ -33,10 +33,22 @@ test('cover text remains legible on both light and dark custom colors', () => {
   assert.equal(coverTextColor('#001a10'), '#fffaf0')
 })
 
+test('original artwork mode uses a neutral physical cover surface', () => {
+  assert.equal(coverSurfaceColor({ coverColor: '#123456', coverColorEnabled: false }), '#e8e3d7')
+  assert.equal(coverSurfaceColor({ coverColor: '#123456', coverColorEnabled: true }), '#123456')
+})
+
 test('custom full-cover artwork replaces all generated lettering', () => {
   const calls = []
   const context = new Proxy({}, { get: (_, key) => (...args) => calls.push([key, ...args]), set: () => true })
   paintYearbookCover(context, { coverColor: '#123456', coverImageUrl: 'custom.png', coverTitle: 'Hidden title' }, { width: 900, height: 1200 })
   assert.equal(calls.filter(call => call[0] === 'drawImage').length, 1)
   assert.equal(calls.filter(call => call[0] === 'fillText').length, 0)
+})
+
+test('original artwork mode does not paint a color tint over the uploaded cover', () => {
+  const calls = []
+  const context = new Proxy({}, { get: (_, key) => (...args) => calls.push([key, ...args]), set: () => true })
+  paintYearbookCover(context, { coverColor: '#123456', coverColorEnabled: false, coverImageUrl: 'custom.png' }, { width: 900, height: 1200 })
+  assert.equal(calls.filter(call => call[0] === 'fillRect').length, 1)
 })

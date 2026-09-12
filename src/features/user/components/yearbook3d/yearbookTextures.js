@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { paintYearbookCover, coverTextColor } from '../../../yearbook/data/coverArtwork.js'
+import { paintYearbookCover, coverSurfaceColor, coverTextColor } from '../../../yearbook/data/coverArtwork.js'
 
 const TEXTURE_WIDTH = 768
 const TEXTURE_HEIGHT = 1024
@@ -146,9 +146,10 @@ function createCoverTexture(presentation) {
 
 function createInsideCoverTexture(presentation, label) {
   return createCanvasTexture((context, seal) => {
+    const surfaceColor = coverSurfaceColor(presentation)
     const gradient = context.createLinearGradient(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
-    gradient.addColorStop(0, presentation.coverColor)
-    gradient.addColorStop(1, presentation.coverColor)
+    gradient.addColorStop(0, surfaceColor)
+    gradient.addColorStop(1, surfaceColor)
     context.fillStyle = gradient
     context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
     context.save()
@@ -163,7 +164,7 @@ function createInsideCoverTexture(presentation, label) {
       drawImageCover(context, seal, 304, 330, 160, 160)
       context.restore()
     }
-    context.fillStyle = coverTextColor(presentation.coverColor)
+    context.fillStyle = coverTextColor(surfaceColor)
     context.textAlign = 'center'
     context.font = '500 34px Georgia'
     context.fillText(label, TEXTURE_WIDTH / 2, 565)
@@ -175,10 +176,11 @@ function createInsideCoverTexture(presentation, label) {
 
 function createBackCoverTexture(presentation) {
   return createCanvasTexture((context, seal) => {
-    const coverInk = coverTextColor(presentation.coverColor)
+    const surfaceColor = coverSurfaceColor(presentation)
+    const coverInk = coverTextColor(surfaceColor)
     const gradient = context.createLinearGradient(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
-    gradient.addColorStop(0, presentation.coverColor)
-    gradient.addColorStop(1, presentation.coverColor)
+    gradient.addColorStop(0, surfaceColor)
+    gradient.addColorStop(1, surfaceColor)
     context.fillStyle = gradient
     context.fillRect(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
     context.strokeStyle = coverInk
