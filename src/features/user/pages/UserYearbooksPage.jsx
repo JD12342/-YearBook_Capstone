@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { useOutletContext } from 'react-router-dom'
 import { useScrollReveal } from '../../public/hooks/useScrollReveal.js'
@@ -25,12 +26,12 @@ export function UserYearbooksPage() {
   return (
     <div className="user-route-page user-route-yearbooks">
       <UserYearbookShelf yearbooks={content.yearbooks} onFaceSearch={() => setIsFaceSearchOpen(true)} />
-      {isFaceSearchOpen && <div className="yearbook-face-search-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsFaceSearchOpen(false) }}>
+      {isFaceSearchOpen && createPortal(<div className="yearbook-face-search-overlay" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setIsFaceSearchOpen(false) }}>
         <section className="yearbook-face-search-dialog" role="dialog" aria-modal="true" aria-label="Search the yearbook archive">
           <button className="yearbook-face-search-close" type="button" aria-label="Close face search" onClick={() => setIsFaceSearchOpen(false)}><X size={24} /></button>
           <UserFaceSearchPage embedded />
         </section>
-      </div>}
+      </div>, document.body)}
     </div>
   )
 }
