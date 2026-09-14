@@ -23,7 +23,7 @@ const recordTypes = {
   },
   memories: {
     label: 'Memories', singular: 'section memory', collection: 'memories', icon: Images,
-    description: 'Publish one full-width memory image for each section and batch.',
+    description: 'Publish up to four memory photos for each section and batch.',
     defaults: { title: '', schoolYearId: '', schoolYearName: '', sectionId: '', sectionName: '', themeColor: '#d17c87', status: 'draft', images: [] }, statuses: ['draft', 'published', 'archived'], publicStatus: 'published',
   },
   alumni: {
@@ -59,9 +59,9 @@ export function ContentManagementPage() {
   const [removeImage, setRemoveImage] = useState(false)
   const [schoolYears, setSchoolYears] = useState([])
   const [sections, setSections] = useState([])
-  const [memoryFiles, setMemoryFiles] = useState([null, null, null])
-  const [memoryImages, setMemoryImages] = useState([null, null, null])
-  const [memoryPreviews, setMemoryPreviews] = useState(['', '', ''])
+  const [memoryFiles, setMemoryFiles] = useState([null, null, null, null])
+  const [memoryImages, setMemoryImages] = useState([null, null, null, null])
+  const [memoryPreviews, setMemoryPreviews] = useState(['', '', '', ''])
   const config = recordTypes[activeType]
   const ActiveIcon = config.icon
 
@@ -99,9 +99,9 @@ export function ContentManagementPage() {
     setImagePreview('')
     setRemoveImage(false)
     memoryPreviews.forEach((url) => { if (url.startsWith('blob:')) URL.revokeObjectURL(url) })
-    setMemoryFiles([null, null, null])
-    setMemoryImages([null, null, null])
-    setMemoryPreviews(['', '', ''])
+    setMemoryFiles([null, null, null, null])
+    setMemoryImages([null, null, null, null])
+    setMemoryPreviews(['', '', '', ''])
     setError('')
   }
 
@@ -111,10 +111,10 @@ export function ContentManagementPage() {
     setImageFile(null)
     setImagePreview(record?.imageUrl || '')
     setRemoveImage(false)
-    const primaryImage = record?.images?.[0] || null
-    setMemoryFiles([null, null, null])
-    setMemoryImages([primaryImage, null, null])
-    setMemoryPreviews([primaryImage?.url || '', '', ''])
+    const savedImages = Array.from({ length: 4 }, (_, index) => record?.images?.[index] || null)
+    setMemoryFiles([null, null, null, null])
+    setMemoryImages(savedImages)
+    setMemoryPreviews(savedImages.map((image) => image?.url || ''))
     setError('')
     setSuccess('')
     setIsFormOpen(true)
@@ -173,7 +173,7 @@ export function ContentManagementPage() {
       if (!payload.schoolYearId || !payload.sectionId) return 'Choose a batch and section.'
       const duplicate = records.some((record) => record.id !== editingRecord?.id && record.schoolYearId === payload.schoolYearId && record.sectionId === payload.sectionId)
       if (duplicate) return 'This section already has a memory gallery for the selected batch.'
-      if (memoryPreviews.filter(Boolean).length !== 1) return 'Add one memory picture for this section.'
+      if (!memoryPreviews.some(Boolean)) return 'Add at least one memory picture for this section.'
       return ''
     }
     if (!(payload.title || payload.fullName)) return activeType === 'alumni' ? 'Alumni name is required.' : 'Title is required.'
@@ -194,11 +194,11 @@ export function ContentManagementPage() {
       if (!recordId) recordId = await createAdminRecord(config.collection, (imageFile || memoryFiles.some(Boolean)) ? { ...payload, status: 'draft' } : payload)
       if (activeType === 'memories') {
         const nextImages = []
-        for (let index = 0; index < 1; index += 1) {
+        for (let index = 0; index < 4; index += 1) {
           const uploaded = memoryFiles[index] ? await uploadContentImage({ file: memoryFiles[index], collectionName: config.collection, recordId, slot: `highlight-${index + 1}` }) : memoryImages[index]
-          nextImages.push(uploaded)
+          if (uploaded) nextImages.push(uploaded)
         }
-        const legacyImages = (editingRecord?.images || []).slice(1)
+        const legacyImages = (editingRecord?.images || []).slice(4)
         await updateAdminRecord(config.collection, recordId, { ...payload, images: [...nextImages, ...legacyImages] })
       } else {
         let image = null
@@ -310,7 +310,7 @@ export function ContentManagementPage() {
             <label className="form-field"><span>Section</span><Select value={form.sectionId || ''} onChange={(event) => { const section = sections.find((item) => item.id === event.target.value); setForm((current) => ({ ...current, sectionId: event.target.value, sectionName: section?.code || section?.name || '' })) }} required disabled={!form.schoolYearId}><option value="">Choose section</option>{sections.filter((section) => section.schoolYearId === form.schoolYearId).map((section) => <option value={section.id} key={section.id}>{section.code || section.name}</option>)}</Select></label>
             <label className="form-field memory-color-field"><span>Gallery accent color</span><div><input type="color" value={form.themeColor || '#d17c87'} onChange={(event) => setValue('themeColor', event.target.value)} /><Input value={form.themeColor || '#d17c87'} onChange={(event) => setValue('themeColor', event.target.value)} aria-label="Gallery accent color value" /></div></label>
             <label className="form-field"><span>Status</span><Select value={form.status || ''} onChange={(event) => setValue('status', event.target.value)}>{config.statuses.map((status) => <option value={status} key={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}</Select></label>
-            <div className="memory-admin-highlights memory-admin-single span-2"><div><strong>Main memory image</strong><span>Upload one complete picture. It will be shown at its original proportion without cropping.</span></div><div className="memory-admin-slots">{[0].map((index) => <label className={memoryPreviews[index] ? 'has-image' : ''} key={index}><input type="file" accept="image/*" onChange={(event) => chooseMemoryImage(index, event.target.files?.[0])} /><span>{memoryPreviews[index] ? <img src={memoryPreviews[index]} alt="Memory preview" /> : <><ImagePlus size={23} /><strong>Choose picture</strong></>}</span>{memoryPreviews[index] && <button type="button" onClick={(event) => { event.preventDefault(); removeMemoryImage(index) }}>Remove</button>}</label>)}</div></div>
+            <div className="memory-admin-highlights span-2"><div><strong>Memory photos</strong><span>Add one to four portrait or landscape pictures. Their natural shapes are preserved.</span></div><div className="memory-admin-slots">{[0, 1, 2, 3].map((index) => <label className={memoryPreviews[index] ? 'has-image' : ''} key={index}><input type="file" accept="image/*" onChange={(event) => chooseMemoryImage(index, event.target.files?.[0])} /><span>{memoryPreviews[index] ? <img src={memoryPreviews[index]} alt="Memory preview" /> : <><ImagePlus size={23} /><strong>Choose picture</strong></>}</span>{memoryPreviews[index] && <button type="button" onClick={(event) => { event.preventDefault(); removeMemoryImage(index) }}>Remove</button>}</label>)}</div></div>
           </> : activeType === 'alumni' ? <>
             <label className="form-field span-2"><span>Full name</span><Input value={form.fullName || ''} onChange={(event) => setValue('fullName', event.target.value)} required /></label>
             <label className="form-field"><span>Graduation year</span><Input value={form.graduationYear || ''} onChange={(event) => setValue('graduationYear', event.target.value)} placeholder="2024 or 2023-2024" /></label>

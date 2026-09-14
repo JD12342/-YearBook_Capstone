@@ -707,3 +707,36 @@
   .memories-gallery-hero::after { background: linear-gradient(180deg, color-mix(in srgb, #fbf5e9 88%, var(--memory-accent)) 0 62%, color-mix(in srgb, #fbf5e9 35%, transparent)); }
   .memories-gallery-hero > p { align-self: end; }
 }
+
+
+/* Uneven editorial photo wall and framed lightbox. */
+.memory-photo-wall { columns: 4 260px; column-gap: clamp(16px, 2vw, 30px); padding: clamp(8px, 1.2vw, 18px); perspective: 1600px; }
+.memory-wall-card { display: inline-block; width: 100%; break-inside: avoid; margin: 0 0 clamp(18px, 2.2vw, 34px); padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: zoom-in; transform: rotate(var(--card-tilt)) translateZ(0); transform-origin: center; transition: transform 240ms ease, filter 240ms ease; }
+.memory-wall-card:nth-child(3n + 1) { width: 94%; }
+.memory-wall-card:nth-child(4n + 2) { width: 100%; margin-left: auto; }
+.memory-wall-card:nth-child(5n + 4) { width: 90%; margin-left: 5%; }
+.memory-wall-card:hover, .memory-wall-card:focus-visible { z-index: 2; outline: none; filter: brightness(1.035); transform: rotate(0) translateY(-10px) translateZ(34px) scale(1.018); }
+.memory-wall-card figure { position: relative; margin: 0; padding: clamp(7px, .8vw, 12px) clamp(7px, .8vw, 12px) clamp(28px, 3vw, 45px); border: 1px solid rgba(68,48,36,.18); background: linear-gradient(145deg, #fffdf8, #eee2d3); box-shadow: 0 4px 0 rgba(255,255,255,.7) inset, 0 15px 20px rgba(54,38,25,.15), 0 34px 55px rgba(54,38,25,.12); transform-style: preserve-3d; }
+.memory-wall-card figure::after { position: absolute; right: -8px; bottom: 8px; width: 8px; height: calc(100% - 13px); background: linear-gradient(90deg, color-mix(in srgb, var(--card-accent) 45%, #8f7965), #685b4e); content: ''; transform: skewY(45deg); transform-origin: left bottom; }
+.memory-wall-card img { display: block; width: 100%; height: auto; background: #e6ddd2; }
+.memory-wall-card figcaption { position: absolute; right: 12px; bottom: 9px; left: 12px; overflow: hidden; color: #534940; font: 700 .61rem/1.2 Arial, sans-serif; letter-spacing: .12em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
+.memory-lightbox { position: fixed; z-index: 2000; inset: 0; display: grid; overflow: auto; place-items: center; padding: clamp(18px, 4vw, 56px); background: radial-gradient(circle at center, rgba(17,62,50,.83), rgba(3,24,19,.96)); backdrop-filter: blur(15px); animation: memory-fade-in 180ms ease both; }
+.memory-lightbox-panel { display: grid; width: min(1180px, 94vw); min-height: min(800px, 88vh); place-items: center; perspective: 1800px; }
+.memory-lightbox-actions { position: fixed; z-index: 2; top: clamp(18px, 3vw, 35px); right: clamp(18px, 3vw, 35px); display: flex; gap: 10px; }
+.memory-lightbox-actions button { display: inline-flex; min-height: 48px; align-items: center; justify-content: center; gap: 9px; padding: 0 18px; border: 1px solid rgba(255,255,255,.28); border-radius: 999px; background: rgba(4,43,33,.7); color: #fff; font-size: .75rem; font-weight: 800; cursor: pointer; backdrop-filter: blur(12px); }
+.memory-lightbox-actions button:hover { background: color-mix(in srgb, var(--memory-accent) 55%, #073d30); }
+.memory-lightbox-actions button:disabled { cursor: wait; opacity: .66; }
+.memory-lightbox-actions .memory-lightbox-close { width: 48px; padding: 0; }
+.memory-lightbox-frame { position: relative; max-width: min(100%, 1080px); margin: 42px auto 0; padding: clamp(10px, 1.4vw, 20px) clamp(10px, 1.4vw, 20px) clamp(48px, 5vw, 70px); border: clamp(5px, .7vw, 10px) solid #ead9c2; background: #fffaf1; box-shadow: -2px 2px 0 #fff inset, 8px 12px 0 color-mix(in srgb, var(--card-accent) 50%, #675443), 28px 42px 80px rgba(0,0,0,.52); transform: rotateX(1.2deg) rotateY(-3deg); transform-style: preserve-3d; animation: memory-frame-in 360ms cubic-bezier(.2,.8,.2,1) both; }
+.memory-lightbox-frame::after { position: absolute; right: -19px; top: 8px; width: 10px; height: calc(100% - 4px); background: linear-gradient(90deg, #765f4d, #3e332b); content: ''; transform: skewY(45deg); transform-origin: left top; }
+.memory-lightbox-frame img { display: block; max-width: min(82vw, 1000px); max-height: 72vh; width: auto; height: auto; object-fit: contain; }
+.memory-lightbox-frame figcaption { position: absolute; right: 20px; bottom: 13px; left: 20px; display: flex; align-items: end; justify-content: space-between; gap: 20px; color: #473e35; }
+.memory-lightbox-frame figcaption span { font: 400 clamp(1rem, 2vw, 1.5rem) Georgia, serif; }
+.memory-lightbox-frame figcaption small { color: color-mix(in srgb, var(--card-accent) 75%, #40382f); font-size: .64rem; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
+@keyframes memory-fade-in { from { opacity: 0; } }
+@keyframes memory-frame-in { from { opacity: 0; transform: rotateX(7deg) rotateY(-12deg) translateY(35px) scale(.94); } }
+
+@media (max-width: 1180px) { .memory-photo-wall { columns: 3 230px; } }
+@media (max-width: 780px) { .memory-photo-wall { columns: 2 170px; column-gap: 14px; padding: 2px; } .memory-wall-card { margin-bottom: 16px; } }
+@media (max-width: 480px) { .memory-photo-wall { columns: 1; padding-inline: 8px; } .memory-wall-card:nth-child(n) { width: 100%; margin-left: 0; } .memory-lightbox-actions button:first-child { padding-inline: 14px; } .memory-lightbox-frame { transform: rotateX(.6deg) rotateY(-1.5deg); } .memory-lightbox-frame img { max-width: 78vw; max-height: 68vh; } }
+@media (prefers-reduced-motion: reduce) { .memory-wall-card, .memory-lightbox, .memory-lightbox-frame { animation: none; transition: none; } }
