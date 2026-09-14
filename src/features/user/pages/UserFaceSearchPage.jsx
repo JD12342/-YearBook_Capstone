@@ -80,6 +80,7 @@ export function UserFaceSearchPage({ embedded = false }) {
     stopCamera()
     clearPhoto()
     setSourceMode('upload')
+    window.setTimeout(() => inputRef.current?.click(), 0)
   }
 
   const chooseFile = (nextFile) => {
@@ -196,14 +197,14 @@ export function UserFaceSearchPage({ embedded = false }) {
               <ImagePlus size={34} /><strong>Select or take a photo</strong><span>JPG or PNG · up to 10 MB</span>
             </button>
           )}
-          <div className="face-search-actions">
-            {sourceMode === 'camera' && !file && <button className="face-search-primary" type="button" disabled={cameraStarting} onClick={cameraReady ? captureCameraPhoto : startCamera}><Camera size={18} />{cameraStarting ? 'Starting camera…' : cameraReady ? 'Take photo' : 'Start camera'}</button>}
+          {(file || (sourceMode === 'camera' && cameraReady)) && <div className="face-search-actions">
+            {sourceMode === 'camera' && !file && <button className="face-search-primary" type="button" onClick={captureCameraPhoto}><Camera size={18} />Take photo</button>}
             {sourceMode === 'camera' && file && <button className="face-search-secondary" type="button" onClick={retakeCameraPhoto}>Retake photo</button>}
             {sourceMode === 'upload' && file && <button className="face-search-secondary" type="button" onClick={() => inputRef.current?.click()}>Choose another</button>}
             <button className="face-search-primary" type="button" disabled={!file || status === 'loading' || status === 'searching' || !portraitCount} onClick={runSearch}>
               {isFaceMode ? <ScanFace size={18} /> : <Images size={18} />}{status === 'loading' ? 'Preparing secure search…' : status === 'searching' ? `Comparing ${progressPercent}%` : isFaceMode ? 'Search by face' : 'Search by image'}
             </button>
-          </div>
+          </div>}
           {status === 'searching' && <div className="face-search-progress" aria-label={`${progressPercent}% complete`}><span style={{ width: `${progressPercent}%` }} /></div>}
           {error && <div className="face-search-error" role="alert">{error}</div>}
         </div>
