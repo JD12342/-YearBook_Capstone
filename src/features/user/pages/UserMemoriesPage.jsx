@@ -27,9 +27,12 @@ export function UserMemoriesPage() {
 
   useScrollReveal('.user-memories-page [data-reveal]')
   const selected = batches.find((batch) => batch.label === activeBatch) || batches[0]
+  const featureMemory = selected?.memories?.[0]
+  const accentColor = featureMemory?.themeColor || '#d17c87'
+  const heroImage = featureMemory?.images?.[0]?.url
 
-  return <div className="user-route-page user-memories-page">
-    <header className="memories-hero" data-reveal>
+  return <div className="user-route-page user-memories-page" style={{ '--memory-accent': accentColor }}>
+    <header className="memories-hero memories-gallery-hero" data-reveal style={{ '--memory-hero-image': heroImage ? `url(${JSON.stringify(heroImage)})` : 'none' }}>
       <div><span className="user-eyebrow"><Heart size={14} /> THE MOMENTS WE KEEP</span><h1>Little memories,<br /><em>kept forever.</em></h1></div>
       <p>One defining picture from every section, selected by the school and kept together by graduating batch.</p>
     </header>
@@ -40,7 +43,7 @@ export function UserMemoriesPage() {
       </nav>
       <main className="memory-section-list memory-single-list" aria-live="polite">
         {selected.memories.map((memory, index) => <section className="memory-section memory-single-section" key={memory.id} data-reveal style={{ '--memory-delay': `${Math.min(index * 80, 320)}ms` }}>
-          {memory.images?.[0]?.url ? <figure className="memory-single-photo"><img src={memory.images[0].url} alt={`${memory.sectionName || memory.title} memory`} loading="lazy" /><figcaption><span>{memory.sectionName || memory.title}</span>{memory.title && memory.title !== memory.sectionName && <strong>{memory.title}</strong>}</figcaption></figure> : <div className="memory-single-missing"><Images size={32} />Picture unavailable</div>}
+          {memory.images?.[0]?.url ? <figure className="memory-single-photo"><img src={memory.images[0].url} alt={`${memory.sectionName || memory.title} memory`} loading="lazy" /><figcaption><span>{memory.sectionName || memory.title}</span></figcaption></figure> : <div className="memory-single-missing"><Images size={32} />Picture unavailable</div>}
         </section>)}
       </main>
     </> : <section className="memory-empty" data-reveal><Images size={39} /><div><strong>The first memories are being gathered.</strong><p>When an administrator publishes a picture for a section, its batch gallery will appear here.</p></div><Camera size={22} /></section>}

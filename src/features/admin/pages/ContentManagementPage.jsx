@@ -24,7 +24,7 @@ const recordTypes = {
   memories: {
     label: 'Memories', singular: 'section memory', collection: 'memories', icon: Images,
     description: 'Publish one full-width memory image for each section and batch.',
-    defaults: { title: '', schoolYearId: '', schoolYearName: '', sectionId: '', sectionName: '', body: '', status: 'draft', images: [] }, statuses: ['draft', 'published', 'archived'], publicStatus: 'published',
+    defaults: { title: '', schoolYearId: '', schoolYearName: '', sectionId: '', sectionName: '', themeColor: '#d17c87', status: 'draft', images: [] }, statuses: ['draft', 'published', 'archived'], publicStatus: 'published',
   },
   alumni: {
     label: 'Alumni records', singular: 'alumni record', collection: 'alumni', icon: UsersRound,
@@ -163,14 +163,14 @@ export function ContentManagementPage() {
   } : activeType === 'content' ? {
     title: text(form.title), category: text(form.category), body: text(form.body), status: form.status,
   } : activeType === 'memories' ? {
-    title: text(form.title), schoolYearId: form.schoolYearId, schoolYearName: text(form.schoolYearName), sectionId: form.sectionId, sectionName: text(form.sectionName), body: text(form.body), status: form.status,
+    title: text(form.sectionName), schoolYearId: form.schoolYearId, schoolYearName: text(form.schoolYearName), sectionId: form.sectionId, sectionName: text(form.sectionName), themeColor: form.themeColor || '#d17c87', status: form.status,
   } : {
     fullName: text(form.fullName), graduationYear: text(form.graduationYear), email: text(form.email), occupation: text(form.occupation), biography: text(form.biography), status: form.status,
   }
 
   const validate = (payload) => {
     if (activeType === 'memories') {
-      if (!payload.title || !payload.schoolYearId || !payload.sectionId) return 'Add a title, batch, and section.'
+      if (!payload.schoolYearId || !payload.sectionId) return 'Choose a batch and section.'
       const duplicate = records.some((record) => record.id !== editingRecord?.id && record.schoolYearId === payload.schoolYearId && record.sectionId === payload.sectionId)
       if (duplicate) return 'This section already has a memory gallery for the selected batch.'
       if (memoryPreviews.filter(Boolean).length !== 1) return 'Add one memory picture for this section.'
@@ -306,11 +306,10 @@ export function ContentManagementPage() {
         {error && <div className="form-error" role="alert">{error}</div>}
         <div className="field-grid">
           {activeType === 'memories' ? <>
-            <label className="form-field span-2"><span>Gallery title</span><Input value={form.title || ''} onChange={(event) => setValue('title', event.target.value)} placeholder="The days we will always remember" required /></label>
             <label className="form-field"><span>Graduating batch</span><Select value={form.schoolYearId || ''} onChange={(event) => { const year = schoolYears.find((item) => item.id === event.target.value); setForm((current) => ({ ...current, schoolYearId: event.target.value, schoolYearName: year?.name || '', sectionId: '', sectionName: '' })) }} required><option value="">Choose batch</option>{schoolYears.map((year) => <option value={year.id} key={year.id}>{year.name}</option>)}</Select></label>
             <label className="form-field"><span>Section</span><Select value={form.sectionId || ''} onChange={(event) => { const section = sections.find((item) => item.id === event.target.value); setForm((current) => ({ ...current, sectionId: event.target.value, sectionName: section?.code || section?.name || '' })) }} required disabled={!form.schoolYearId}><option value="">Choose section</option>{sections.filter((section) => section.schoolYearId === form.schoolYearId).map((section) => <option value={section.id} key={section.id}>{section.code || section.name}</option>)}</Select></label>
+            <label className="form-field memory-color-field"><span>Gallery accent color</span><div><input type="color" value={form.themeColor || '#d17c87'} onChange={(event) => setValue('themeColor', event.target.value)} /><Input value={form.themeColor || '#d17c87'} onChange={(event) => setValue('themeColor', event.target.value)} aria-label="Gallery accent color value" /></div></label>
             <label className="form-field"><span>Status</span><Select value={form.status || ''} onChange={(event) => setValue('status', event.target.value)}>{config.statuses.map((status) => <option value={status} key={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}</Select></label>
-            <label className="form-field span-2"><span>Memory caption</span><textarea className="field content-textarea" value={form.body || ''} onChange={(event) => setValue('body', event.target.value)} placeholder="Write a short note about this section and its favorite moment" /></label>
             <div className="memory-admin-highlights memory-admin-single span-2"><div><strong>Main memory image</strong><span>Upload one complete picture. It will be shown at its original proportion without cropping.</span></div><div className="memory-admin-slots">{[0].map((index) => <label className={memoryPreviews[index] ? 'has-image' : ''} key={index}><input type="file" accept="image/*" onChange={(event) => chooseMemoryImage(index, event.target.files?.[0])} /><span>{memoryPreviews[index] ? <img src={memoryPreviews[index]} alt="Memory preview" /> : <><ImagePlus size={23} /><strong>Choose picture</strong></>}</span>{memoryPreviews[index] && <button type="button" onClick={(event) => { event.preventDefault(); removeMemoryImage(index) }}>Remove</button>}</label>)}</div></div>
           </> : activeType === 'alumni' ? <>
             <label className="form-field span-2"><span>Full name</span><Input value={form.fullName || ''} onChange={(event) => setValue('fullName', event.target.value)} required /></label>
