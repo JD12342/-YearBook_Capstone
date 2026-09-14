@@ -2095,3 +2095,8 @@ button { cursor: pointer; }
 .memory-background-preview { position: relative; min-height: 170px; overflow: hidden; border: 1px solid #d9e3dd; border-radius: 14px; background: #edf3ef; }
 .memory-background-preview img { width: 100%; height: 210px; object-fit: cover; }
 .memory-background-preview button { position: absolute; right: 12px; bottom: 12px; }
+
+
+.memory-admin-single .memory-admin-slots { grid-template-columns: minmax(0, 1fr); }
+.memory-admin-single .memory-admin-slots > label { min-height: 280px; }
+.memory-admin-single .memory-admin-slots img { object-fit: contain; background: #edf3ef; }

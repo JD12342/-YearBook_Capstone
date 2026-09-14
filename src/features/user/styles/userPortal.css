@@ -666,3 +666,21 @@
   .memory-section-plaque { top: 18px; left: 18px; }
   .memory-layout-gallery-wall .memory-triptych, .memory-layout-cinema .memory-triptych { align-content: center; }
 }
+
+
+/* One complete memory image per section. */
+.user-memories-page { padding: clamp(60px, 8vw, 116px) max(22px, calc((100% - 1500px) / 2)) 120px; background: #fbf5e9; }
+.memory-single-list { gap: clamp(46px, 7vw, 92px); }
+.memory-single-section, .memory-single-section:nth-child(even) { display: block; width: 100%; padding: 0; background: transparent; }
+.memory-single-photo { position: relative; width: 100%; overflow: hidden; margin: 0; border: 1px solid rgba(80,60,43,.16); background: #e9ded0; box-shadow: 0 28px 70px rgba(57,40,27,.17); }
+.memory-single-photo img { display: block; width: 100%; height: auto; object-fit: contain; }
+.memory-single-photo figcaption { position: absolute; right: clamp(16px, 2.5vw, 38px); bottom: clamp(16px, 2.5vw, 38px); max-width: min(360px, calc(100% - 32px)); padding: 13px 18px; border: 1px solid rgba(255,255,255,.45); border-radius: 999px; background: rgba(8,47,36,.78); color: #fff; text-align: right; backdrop-filter: blur(12px); }
+.memory-single-photo figcaption span, .memory-single-photo figcaption strong { display: block; }
+.memory-single-photo figcaption span { font-size: .64rem; font-weight: 850; letter-spacing: .13em; text-transform: uppercase; }
+.memory-single-photo figcaption strong { margin-top: 3px; color: #bcebd3; font: 400 .78rem Georgia, serif; }
+.memory-single-missing { display: flex; min-height: 360px; align-items: center; justify-content: center; gap: 10px; border: 1px dashed #d8bcaa; color: #9c6b6d; }
+
+@media (max-width: 620px) {
+  .user-memories-page { padding: 54px 18px 80px; }
+  .memory-single-photo figcaption { right: 12px; bottom: 12px; padding: 9px 13px; }
+}
