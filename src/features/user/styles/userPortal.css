@@ -614,3 +614,26 @@
   .yearbook-face-search-dialog .user-face-search-page.is-embedded { padding: 74px 18px 34px; }
   .yearbook-face-search-dialog .face-search-heading h1 { font-size: clamp(2.5rem, 13vw, 3.7rem); }
 }
+
+
+/* Mixed-orientation memory compositions with administrator-selected backgrounds. */
+.memory-section .memory-triptych { background-color: var(--memory-bg, #f2e7d5); background-image: linear-gradient(rgba(255,255,255,.08), rgba(255,255,255,.08)), var(--memory-bg-image, none); background-position: center; background-size: cover; }
+.memory-layout-gallery-wall .memory-triptych { display: flex; min-height: 460px; align-items: center; justify-content: center; gap: clamp(12px, 2vw, 25px); padding: clamp(24px, 4vw, 52px); box-shadow: inset 0 0 0 1px rgba(78,58,44,.13), 0 25px 50px rgba(62,42,32,.15); }
+.memory-layout-gallery-wall figure { flex: 1 1 0; max-width: 40%; overflow: visible; padding: 8px; border: 5px solid #f7f0e5; outline: 2px solid #6d5543; background: #201c19; box-shadow: 0 13px 25px rgba(35,24,18,.24); }
+.memory-layout-gallery-wall figure:nth-child(2) { transform: translateY(-8%); }
+.memory-layout-gallery-wall figure.is-portrait { flex-grow: .72; }
+.memory-layout-gallery-wall figure.is-landscape { flex-grow: 1.25; }
+.memory-layout-gallery-wall figure img { display: block; width: 100%; height: auto; max-height: 350px; object-fit: contain; }
+.memory-layout-cinema .memory-triptych { display: flex; min-height: 420px; align-items: center; gap: 7px; padding: 38px 20px; border-top: 11px dotted #f7e9ce; border-bottom: 11px dotted #f7e9ce; background-color: #282724; background-image: linear-gradient(rgba(0,0,0,.32), rgba(0,0,0,.32)), var(--memory-bg-image, none); box-shadow: 0 25px 48px rgba(42,34,29,.25); }
+.memory-layout-cinema figure { flex: 1 1 0; box-shadow: none; transform: none; background: #171715; }
+.memory-layout-cinema figure.is-portrait { flex-grow: .68; }
+.memory-layout-cinema figure.is-landscape { flex-grow: 1.3; }
+.memory-layout-cinema figure img { width: 100%; height: auto; max-height: 330px; object-fit: contain; }
+.memory-layout-cinema figure > span { background: #312f2bcc; color: #fff4da; }
+.memory-layout-polaroid img { object-fit: contain; background: color-mix(in srgb, var(--memory-bg, #f2e7d5), #fff 25%); }
+
+@media (max-width: 560px) {
+  .memory-layout-gallery-wall .memory-triptych, .memory-layout-cinema .memory-triptych { min-height: 0; flex-wrap: wrap; padding: 30px 18px; }
+  .memory-layout-gallery-wall figure, .memory-layout-cinema figure { flex-basis: 42%; max-width: 70%; }
+  .memory-layout-gallery-wall figure:nth-child(2) { transform: none; }
+}

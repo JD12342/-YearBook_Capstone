@@ -24,7 +24,7 @@ const recordTypes = {
   memories: {
     label: 'Memories', singular: 'section memory', collection: 'memories', icon: Images,
     description: 'Publish exactly three highlight photos for each section and batch.',
-    defaults: { title: '', schoolYearId: '', schoolYearName: '', sectionId: '', sectionName: '', body: '', layout: 'mosaic', status: 'draft', images: [] }, statuses: ['draft', 'published', 'archived'], publicStatus: 'published',
+    defaults: { title: '', schoolYearId: '', schoolYearName: '', sectionId: '', sectionName: '', body: '', layout: 'gallery-wall', backgroundMode: 'color', backgroundColor: '#f2e7d5', status: 'draft', images: [] }, statuses: ['draft', 'published', 'archived'], publicStatus: 'published',
   },
   alumni: {
     label: 'Alumni records', singular: 'alumni record', collection: 'alumni', icon: UsersRound,
@@ -62,6 +62,9 @@ export function ContentManagementPage() {
   const [memoryFiles, setMemoryFiles] = useState([null, null, null])
   const [memoryImages, setMemoryImages] = useState([null, null, null])
   const [memoryPreviews, setMemoryPreviews] = useState(['', '', ''])
+  const [memoryBackgroundFile, setMemoryBackgroundFile] = useState(null)
+  const [memoryBackgroundPreview, setMemoryBackgroundPreview] = useState('')
+  const [removeMemoryBackground, setRemoveMemoryBackground] = useState(false)
   const config = recordTypes[activeType]
   const ActiveIcon = config.icon
 
@@ -102,6 +105,10 @@ export function ContentManagementPage() {
     setMemoryFiles([null, null, null])
     setMemoryImages([null, null, null])
     setMemoryPreviews(['', '', ''])
+    if (memoryBackgroundPreview.startsWith('blob:')) URL.revokeObjectURL(memoryBackgroundPreview)
+    setMemoryBackgroundFile(null)
+    setMemoryBackgroundPreview('')
+    setRemoveMemoryBackground(false)
     setError('')
   }
 
@@ -115,6 +122,9 @@ export function ContentManagementPage() {
     setMemoryFiles([null, null, null])
     setMemoryImages(savedImages)
     setMemoryPreviews(savedImages.map((image) => image?.url || ''))
+    setMemoryBackgroundFile(null)
+    setMemoryBackgroundPreview(record?.backgroundImageUrl || '')
+    setRemoveMemoryBackground(false)
     setError('')
     setSuccess('')
     setIsFormOpen(true)
@@ -158,12 +168,31 @@ export function ContentManagementPage() {
     setMemoryPreviews((current) => current.map((value, slot) => slot === index ? '' : value))
   }
 
+  const chooseMemoryBackground = (file) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) { setError('Choose a valid background image.'); return }
+    if (file.size > 10 * 1024 * 1024) { setError('Choose a background smaller than 10 MB.'); return }
+    if (memoryBackgroundPreview.startsWith('blob:')) URL.revokeObjectURL(memoryBackgroundPreview)
+    setMemoryBackgroundFile(file)
+    setMemoryBackgroundPreview(URL.createObjectURL(file))
+    setRemoveMemoryBackground(false)
+    setValue('backgroundMode', 'image')
+    setError('')
+  }
+
+  const removeBackground = () => {
+    if (memoryBackgroundPreview.startsWith('blob:')) URL.revokeObjectURL(memoryBackgroundPreview)
+    setMemoryBackgroundFile(null)
+    setMemoryBackgroundPreview('')
+    setRemoveMemoryBackground(true)
+  }
+
   const buildPayload = () => activeType === 'announcements' ? {
     title: text(form.title), body: text(form.body), status: form.status,
   } : activeType === 'content' ? {
     title: text(form.title), category: text(form.category), body: text(form.body), status: form.status,
   } : activeType === 'memories' ? {
-    title: text(form.title), schoolYearId: form.schoolYearId, schoolYearName: text(form.schoolYearName), sectionId: form.sectionId, sectionName: text(form.sectionName), body: text(form.body), layout: form.layout || 'mosaic', status: form.status,
+    title: text(form.title), schoolYearId: form.schoolYearId, schoolYearName: text(form.schoolYearName), sectionId: form.sectionId, sectionName: text(form.sectionName), body: text(form.body), layout: form.layout || 'gallery-wall', backgroundMode: form.backgroundMode || 'color', backgroundColor: form.backgroundColor || '#f2e7d5', status: form.status,
   } : {
     fullName: text(form.fullName), graduationYear: text(form.graduationYear), email: text(form.email), occupation: text(form.occupation), biography: text(form.biography), status: form.status,
   }
@@ -174,6 +203,7 @@ export function ContentManagementPage() {
       const duplicate = records.some((record) => record.id !== editingRecord?.id && record.schoolYearId === payload.schoolYearId && record.sectionId === payload.sectionId)
       if (duplicate) return 'This section already has a memory gallery for the selected batch.'
       if (memoryPreviews.filter(Boolean).length !== 3) return 'Add exactly three highlight pictures for this section.'
+      if (payload.backgroundMode === 'image' && !memoryBackgroundPreview) return 'Choose a custom background image or switch the background to a color.'
       return ''
     }
     if (!(payload.title || payload.fullName)) return activeType === 'alumni' ? 'Alumni name is required.' : 'Title is required.'
@@ -191,14 +221,21 @@ export function ContentManagementPage() {
     setError('')
     try {
       let recordId = editingRecord?.id
-      if (!recordId) recordId = await createAdminRecord(config.collection, (imageFile || memoryFiles.some(Boolean)) ? { ...payload, status: 'draft' } : payload)
+      if (!recordId) recordId = await createAdminRecord(config.collection, (imageFile || memoryFiles.some(Boolean) || memoryBackgroundFile) ? { ...payload, status: 'draft' } : payload)
       if (activeType === 'memories') {
         const nextImages = []
         for (let index = 0; index < 3; index += 1) {
           const uploaded = memoryFiles[index] ? await uploadContentImage({ file: memoryFiles[index], collectionName: config.collection, recordId, slot: `highlight-${index + 1}` }) : memoryImages[index]
           nextImages.push(uploaded)
         }
-        await updateAdminRecord(config.collection, recordId, { ...payload, images: nextImages })
+        let background = null
+        if (payload.backgroundMode === 'image') {
+          background = memoryBackgroundFile
+            ? await uploadContentImage({ file: memoryBackgroundFile, collectionName: config.collection, recordId, slot: 'gallery-background' })
+            : (!removeMemoryBackground && editingRecord?.backgroundImageUrl ? { url: editingRecord.backgroundImageUrl, path: editingRecord.backgroundImagePath } : null)
+        }
+        await updateAdminRecord(config.collection, recordId, { ...payload, images: nextImages, backgroundImageUrl: background?.url || '', backgroundImagePath: background?.path || '' })
+        if (editingRecord?.backgroundImagePath && editingRecord.backgroundImagePath !== background?.path) await deleteContentImage(editingRecord.backgroundImagePath).catch(() => {})
         const retainedPaths = new Set(nextImages.map((image) => image?.path).filter(Boolean))
         await Promise.all((editingRecord?.images || []).filter((image) => image?.path && !retainedPaths.has(image.path)).map((image) => deleteContentImage(image.path).catch(() => {})))
       } else {
@@ -241,6 +278,7 @@ export function ContentManagementPage() {
       await deleteAdminRecord(config.collection, pendingDelete.id)
       if (pendingDelete.imagePath) await deleteContentImage(pendingDelete.imagePath).catch(() => {})
       await Promise.all((pendingDelete.images || []).filter((image) => image?.path).map((image) => deleteContentImage(image.path).catch(() => {})))
+      if (pendingDelete.backgroundImagePath) await deleteContentImage(pendingDelete.backgroundImagePath).catch(() => {})
       setSuccess(`${pendingDelete.title || pendingDelete.fullName} was deleted.`)
       setPendingDelete(null)
     } catch (deleteError) {
@@ -309,8 +347,11 @@ export function ContentManagementPage() {
             <label className="form-field span-2"><span>Gallery title</span><Input value={form.title || ''} onChange={(event) => setValue('title', event.target.value)} placeholder="The days we will always remember" required /></label>
             <label className="form-field"><span>Graduating batch</span><Select value={form.schoolYearId || ''} onChange={(event) => { const year = schoolYears.find((item) => item.id === event.target.value); setForm((current) => ({ ...current, schoolYearId: event.target.value, schoolYearName: year?.name || '', sectionId: '', sectionName: '' })) }} required><option value="">Choose batch</option>{schoolYears.map((year) => <option value={year.id} key={year.id}>{year.name}</option>)}</Select></label>
             <label className="form-field"><span>Section</span><Select value={form.sectionId || ''} onChange={(event) => { const section = sections.find((item) => item.id === event.target.value); setForm((current) => ({ ...current, sectionId: event.target.value, sectionName: section?.code || section?.name || '' })) }} required disabled={!form.schoolYearId}><option value="">Choose section</option>{sections.filter((section) => section.schoolYearId === form.schoolYearId).map((section) => <option value={section.id} key={section.id}>{section.code || section.name}</option>)}</Select></label>
-            <label className="form-field"><span>Gallery layout</span><Select value={form.layout || 'mosaic'} onChange={(event) => setValue('layout', event.target.value)}><option value="mosaic">Playful mosaic</option><option value="polaroid">Polaroid desk</option><option value="filmstrip">Memory filmstrip</option></Select></label>
+            <label className="form-field"><span>Gallery layout</span><Select value={form.layout || 'gallery-wall'} onChange={(event) => setValue('layout', event.target.value)}><option value="gallery-wall">Framed gallery wall</option><option value="cinema">Cinema reel</option><option value="polaroid">Scrapbook polaroids</option></Select></label>
             <label className="form-field"><span>Status</span><Select value={form.status || ''} onChange={(event) => setValue('status', event.target.value)}>{config.statuses.map((status) => <option value={status} key={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}</Select></label>
+            <label className="form-field"><span>Background type</span><Select value={form.backgroundMode || 'color'} onChange={(event) => setValue('backgroundMode', event.target.value)}><option value="color">Custom color</option><option value="image">Custom image</option></Select></label>
+            {form.backgroundMode === 'color' ? <label className="form-field memory-color-field"><span>Background color</span><div><input type="color" value={form.backgroundColor || '#f2e7d5'} onChange={(event) => setValue('backgroundColor', event.target.value)} /><Input value={form.backgroundColor || '#f2e7d5'} onChange={(event) => setValue('backgroundColor', event.target.value)} aria-label="Background color value" /></div></label> : <label className="form-field"><span>Background image</span><input className="field content-image-input" type="file" accept="image/*" onChange={(event) => chooseMemoryBackground(event.target.files?.[0])} /></label>}
+            {form.backgroundMode === 'image' && memoryBackgroundPreview && <div className="memory-background-preview span-2"><img src={memoryBackgroundPreview} alt="Gallery background preview" /><Button type="button" size="sm" variant="danger" onClick={removeBackground}>Remove background</Button></div>}
             <label className="form-field span-2"><span>Memory caption</span><textarea className="field content-textarea" value={form.body || ''} onChange={(event) => setValue('body', event.target.value)} placeholder="Write a short note about this section and its favorite moments" /></label>
             <div className="memory-admin-highlights span-2"><div><strong>Top three highlights</strong><span>Exactly three pictures will appear in this section gallery.</span></div><div className="memory-admin-slots">{[0, 1, 2].map((index) => <label className={memoryPreviews[index] ? 'has-image' : ''} key={index}><input type="file" accept="image/*" onChange={(event) => chooseMemoryImage(index, event.target.files?.[0])} /><span>{memoryPreviews[index] ? <img src={memoryPreviews[index]} alt={`Highlight ${index + 1}`} /> : <><ImagePlus size={23} /><strong>Highlight {index + 1}</strong></>}</span>{memoryPreviews[index] && <button type="button" onClick={(event) => { event.preventDefault(); removeMemoryImage(index) }}>Remove</button>}</label>)}</div></div>
           </> : activeType === 'alumni' ? <>
