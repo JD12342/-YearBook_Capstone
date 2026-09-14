@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, CheckCircle2, Eye, FilePenLine, ImagePlus, Megaphone, Search, Trash2, UsersRound } from 'lucide-react'
+import { Archive, CheckCircle2, Eye, FilePenLine, ImagePlus, Images, Megaphone, Search, Trash2, UsersRound } from 'lucide-react'
 import { Badge } from '../components/ui/Badge.jsx'
 import { Button } from '../components/ui/Button.jsx'
 import { Card } from '../components/ui/Card.jsx'
@@ -8,6 +8,7 @@ import { Modal } from '../components/ui/Modal.jsx'
 import { Select } from '../components/ui/Select.jsx'
 import { createAdminRecord, deleteAdminRecord, subscribeAdminRecords, updateAdminRecord, updateAdminRecordStatus } from '../services/adminRecordService.js'
 import { deleteContentImage, uploadContentImage } from '../services/firebase/storageService.js'
+import { getSchoolYears, getSections } from '../services/schoolYearService.js'
 
 const recordTypes = {
   announcements: {
@@ -19,6 +20,11 @@ const recordTypes = {
     label: 'School content', singular: 'school story', collection: 'schoolContent', icon: FilePenLine,
     description: 'Manage stories and information displayed in School Story and Updates.',
     defaults: { title: '', category: 'School Story', body: '', status: 'draft' }, statuses: ['draft', 'published', 'archived'], publicStatus: 'published',
+  },
+  memories: {
+    label: 'Memories', singular: 'section memory', collection: 'memories', icon: Images,
+    description: 'Publish exactly three highlight photos for each section and batch.',
+    defaults: { title: '', schoolYearId: '', schoolYearName: '', sectionId: '', sectionName: '', body: '', layout: 'mosaic', status: 'draft', images: [] }, statuses: ['draft', 'published', 'archived'], publicStatus: 'published',
   },
   alumni: {
     label: 'Alumni records', singular: 'alumni record', collection: 'alumni', icon: UsersRound,
@@ -51,6 +57,11 @@ export function ContentManagementPage() {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
   const [removeImage, setRemoveImage] = useState(false)
+  const [schoolYears, setSchoolYears] = useState([])
+  const [sections, setSections] = useState([])
+  const [memoryFiles, setMemoryFiles] = useState([null, null, null])
+  const [memoryImages, setMemoryImages] = useState([null, null, null])
+  const [memoryPreviews, setMemoryPreviews] = useState(['', '', ''])
   const config = recordTypes[activeType]
   const ActiveIcon = config.icon
 
@@ -68,8 +79,13 @@ export function ContentManagementPage() {
 
   useEffect(() => () => { if (imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview) }, [imagePreview])
 
+  useEffect(() => {
+    if (activeType !== 'memories') return
+    Promise.all([getSchoolYears(), getSections()]).then(([years, sectionRecords]) => { setSchoolYears(years); setSections(sectionRecords) }).catch(() => setError('Academic choices could not be loaded.'))
+  }, [activeType])
+
   const visibleRecords = useMemo(() => records.filter((record) => {
-    const haystack = [record.title, record.fullName, record.body, record.biography, record.category, record.graduationYear, record.occupation].join(' ').toLowerCase()
+    const haystack = [record.title, record.fullName, record.body, record.biography, record.category, record.graduationYear, record.occupation, record.schoolYearName, record.sectionName].join(' ').toLowerCase()
     return (statusFilter === 'all' || record.status === statusFilter) && haystack.includes(query.trim().toLowerCase())
   }), [records, query, statusFilter])
 
@@ -82,6 +98,10 @@ export function ContentManagementPage() {
     setImageFile(null)
     setImagePreview('')
     setRemoveImage(false)
+    memoryPreviews.forEach((url) => { if (url.startsWith('blob:')) URL.revokeObjectURL(url) })
+    setMemoryFiles([null, null, null])
+    setMemoryImages([null, null, null])
+    setMemoryPreviews(['', '', ''])
     setError('')
   }
 
@@ -91,6 +111,10 @@ export function ContentManagementPage() {
     setImageFile(null)
     setImagePreview(record?.imageUrl || '')
     setRemoveImage(false)
+    const savedImages = Array.from({ length: 3 }, (_, index) => record?.images?.[index] || null)
+    setMemoryFiles([null, null, null])
+    setMemoryImages(savedImages)
+    setMemoryPreviews(savedImages.map((image) => image?.url || ''))
     setError('')
     setSuccess('')
     setIsFormOpen(true)
@@ -117,15 +141,41 @@ export function ContentManagementPage() {
     setError('')
   }
 
+  const chooseMemoryImage = (index, file) => {
+    if (!file) return
+    if (!file.type.startsWith('image/')) { setError('Choose a valid image file.'); return }
+    if (file.size > 10 * 1024 * 1024) { setError('Choose an image smaller than 10 MB.'); return }
+    const url = URL.createObjectURL(file)
+    setMemoryFiles((current) => current.map((value, slot) => slot === index ? file : value))
+    setMemoryPreviews((current) => current.map((value, slot) => { if (slot === index && value.startsWith('blob:')) URL.revokeObjectURL(value); return slot === index ? url : value }))
+    setError('')
+  }
+
+  const removeMemoryImage = (index) => {
+    if (memoryPreviews[index]?.startsWith('blob:')) URL.revokeObjectURL(memoryPreviews[index])
+    setMemoryFiles((current) => current.map((value, slot) => slot === index ? null : value))
+    setMemoryImages((current) => current.map((value, slot) => slot === index ? null : value))
+    setMemoryPreviews((current) => current.map((value, slot) => slot === index ? '' : value))
+  }
+
   const buildPayload = () => activeType === 'announcements' ? {
     title: text(form.title), body: text(form.body), status: form.status,
   } : activeType === 'content' ? {
     title: text(form.title), category: text(form.category), body: text(form.body), status: form.status,
+  } : activeType === 'memories' ? {
+    title: text(form.title), schoolYearId: form.schoolYearId, schoolYearName: text(form.schoolYearName), sectionId: form.sectionId, sectionName: text(form.sectionName), body: text(form.body), layout: form.layout || 'mosaic', status: form.status,
   } : {
     fullName: text(form.fullName), graduationYear: text(form.graduationYear), email: text(form.email), occupation: text(form.occupation), biography: text(form.biography), status: form.status,
   }
 
   const validate = (payload) => {
+    if (activeType === 'memories') {
+      if (!payload.title || !payload.schoolYearId || !payload.sectionId) return 'Add a title, batch, and section.'
+      const duplicate = records.some((record) => record.id !== editingRecord?.id && record.schoolYearId === payload.schoolYearId && record.sectionId === payload.sectionId)
+      if (duplicate) return 'This section already has a memory gallery for the selected batch.'
+      if (memoryPreviews.filter(Boolean).length !== 3) return 'Add exactly three highlight pictures for this section.'
+      return ''
+    }
     if (!(payload.title || payload.fullName)) return activeType === 'alumni' ? 'Alumni name is required.' : 'Title is required.'
     if (activeType !== 'alumni' && !payload.body) return 'Details are required before this record can be saved.'
     if (activeType === 'alumni' && payload.graduationYear && !/^\d{4}(?:-\d{4})?$/.test(payload.graduationYear)) return 'Use a graduation year such as 2024 or 2023-2024.'
@@ -141,15 +191,26 @@ export function ContentManagementPage() {
     setError('')
     try {
       let recordId = editingRecord?.id
-      if (!recordId) recordId = await createAdminRecord(config.collection, imageFile ? { ...payload, status: 'draft' } : payload)
-      let image = null
-      if (imageFile) image = await uploadContentImage({ file: imageFile, collectionName: config.collection, recordId })
-      await updateAdminRecord(config.collection, recordId, {
-        ...payload,
-        ...(image ? { imageUrl: image.url, imagePath: image.path } : {}),
-        ...(removeImage ? { imageUrl: '', imagePath: '' } : {}),
-      })
-      if ((image || removeImage) && editingRecord?.imagePath) await deleteContentImage(editingRecord.imagePath).catch(() => {})
+      if (!recordId) recordId = await createAdminRecord(config.collection, (imageFile || memoryFiles.some(Boolean)) ? { ...payload, status: 'draft' } : payload)
+      if (activeType === 'memories') {
+        const nextImages = []
+        for (let index = 0; index < 3; index += 1) {
+          const uploaded = memoryFiles[index] ? await uploadContentImage({ file: memoryFiles[index], collectionName: config.collection, recordId, slot: `highlight-${index + 1}` }) : memoryImages[index]
+          nextImages.push(uploaded)
+        }
+        await updateAdminRecord(config.collection, recordId, { ...payload, images: nextImages })
+        const retainedPaths = new Set(nextImages.map((image) => image?.path).filter(Boolean))
+        await Promise.all((editingRecord?.images || []).filter((image) => image?.path && !retainedPaths.has(image.path)).map((image) => deleteContentImage(image.path).catch(() => {})))
+      } else {
+        let image = null
+        if (imageFile) image = await uploadContentImage({ file: imageFile, collectionName: config.collection, recordId })
+        await updateAdminRecord(config.collection, recordId, {
+          ...payload,
+          ...(image ? { imageUrl: image.url, imagePath: image.path } : {}),
+          ...(removeImage ? { imageUrl: '', imagePath: '' } : {}),
+        })
+        if ((image || removeImage) && editingRecord?.imagePath) await deleteContentImage(editingRecord.imagePath).catch(() => {})
+      }
       setSuccess(`${config.singular[0].toUpperCase()}${config.singular.slice(1)} saved and synchronized.`)
       closeForm()
     } catch (submitError) {
@@ -179,6 +240,7 @@ export function ContentManagementPage() {
     try {
       await deleteAdminRecord(config.collection, pendingDelete.id)
       if (pendingDelete.imagePath) await deleteContentImage(pendingDelete.imagePath).catch(() => {})
+      await Promise.all((pendingDelete.images || []).filter((image) => image?.path).map((image) => deleteContentImage(image.path).catch(() => {})))
       setSuccess(`${pendingDelete.title || pendingDelete.fullName} was deleted.`)
       setPendingDelete(null)
     } catch (deleteError) {
@@ -221,12 +283,12 @@ export function ContentManagementPage() {
 
       {loading ? <div className="empty-state">Loading {config.label.toLowerCase()}…</div> : visibleRecords.length ? <div className="content-record-grid">
         {visibleRecords.map((record) => <article className="content-record-card" key={record.id}>
-          <div className="content-record-image">{record.imageUrl ? <img src={record.imageUrl} alt="" /> : <ActiveIcon size={28} />}</div>
+          <div className="content-record-image">{(record.imageUrl || record.images?.[0]?.url) ? <img src={record.imageUrl || record.images[0].url} alt="" /> : <ActiveIcon size={28} />}</div>
           <div className="content-record-copy">
             <div><Badge variant={record.status === config.publicStatus ? 'success' : record.status === 'archived' ? 'neutral' : 'warning'}>{record.status || 'draft'}</Badge><span>{formatDate(record)}</span></div>
             <h4>{record.title || record.fullName || 'Untitled'}</h4>
             <p>{record.body || record.biography || record.occupation || 'No details added yet.'}</p>
-            <small>{activeType === 'content' ? record.category || 'School Story' : activeType === 'alumni' ? [record.graduationYear, record.occupation].filter(Boolean).join(' · ') || 'Alumni profile' : 'Community announcement'}</small>
+            <small>{activeType === 'memories' ? [record.schoolYearName, record.sectionName, `${record.images?.length || 0} highlights`].filter(Boolean).join(' · ') : activeType === 'content' ? record.category || 'School Story' : activeType === 'alumni' ? [record.graduationYear, record.occupation].filter(Boolean).join(' · ') || 'Alumni profile' : 'Community announcement'}</small>
           </div>
           <div className="content-record-actions">
             <Button size="sm" variant="secondary" onClick={() => openForm(record)}>Edit</Button>
@@ -243,7 +305,15 @@ export function ContentManagementPage() {
       <form className="student-form content-editor-form" onSubmit={handleSubmit}>
         {error && <div className="form-error" role="alert">{error}</div>}
         <div className="field-grid">
-          {activeType === 'alumni' ? <>
+          {activeType === 'memories' ? <>
+            <label className="form-field span-2"><span>Gallery title</span><Input value={form.title || ''} onChange={(event) => setValue('title', event.target.value)} placeholder="The days we will always remember" required /></label>
+            <label className="form-field"><span>Graduating batch</span><Select value={form.schoolYearId || ''} onChange={(event) => { const year = schoolYears.find((item) => item.id === event.target.value); setForm((current) => ({ ...current, schoolYearId: event.target.value, schoolYearName: year?.name || '', sectionId: '', sectionName: '' })) }} required><option value="">Choose batch</option>{schoolYears.map((year) => <option value={year.id} key={year.id}>{year.name}</option>)}</Select></label>
+            <label className="form-field"><span>Section</span><Select value={form.sectionId || ''} onChange={(event) => { const section = sections.find((item) => item.id === event.target.value); setForm((current) => ({ ...current, sectionId: event.target.value, sectionName: section?.code || section?.name || '' })) }} required disabled={!form.schoolYearId}><option value="">Choose section</option>{sections.filter((section) => section.schoolYearId === form.schoolYearId).map((section) => <option value={section.id} key={section.id}>{section.code || section.name}</option>)}</Select></label>
+            <label className="form-field"><span>Gallery layout</span><Select value={form.layout || 'mosaic'} onChange={(event) => setValue('layout', event.target.value)}><option value="mosaic">Playful mosaic</option><option value="polaroid">Polaroid desk</option><option value="filmstrip">Memory filmstrip</option></Select></label>
+            <label className="form-field"><span>Status</span><Select value={form.status || ''} onChange={(event) => setValue('status', event.target.value)}>{config.statuses.map((status) => <option value={status} key={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}</Select></label>
+            <label className="form-field span-2"><span>Memory caption</span><textarea className="field content-textarea" value={form.body || ''} onChange={(event) => setValue('body', event.target.value)} placeholder="Write a short note about this section and its favorite moments" /></label>
+            <div className="memory-admin-highlights span-2"><div><strong>Top three highlights</strong><span>Exactly three pictures will appear in this section gallery.</span></div><div className="memory-admin-slots">{[0, 1, 2].map((index) => <label className={memoryPreviews[index] ? 'has-image' : ''} key={index}><input type="file" accept="image/*" onChange={(event) => chooseMemoryImage(index, event.target.files?.[0])} /><span>{memoryPreviews[index] ? <img src={memoryPreviews[index]} alt={`Highlight ${index + 1}`} /> : <><ImagePlus size={23} /><strong>Highlight {index + 1}</strong></>}</span>{memoryPreviews[index] && <button type="button" onClick={(event) => { event.preventDefault(); removeMemoryImage(index) }}>Remove</button>}</label>)}</div></div>
+          </> : activeType === 'alumni' ? <>
             <label className="form-field span-2"><span>Full name</span><Input value={form.fullName || ''} onChange={(event) => setValue('fullName', event.target.value)} required /></label>
             <label className="form-field"><span>Graduation year</span><Input value={form.graduationYear || ''} onChange={(event) => setValue('graduationYear', event.target.value)} placeholder="2024 or 2023-2024" /></label>
             <label className="form-field"><span>Occupation</span><Input value={form.occupation || ''} onChange={(event) => setValue('occupation', event.target.value)} /></label>
@@ -254,9 +324,9 @@ export function ContentManagementPage() {
             {activeType === 'content' && <label className="form-field span-2"><span>Where this appears</span><Select value={form.category || ''} onChange={(event) => setValue('category', event.target.value)}><option>School Story</option><option>School History</option><option>School Information</option><option>Alumni Gathering</option></Select></label>}
             <label className="form-field span-2"><span>Details</span><textarea className="field content-textarea" value={form.body || ''} onChange={(event) => setValue('body', event.target.value)} placeholder="Write the complete information users should see" required /></label>
           </>}
-          <label className="form-field"><span>Status</span><Select value={form.status || ''} onChange={(event) => setValue('status', event.target.value)}>{config.statuses.map((status) => <option value={status} key={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}</Select></label>
-          <label className="form-field"><span>Feature image</span><input className="field content-image-input" type="file" accept="image/*" onChange={(event) => chooseImage(event.target.files?.[0])} /></label>
-          {imagePreview && !removeImage && <div className="content-image-preview span-2"><img src={imagePreview} alt="Selected content preview" /><Button type="button" size="sm" variant="danger" onClick={() => { setImageFile(null); setImagePreview(''); setRemoveImage(true) }}>Remove image</Button></div>}
+          {activeType !== 'memories' && <label className="form-field"><span>Status</span><Select value={form.status || ''} onChange={(event) => setValue('status', event.target.value)}>{config.statuses.map((status) => <option value={status} key={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}</Select></label>}
+          {activeType !== 'memories' && <label className="form-field"><span>Feature image</span><input className="field content-image-input" type="file" accept="image/*" onChange={(event) => chooseImage(event.target.files?.[0])} /></label>}
+          {activeType !== 'memories' && imagePreview && !removeImage && <div className="content-image-preview span-2"><img src={imagePreview} alt="Selected content preview" /><Button type="button" size="sm" variant="danger" onClick={() => { setImageFile(null); setImagePreview(''); setRemoveImage(true) }}>Remove image</Button></div>}
         </div>
         <div className="form-actions"><Button type="button" variant="secondary" onClick={closeForm}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving and syncing…' : editingRecord ? 'Save changes' : 'Create record'}</Button></div>
       </form>

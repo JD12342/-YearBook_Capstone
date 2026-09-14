@@ -29,14 +29,15 @@ export const loadActiveYearbook = async (yearbookId) => {
 
 export const loadUserPortalContent = async () => {
   if (!isFirebaseConfigured) {
-    return { announcements: [], yearbooks: [], stories: [], alumni: [], hasLiveContent: false }
+    return { announcements: [], yearbooks: [], stories: [], alumni: [], memories: [], hasLiveContent: false }
   }
 
-  const [announcements, yearbooks, stories, alumni] = await Promise.allSettled([
+  const [announcements, yearbooks, stories, alumni, memories] = await Promise.allSettled([
     readPublishedRecords('announcements', 'published'),
     readPublishedRecords('yearbooks', 'active', 50),
     readPublishedRecords('schoolContent', 'published'),
     readPublishedRecords('alumni', 'active'),
+    readPublishedRecords('memories', 'published', 100),
   ])
 
   const records = (result) => result.status === 'fulfilled' ? result.value : []
@@ -45,6 +46,7 @@ export const loadUserPortalContent = async () => {
     yearbooks: records(yearbooks).filter(book => book.recordsVersion === 1 && book.schoolYearId && book.schoolYearName),
     stories: records(stories),
     alumni: records(alumni),
+    memories: records(memories),
   }
 
   return {
@@ -55,7 +57,7 @@ export const loadUserPortalContent = async () => {
 
 export const subscribeUserPortalContent = (onContent, onReady) => {
   if (!isFirebaseConfigured) {
-    onContent({ announcements: [], yearbooks: [], stories: [], alumni: [], hasLiveContent: false })
+    onContent({ announcements: [], yearbooks: [], stories: [], alumni: [], memories: [], hasLiveContent: false })
     onReady?.()
     return () => {}
   }
@@ -65,8 +67,9 @@ export const subscribeUserPortalContent = (onContent, onReady) => {
     ['yearbooks', 'yearbooks', 'active'],
     ['stories', 'schoolContent', 'published'],
     ['alumni', 'alumni', 'active'],
+    ['memories', 'memories', 'published'],
   ]
-  const content = { announcements: [], yearbooks: [], stories: [], alumni: [] }
+  const content = { announcements: [], yearbooks: [], stories: [], alumni: [], memories: [] }
   const initialized = new Set()
   let readySent = false
 

@@ -71,14 +71,15 @@ export async function deleteYearbookAssets(yearbookId) {
   await removeFolder(ref(storage, `yearbooks/${safeYearbookId}`))
 }
 
-const contentCollections = new Set(['announcements', 'alumni', 'schoolContent'])
+const contentCollections = new Set(['announcements', 'alumni', 'schoolContent', 'memories'])
 
-export async function uploadContentImage({ file, collectionName, recordId }) {
+export async function uploadContentImage({ file, collectionName, recordId, slot = '' }) {
   if (!file?.type?.startsWith('image/')) throw new Error('Choose a valid image file.')
   if (file.size > 10 * 1024 * 1024) throw new Error('Choose an image smaller than 10 MB.')
   if (!contentCollections.has(collectionName) || !recordId) throw new Error('This content image has no valid destination.')
   const extension = file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : 'jpg'
-  const path = `content/${collectionName}/${recordId}/${Date.now()}.${extension}`
+  const safeSlot = String(slot || 'feature').replace(/[^a-zA-Z0-9_-]/g, '-')
+  const path = `content/${collectionName}/${recordId}/${Date.now()}-${safeSlot}.${extension}`
   const fileRef = ref(storage, path)
   await uploadBytes(fileRef, file, { contentType: file.type })
   return { path, url: await getDownloadURL(fileRef) }

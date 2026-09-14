@@ -2,7 +2,7 @@ import { addDoc, collection, deleteDoc, doc, getDocs, onSnapshot, serverTimestam
 import { db } from './firebase/firestore.js'
 import { isFirebaseConfigured } from './firebase/firebaseConfig.js'
 
-const collectionNames = new Set(['accountRequests', 'announcements', 'alumni', 'schoolContent'])
+const collectionNames = new Set(['accountRequests', 'announcements', 'alumni', 'schoolContent', 'memories'])
 const approvableProfileTypes = new Set(['Student', 'Teacher', 'Staff', 'Alumni'])
 
 const getProfileType = (request) => {

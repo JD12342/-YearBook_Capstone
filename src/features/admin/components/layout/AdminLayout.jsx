@@ -17,7 +17,7 @@ const routeMeta = {
   '/photos/capture': { title: 'Camera Session', subtitle: 'Photos', helpText: 'Capture a consistent graduation portrait with the session controls, then save it directly or open the full editor.' },
   '/photos/edit/:photoId': { title: 'Photo Editor', subtitle: 'Photos', helpText: 'Make final adjustments to a selected student photo.' },
   '/verification-requests': { title: 'Verification Requests', subtitle: 'User Access', helpText: 'Review and approve or reject account requests before users can access GradBook.' },
-  '/content': { title: 'Content Management', subtitle: 'School Content', helpText: 'Manage announcements, alumni details, and school information shown through GradBook.' },
+  '/content': { title: 'Content Management', subtitle: 'School Content', helpText: 'Manage announcements, section memories, alumni details, and school information shown through GradBook.' },
   '/reports': { title: 'Reports', subtitle: 'Insights', helpText: 'Reports and analytics will be available here as the workspace grows.' },
   '/settings': { title: 'Settings', subtitle: 'System', helpText: 'Configure GradBook settings and preferences when they become available.' },
   '/profile': { title: 'Account Profile', subtitle: 'System', helpText: 'View and manage your account details.' },

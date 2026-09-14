@@ -73,7 +73,7 @@ service firebase.storage {
 
     function canViewPublishedContent(collectionName, recordId) {
       return canViewCommunity()
-        && collectionName in ['announcements', 'alumni', 'schoolContent']
+        && collectionName in ['announcements', 'alumni', 'schoolContent', 'memories']
         && firestore.exists(/databases/(default)/documents/$(collectionName)/$(recordId))
         && firestore.get(/databases/(default)/documents/$(collectionName)/$(recordId)).data.status in ['published', 'active'];
     }

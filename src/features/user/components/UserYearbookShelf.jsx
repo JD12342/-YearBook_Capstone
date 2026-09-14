@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowUpRight, BookMarked, LibraryBig, LockKeyhole } from 'lucide-react'
+import { ArrowUpRight, BookMarked, LibraryBig } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getYearbookPresentation } from '../../yearbook/data/yearbookDefaults.js'
 import { ThreeYearbook } from './ThreeYearbook.jsx'
@@ -42,7 +42,6 @@ export function UserYearbookShelf({ yearbooks }) {
     <section className="user-yearbook-section" id="yearbooks" data-reveal>
       <div className="user-yearbook-heading">
         <div><span className="user-eyebrow">THE YEARBOOK ROOM</span><h2>Open a chapter from the archive.</h2></div>
-        <div className="user-readonly-note"><LockKeyhole size={16} /><span>Read-only community view</span></div>
       </div>
 
       {visibleYearbooks.length ? <div className="user-yearbook-shelf">

@@ -1,6 +1,7 @@
 import { useOutletContext } from 'react-router-dom'
 import { useScrollReveal } from '../../public/hooks/useScrollReveal.js'
 import { UserYearbookShelf } from '../components/UserYearbookShelf.jsx'
+import { UserFaceSearchPage } from './UserFaceSearchPage.jsx'
 
 export function UserYearbooksPage() {
   const { content } = useOutletContext()
@@ -9,6 +10,7 @@ export function UserYearbooksPage() {
   return (
     <div className="user-route-page user-route-yearbooks">
       <UserYearbookShelf yearbooks={content.yearbooks} />
+      <UserFaceSearchPage embedded />
     </div>
   )
 }

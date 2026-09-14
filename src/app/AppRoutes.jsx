@@ -22,7 +22,7 @@ import { UserPortalLayout } from '../features/user/layouts/UserPortalLayout.jsx'
 import { UserExplorePage } from '../features/user/pages/UserExplorePage.jsx'
 import { UserHistoryPage } from '../features/user/pages/UserHistoryPage.jsx'
 import { UserHomePage } from '../features/user/pages/UserHomePage.jsx'
-import { UserFaceSearchPage } from '../features/user/pages/UserFaceSearchPage.jsx'
+import { UserMemoriesPage } from '../features/user/pages/UserMemoriesPage.jsx'
 import { UserUpdatesPage } from '../features/user/pages/UserUpdatesPage.jsx'
 import { UserYearbooksPage } from '../features/user/pages/UserYearbooksPage.jsx'
 
@@ -38,7 +38,8 @@ export function AppRoutes() {
           <Route index element={<UserHomePage />} />
           <Route path="explore" element={<UserExplorePage />} />
           <Route path="yearbooks" element={<UserYearbooksPage />} />
-          <Route path="face-search" element={<UserFaceSearchPage />} />
+          <Route path="memories" element={<UserMemoriesPage />} />
+          <Route path="face-search" element={<Navigate to="/community/yearbooks" replace />} />
           <Route path="yearbooks/:yearbookId" element={<Suspense fallback={<div className="yearbook-viewer-message">Opening the 3D yearbook…</div>}><UserYearbookViewerPage /></Suspense>} />
           <Route path="history" element={<UserHistoryPage />} />
           <Route path="updates" element={<UserUpdatesPage />} />

@@ -6,7 +6,7 @@ import { UserPortalHeader } from '../components/UserPortalHeader.jsx'
 import { subscribeUserPortalContent } from '../services/userPortalService.js'
 import '../styles/userPortal.css'
 
-const emptyContent = { announcements: [], yearbooks: [], stories: [], alumni: [], hasLiveContent: false }
+const emptyContent = { announcements: [], yearbooks: [], stories: [], alumni: [], memories: [], hasLiveContent: false }
 
 export function UserPortalLayout() {
   const { logout, profile, role, user } = useAuth()

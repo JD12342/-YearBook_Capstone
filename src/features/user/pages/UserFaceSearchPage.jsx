@@ -5,7 +5,7 @@ import { collectPublishedPortraits, loadFaceSearchModels, searchPublishedFaces, 
 
 const initialProgress = { completed: 0, total: 0 }
 
-export function UserFaceSearchPage() {
+export function UserFaceSearchPage({ embedded = false }) {
   const { content } = useOutletContext()
   const inputRef = useRef(null)
   const videoRef = useRef(null)
@@ -158,11 +158,11 @@ export function UserFaceSearchPage() {
   }
 
   return (
-    <div className="user-route-page user-face-search-page">
+    <section className={`user-face-search-page ${embedded ? 'is-embedded' : ''}`.trim()} data-reveal>
       <section className="face-search-hero">
         <div className="face-search-heading">
-          <span className="user-eyebrow">AUTHORIZED ARCHIVE SEARCH</span>
-          <h1>Search the <em>yearbook archive.</em></h1>
+          <span className="user-eyebrow">{embedded ? 'FIND YOUR PORTRAIT' : 'AUTHORIZED ARCHIVE SEARCH'}</span>
+          <h1>{embedded ? <>Find yourself in the <em>archive.</em></> : <>Search the <em>yearbook archive.</em></>}</h1>
           <p>Choose facial matching or whole-image similarity, then use your camera or select a photo. GradBook compares it only with portraits an administrator approved for active yearbooks.</p>
           <div className="face-search-trust"><span><LockKeyhole size={15} /> Search photo is not uploaded or saved</span><span><ShieldCheck size={15} /> Results remain read-only</span></div>
         </div>
@@ -222,6 +222,6 @@ export function UserFaceSearchPage() {
       </section>
 
       <p className="face-search-footnote">Results can be affected by lighting, angle, age differences, image quality, obstructions, and missing yearbook records.</p>
-    </div>
+    </section>
   )
 }

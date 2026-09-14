@@ -14,7 +14,7 @@ const navigation = [
 
 const management = [
   { label: 'Verification Requests', key: '/verification-requests', icon: <BadgeCheck size={18} />, allowedRoles: ['Administrator'] },
-  { label: 'Content & Alumni', key: '/content', icon: <BookOpenText size={18} /> },
+  { label: 'Content & Memories', key: '/content', icon: <BookOpenText size={18} /> },
   { label: 'Reports', key: '/reports', icon: <FileText size={18} />, future: true },
 ]
 
