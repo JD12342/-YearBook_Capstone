@@ -871,3 +871,47 @@
   .yearbook-face-search-dialog .face-search-source { margin-top: 10px; }
   .yearbook-face-search-dialog .face-search-source button { min-height: 46px; }
 }
+
+
+/* Reference-sized capture card: tuned for Windows display scaling and 100% browser zoom. */
+.yearbook-face-search-overlay { display: flex; align-items: center; justify-content: center; min-height: 100dvh; height: 100dvh; overflow: hidden; }
+.yearbook-face-search-dialog { flex: 0 0 auto; width: min(430px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); border-radius: 20px; }
+.yearbook-face-search-close { top: 10px; width: 34px; height: 34px; margin: 10px 12px -44px 0; }
+.yearbook-face-search-dialog .face-search-hero { padding: 14px 54px 13px 19px; }
+.yearbook-face-search-dialog .face-search-heading h1 { font-size: 1.45rem; }
+.yearbook-face-search-dialog .face-search-heading > p { margin-top: 2px; font-size: .61rem; }
+.yearbook-face-search-dialog .face-search-workspace { padding: 12px 18px 10px; }
+.yearbook-face-search-dialog .face-search-mode { gap: 4px; margin-bottom: 9px; padding: 3px; border-radius: 10px; }
+.yearbook-face-search-dialog .face-search-mode button { min-height: 34px; gap: 6px; padding: 5px 8px; border-radius: 8px; }
+.yearbook-face-search-dialog .face-search-mode svg { width: 14px; height: 14px; }
+.yearbook-face-search-dialog .face-search-mode strong { font-size: .53rem; }
+.yearbook-face-search-dialog .face-search-camera,
+.yearbook-face-search-dialog .face-search-preview,
+.yearbook-face-search-dialog .face-search-dropzone { min-height: clamp(185px, 30vh, 225px); max-height: 225px; border-radius: 14px; }
+.yearbook-face-search-dialog .face-search-camera::after,
+.yearbook-face-search-dialog .face-search-dropzone::after { inset: 17px; border-radius: 13px; }
+.yearbook-face-search-dialog .face-search-camera > div { inset: 18px; gap: 4px; }
+.yearbook-face-search-dialog .face-search-camera > div svg { width: 29px; height: 29px; }
+.yearbook-face-search-dialog .face-search-camera > div strong { font-size: .67rem; }
+.yearbook-face-search-dialog .face-search-camera > div span { font-size: .51rem; }
+.yearbook-face-search-dialog .face-search-dropzone { gap: 5px; }
+.yearbook-face-search-dialog .face-search-dropzone svg { width: 25px; height: 25px; }
+.yearbook-face-search-dialog .face-search-dropzone strong { font-size: .8rem; }
+.yearbook-face-search-dialog .face-search-dropzone span { font-size: .5rem; }
+.yearbook-face-search-dialog .face-search-source { gap: 7px; margin-top: 9px; }
+.yearbook-face-search-dialog .face-search-source button { min-height: 36px; gap: 5px; padding: 0 8px; font-size: .58rem; }
+.yearbook-face-search-dialog .face-search-source svg { width: 14px; height: 14px; }
+.yearbook-face-search-dialog .face-search-actions { gap: 7px; margin-top: 8px; }
+.yearbook-face-search-dialog .face-search-primary,
+.yearbook-face-search-dialog .face-search-secondary { min-height: 36px; padding: 0 10px; font-size: .55rem; }
+.yearbook-face-search-dialog .face-search-primary svg,
+.yearbook-face-search-dialog .face-search-secondary svg { width: 14px; height: 14px; }
+.yearbook-face-search-dialog .face-search-footnote { margin: 0 18px 12px; font-size: .52rem; }
+.yearbook-face-search-dialog .face-search-results-panel.has-results { max-height: calc(100dvh - 100px); padding: 14px; border-radius: 14px; }
+.yearbook-face-search-dialog .face-search-results-panel.has-results .face-search-results { max-height: calc(100dvh - 205px); }
+
+@media (max-height: 680px) {
+  .yearbook-face-search-dialog .face-search-camera,
+  .yearbook-face-search-dialog .face-search-preview,
+  .yearbook-face-search-dialog .face-search-dropzone { min-height: 155px; max-height: 175px; }
+}
