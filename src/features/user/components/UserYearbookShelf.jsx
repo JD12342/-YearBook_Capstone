@@ -41,8 +41,8 @@ export function UserYearbookShelf({ yearbooks, onFaceSearch }) {
   return (
     <section className="user-yearbook-section" id="yearbooks" data-reveal>
       <div className="user-yearbook-heading">
-        <div><span className="user-eyebrow">THE YEARBOOK ROOM</span><h2>Open a chapter from the archive.</h2></div>
-        <button className="yearbook-face-search-trigger" type="button" onClick={onFaceSearch}><ScanFace size={19} /><span><strong>Find your photo</strong><small>Face or image search</small></span><ArrowUpRight size={15} /></button>
+        <div><span className="user-eyebrow">THE SHOWROOM</span><h2>Pull a book <em>from the shelf.</em></h2><p>Every graduating batch, bound and shelved. Choose a book to open its pages and revisit the people behind it.</p></div>
+        <button className="yearbook-face-search-trigger" type="button" onClick={onFaceSearch}><ScanFace size={17} /><strong>Face Search</strong><ArrowUpRight size={14} /></button>
       </div>
 
       {visibleYearbooks.length ? <div className="user-yearbook-shelf">

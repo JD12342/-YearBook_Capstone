@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowUpRight, Camera, CameraOff, ImagePlus, Images, LockKeyhole, ScanFace, ShieldCheck, Sparkles, X } from 'lucide-react'
+import { ArrowUpRight, Camera, ImagePlus, Images, LockKeyhole, ScanFace, ShieldCheck, Sparkles, X } from 'lucide-react'
 import { Link, useOutletContext } from 'react-router-dom'
 import { collectPublishedPortraits, loadFaceSearchModels, searchPublishedFaces, searchPublishedImages } from '../services/faceSearchService.js'
 
@@ -162,8 +162,8 @@ export function UserFaceSearchPage({ embedded = false }) {
       <section className="face-search-hero">
         <div className="face-search-heading">
           <span className="user-eyebrow">{embedded ? 'FIND YOUR PORTRAIT' : 'AUTHORIZED ARCHIVE SEARCH'}</span>
-          <h1>{embedded ? <>Find yourself in the <em>archive.</em></> : <>Search the <em>yearbook archive.</em></>}</h1>
-          <p>Choose facial matching or whole-image similarity, then use your camera or select a photo. GradBook compares it only with portraits an administrator approved for active yearbooks.</p>
+          <h1>{embedded ? <>Face Search</> : <>Search the <em>yearbook archive.</em></>}</h1>
+          <p>{embedded ? 'Find yourself across every published batch.' : 'Choose facial matching or whole-image similarity, then use your camera or select a photo. GradBook compares it only with portraits an administrator approved for active yearbooks.'}</p>
           <div className="face-search-trust"><span><LockKeyhole size={15} /> Search photo is not uploaded or saved</span><span><ShieldCheck size={15} /> Results remain read-only</span></div>
         </div>
         <div className="face-search-count"><ScanFace size={29} /><strong>{portraitCount}</strong><span>approved portrait{portraitCount === 1 ? '' : 's'} available</span></div>
@@ -178,13 +178,13 @@ export function UserFaceSearchPage({ embedded = false }) {
           <div className="face-search-panel-title"><span><Camera size={18} /> STEP 1</span><h2 id="face-search-title">Choose a search photo</h2><p>{isFaceMode ? 'Use a front-facing image with one person, even lighting, and a visible face.' : 'Choose the full image you want to compare by pose, colors, lighting, and background.'}</p></div>
           <div className="face-search-source" aria-label="Choose camera or image upload">
             <button type="button" className={sourceMode === 'camera' ? 'is-active' : ''} aria-pressed={sourceMode === 'camera'} disabled={status === 'searching' || cameraStarting} onClick={() => chooseSource('camera')}><Camera size={17} />Use camera</button>
-            <button type="button" className={sourceMode === 'upload' ? 'is-active' : ''} aria-pressed={sourceMode === 'upload'} disabled={status === 'searching'} onClick={() => chooseSource('upload')}><ImagePlus size={17} />Choose image</button>
+            <button type="button" className={sourceMode === 'upload' ? 'is-active' : ''} aria-pressed={sourceMode === 'upload'} disabled={status === 'searching'} onClick={() => chooseSource('upload')}><ImagePlus size={17} />Upload photo</button>
           </div>
           <input ref={inputRef} type="file" accept="image/*" hidden onChange={(event) => chooseFile(event.target.files?.[0])} />
           {sourceMode === 'camera' && !previewUrl ? (
             <div className="face-search-camera">
               <video ref={videoRef} autoPlay muted playsInline onCanPlay={() => setCameraReady(true)} />
-              {!cameraReady && <div><CameraOff size={30} /><strong>{cameraStarting ? 'Starting camera…' : 'Camera is off'}</strong><span>Press Start camera to begin.</span></div>}
+              {!cameraReady && <div><ScanFace size={42} /><strong>{cameraStarting ? 'Starting camera…' : 'Center a face inside the frame'}</strong><span>{cameraStarting ? 'Your camera will appear here.' : 'Use a clear, front-facing photo.'}</span></div>}
             </div>
           ) : previewUrl ? (
             <div className="face-search-preview">
@@ -208,7 +208,7 @@ export function UserFaceSearchPage({ embedded = false }) {
           {error && <div className="face-search-error" role="alert">{error}</div>}
         </div>
 
-        <div className="face-search-results-panel">
+        <div className={`face-search-results-panel ${results ? 'has-results' : 'is-awaiting'}`.trim()}>
           <div className="face-search-panel-title"><span><Sparkles size={18} /> STEP 2</span><h2>{isFaceMode ? 'Possible face matches' : 'Similar images'}</h2><p>{isFaceMode ? 'Face similarity is a search aid. Check the portrait and yearbook details before deciding it is the same person.' : 'Image search compares the full picture, including pose, colors, lighting, and background.'}</p></div>
           {!results && <div className="face-search-empty"><ScanFace size={43} /><strong>Your closest matches will appear here.</strong><span>No profile is changed or approved by this search.</span></div>}
           {results && !results.matches.length && <div className="face-search-empty"><ScanFace size={43} /><strong>No close match was found.</strong><span>{results.readableCount} of {results.searchedCount} approved portraits could be compared. Try a clearer or more recent photo.</span></div>}
@@ -221,7 +221,7 @@ export function UserFaceSearchPage({ embedded = false }) {
         </div>
       </section>
 
-      <p className="face-search-footnote">Results can be affected by lighting, angle, age differences, image quality, obstructions, and missing yearbook records.</p>
+      <p className="face-search-footnote">{embedded ? 'Photos are matched on-device and never stored.' : 'Results can be affected by lighting, angle, age differences, image quality, obstructions, and missing yearbook records.'}</p>
     </section>
   )
 }
