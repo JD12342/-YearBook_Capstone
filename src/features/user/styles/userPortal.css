@@ -590,3 +590,27 @@
   .memory-empty { padding: 35px 22px; }
 }
 @media (prefers-reduced-motion: reduce) { .memory-triptych figure, .memory-triptych img, .memory-batch-picker button { transition: none; } }
+
+
+/* Face search opens from the Yearbooks header without extending the shelf page. */
+.yearbook-face-search-trigger { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 12px; padding: 13px 16px; border: 1px solid rgba(190,235,212,.38); border-radius: 999px; background: rgba(255,255,255,.065); color: #e9f8f0; font: inherit; text-align: left; cursor: pointer; transition: background 180ms ease, border-color 180ms ease, transform 180ms ease; }
+.yearbook-face-search-trigger:hover, .yearbook-face-search-trigger:focus-visible { border-color: #a9e6c6; background: rgba(255,255,255,.12); transform: translateY(-2px); }
+.yearbook-face-search-trigger span, .yearbook-face-search-trigger strong, .yearbook-face-search-trigger small { display: block; }
+.yearbook-face-search-trigger strong { font-size: .7rem; }
+.yearbook-face-search-trigger small { margin-top: 2px; color: #9bdcbd; font-size: .56rem; }
+.yearbook-face-search-overlay { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 3vh 3vw; overflow-y: auto; background: rgba(3,25,19,.8); backdrop-filter: blur(14px); animation: face-overlay-in 180ms ease both; }
+.yearbook-face-search-dialog { position: relative; width: min(1240px, 94vw); max-height: 94vh; overflow-y: auto; border: 1px solid rgba(255,255,255,.24); border-radius: 24px; background: #f7f6ee; box-shadow: 0 35px 110px rgba(0,0,0,.38); animation: face-dialog-in 240ms cubic-bezier(.2,.8,.2,1) both; }
+.yearbook-face-search-close { position: sticky; z-index: 4; top: 18px; float: right; display: grid; width: 48px; height: 48px; margin: 18px 18px -66px 0; place-items: center; border: 1px solid rgba(14,67,51,.2); border-radius: 50%; background: rgba(255,255,255,.9); color: var(--user-emerald-dark); cursor: pointer; box-shadow: 0 9px 24px rgba(12,52,40,.13); }
+.yearbook-face-search-dialog .user-face-search-page.is-embedded { min-height: 0; padding: clamp(34px, 5vw, 68px); border: 0; background: linear-gradient(145deg, #fbf8ee, #edf4ee); }
+.yearbook-face-search-dialog .face-search-heading h1 { max-width: 720px; font-size: clamp(2.8rem, 5vw, 5rem); }
+@keyframes face-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes face-dialog-in { from { opacity: 0; transform: translateY(22px) scale(.985); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 620px) {
+  .yearbook-face-search-trigger { width: 100%; justify-content: center; }
+  .yearbook-face-search-overlay { align-items: start; padding: 10px; }
+  .yearbook-face-search-dialog { width: 100%; max-height: calc(100svh - 20px); border-radius: 18px; }
+  .yearbook-face-search-close { top: 10px; margin: 10px 10px -58px 0; }
+  .yearbook-face-search-dialog .user-face-search-page.is-embedded { padding: 74px 18px 34px; }
+  .yearbook-face-search-dialog .face-search-heading h1 { font-size: clamp(2.5rem, 13vw, 3.7rem); }
+}

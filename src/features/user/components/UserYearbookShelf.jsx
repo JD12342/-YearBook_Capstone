@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowUpRight, BookMarked, LibraryBig } from 'lucide-react'
+import { ArrowUpRight, BookMarked, LibraryBig, ScanFace } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getYearbookPresentation } from '../../yearbook/data/yearbookDefaults.js'
 import { ThreeYearbook } from './ThreeYearbook.jsx'
@@ -34,7 +34,7 @@ function YearbookShelfModel({ yearbook, onOpen }) {
     : <span className="user-yearbook-model-loading" aria-label={`Preparing 3D cover for ${presentation.title}`} />
 }
 
-export function UserYearbookShelf({ yearbooks }) {
+export function UserYearbookShelf({ yearbooks, onFaceSearch }) {
   const navigate = useNavigate()
   const visibleYearbooks = yearbooks.map(normalizeYearbook)
 
@@ -42,6 +42,7 @@ export function UserYearbookShelf({ yearbooks }) {
     <section className="user-yearbook-section" id="yearbooks" data-reveal>
       <div className="user-yearbook-heading">
         <div><span className="user-eyebrow">THE YEARBOOK ROOM</span><h2>Open a chapter from the archive.</h2></div>
+        <button className="yearbook-face-search-trigger" type="button" onClick={onFaceSearch}><ScanFace size={19} /><span><strong>Find your photo</strong><small>Face or image search</small></span><ArrowUpRight size={15} /></button>
       </div>
 
       {visibleYearbooks.length ? <div className="user-yearbook-shelf">

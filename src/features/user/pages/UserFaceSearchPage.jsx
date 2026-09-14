@@ -158,7 +158,7 @@ export function UserFaceSearchPage({ embedded = false }) {
   }
 
   return (
-    <section className={`user-face-search-page ${embedded ? 'is-embedded' : ''}`.trim()} data-reveal>
+    <section className={`user-face-search-page ${embedded ? 'is-embedded is-visible' : ''}`.trim()} data-reveal>
       <section className="face-search-hero">
         <div className="face-search-heading">
           <span className="user-eyebrow">{embedded ? 'FIND YOUR PORTRAIT' : 'AUTHORIZED ARCHIVE SEARCH'}</span>
