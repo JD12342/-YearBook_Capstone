@@ -6,6 +6,12 @@ import { getStudentById, getStudents, updateStudent } from '../../services/stude
 import { updatePhotoRecord, uploadStudentPhotoRecord } from '../../services/photoService.js'
 
 const standardSettings = { exposure: 2, contrast: 4, saturation: 3, vibrance: 1, clarity: 0, temperature: 0, tint: 0, highlights: 0, shadows: 0, whites: 0, blacks: 0, sharpness: 0, retouch: 0, spotlight: 0, zoom: 100, aspectRatio: '4:5', mirror: false, grayscale: false }
+const controlsByTab = {
+  light: [['exposure', 'Exposure', -30, 30, ''], ['contrast', 'Contrast', -30, 30, ''], ['highlights', 'Highlights', -100, 100, ''], ['shadows', 'Shadows', -100, 100, ''], ['whites', 'Whites', -100, 100, ''], ['blacks', 'Blacks', -100, 100, '']],
+  colors: [['saturation', 'Saturation', -60, 80, ''], ['vibrance', 'Vibrance', -60, 80, ''], ['temperature', 'Warmth', -30, 30, ''], ['tint', 'Tint', -20, 20, '°']],
+  detail: [['clarity', 'Clarity', -50, 50, ''], ['sharpness', 'Sharpness', 0, 100, '']],
+  retouch: [['retouch', 'Soft retouch', 0, 100, '%'], ['spotlight', 'Face spotlight', 0, 100, '%']],
+}
 const photoManagementStateKey = 'gradbook-admin-photo-management-state'
 const photoSessionStateKey = 'gradbook-admin-camera-session-state'
 
@@ -127,7 +133,7 @@ export function PhotoCapturePage() {
   const [cameraDevices, setCameraDevices] = useState([])
   const [cameraDeviceId, setCameraDeviceId] = useState(() => savedSession.cameraDeviceId || '')
   const [settings, setSettings] = useState(() => ({ ...standardSettings, ...(savedSession.settings || {}), zoom: 100 }))
-  const [controlTab, setControlTab] = useState('main')
+  const [controlTab, setControlTab] = useState('light')
   const [saving, setSaving] = useState('')
   const [error, setError] = useState('')
 
@@ -363,9 +369,14 @@ export function PhotoCapturePage() {
     image.src = previewUrl
   })
 
-  const savePhoto = async (openEditor = false) => {
+  const applyAutoEnhance = () => {
+    setSettings((current) => ({ ...current, exposure: 4, contrast: 7, saturation: 5, vibrance: 10, highlights: -8, shadows: 10, sharpness: 18, retouch: 4, spotlight: 10 }))
+  }
+
+  const savePhoto = async (mode = 'draft') => {
     if (!student || !capturedFile) return
-    setSaving(openEditor ? 'editor' : 'approve')
+    const isApproval = mode === 'approved'
+    setSaving(isApproval ? 'approve' : 'draft')
     setError('')
     try {
       const file = await createAdjustedFile()
@@ -376,17 +387,17 @@ export function PhotoCapturePage() {
         strandId: student.strandId,
         sectionId: student.sectionId,
         source: 'camera',
-        status: openEditor ? 'editing' : 'approved',
+        status: isApproval ? 'approved' : 'editing',
       })
-      await updatePhotoRecord(photo.id, { sessionEdits: settings })
+      await updatePhotoRecord(photo.id, { sessionEdits: settings, edits: settings })
       await updateStudent(student.id, { ...student, photoId: photo.id })
-      if (openEditor) {
-        navigate(`/photos/edit/${photo.id}`)
-      } else {
+      if (isApproval) {
         const currentIndex = sessionStudents.findIndex((item) => item.id === student.id)
         const nextStudent = sessionStudents[currentIndex + 1]
         if (nextStudent) changeStudent(nextStudent.id)
         else navigate('/photos')
+      } else {
+        navigate('/photos')
       }
     } catch (saveError) {
       setError(saveError.message || 'Unable to save the photo. Check access and try again.')
@@ -445,17 +456,17 @@ export function PhotoCapturePage() {
           <button type="button" className="session-preset" onClick={() => setSettings(standardSettings)}><span>Standard graduation preset</span><strong>Reset</strong></button>
           <label className="aspect-ratio-picker"><span>Photo size</span><select value={settings.aspectRatio} onChange={(event) => updateSetting('aspectRatio', event.target.value)}><option value="4:5">Portrait — 4:5</option><option value="3:2">Landscape — 3:2</option><option value="1:1">Square — 1:1</option><option value="original">Original camera size</option></select></label>
           <div className="session-control-list camera-framing-control">{cameraZoom ? <label><span>Camera zoom<strong>{Number.isInteger(cameraZoom.value) ? cameraZoom.value : cameraZoom.value.toFixed(1)}×</strong></span><input type="range" min={cameraZoom.min} max={cameraZoom.max} step={cameraZoom.step} value={cameraZoom.value} onChange={(event) => changeCameraZoom(event.target.value)} /></label> : <p className="camera-zoom-note">This camera has no browser-controlled hardware zoom. Move the camera farther away for a wider portrait.</p>}</div>
-          <div className="session-editor-tabs"><button type="button" className={controlTab === 'main' ? 'active' : ''} onClick={() => setControlTab('main')}>Main</button><button type="button" className={controlTab === 'colors' ? 'active' : ''} onClick={() => setControlTab('colors')}>Colors</button><button type="button" className={controlTab === 'sharpness' ? 'active' : ''} onClick={() => setControlTab('sharpness')}>Sharpness</button><button type="button" className={controlTab === 'retouch' ? 'active' : ''} onClick={() => setControlTab('retouch')}>Retouch</button></div>
-          <button type="button" className="auto-correct-button" onClick={() => setSettings((current) => ({ ...standardSettings, aspectRatio: current.aspectRatio }))}>Auto correction</button>
+          <div className="session-editor-tabs"><button type="button" className={controlTab === 'light' ? 'active' : ''} onClick={() => setControlTab('light')}>Light</button><button type="button" className={controlTab === 'colors' ? 'active' : ''} onClick={() => setControlTab('colors')}>Colors</button><button type="button" className={controlTab === 'detail' ? 'active' : ''} onClick={() => setControlTab('detail')}>Detail</button><button type="button" className={controlTab === 'retouch' ? 'active' : ''} onClick={() => setControlTab('retouch')}>Retouch</button></div>
+          <button type="button" className="auto-correct-button" onClick={applyAutoEnhance}>Auto enhance</button>
           <div className="session-control-list">
-            {(controlTab === 'main' ? [['exposure', 'Exposure', -30, 30, ''], ['contrast', 'Contrast', -30, 30, ''], ['highlights', 'Highlights', -100, 100, ''], ['shadows', 'Shadows', -100, 100, ''], ['whites', 'Whites', -100, 100, ''], ['blacks', 'Blacks', -100, 100, '']] : controlTab === 'colors' ? [['saturation', 'Saturation', -60, 80, ''], ['vibrance', 'Vibrance', -60, 80, ''], ['clarity', 'Clarity', -50, 50, ''], ['temperature', 'Temperature', 0, 30, ''], ['tint', 'Tint', -20, 20, '°']] : controlTab === 'sharpness' ? [['clarity', 'Clarity', -50, 50, ''], ['sharpness', 'Sharpness', 0, 100, '']] : [['retouch', 'Soft retouch', 0, 100, '%'], ['spotlight', 'Face spotlight', 0, 100, '%']]).map(([key, label, min, max, suffix]) => <label key={key}><span>{label}<strong>{settings[key]}{suffix}</strong></span><input type="range" min={min} max={max} value={settings[key]} onChange={(event) => updateSetting(key, Number(event.target.value))} /></label>)}
+            {controlsByTab[controlTab].map(([key, label, min, max, suffix]) => <label key={key}><span>{label}<strong>{settings[key]}{suffix}</strong></span><input type="range" min={min} max={max} value={settings[key]} onChange={(event) => updateSetting(key, Number(event.target.value))} /></label>)}
           </div>
           {controlTab === 'retouch' && <p className="retouch-note">Use low values for a natural graduation portrait. Spotlight is centered on the face area.</p>}
           <label className="editor-toggle session-toggle"><input type="checkbox" checked={settings.mirror} onChange={(event) => updateSetting('mirror', event.target.checked)} /><span>Mirror image</span></label>
           <label className="editor-toggle"><input type="checkbox" checked={settings.grayscale} onChange={(event) => updateSetting('grayscale', event.target.checked)} /><span>Black and white</span></label>
           <div className="capture-save-actions">
-            <Button type="button" variant="secondary" disabled={!student || !capturedFile || Boolean(saving)} onClick={() => savePhoto(true)}>Save & open editor</Button>
-            <Button type="button" disabled={!student || !capturedFile || Boolean(saving)} onClick={() => savePhoto(false)}><Check size={16} /> {saving === 'approve' ? 'Saving...' : 'Save & approve'}</Button>
+            <Button type="button" variant="secondary" disabled={!student || !capturedFile || Boolean(saving)} onClick={() => savePhoto('draft')}>{saving === 'draft' ? 'Saving...' : 'Save for later'}</Button>
+            <Button type="button" disabled={!student || !capturedFile || Boolean(saving)} onClick={() => savePhoto('approved')}><Check size={16} /> {saving === 'approve' ? 'Saving...' : 'Save & approve'}</Button>
           </div>
         </aside>
       </div>
