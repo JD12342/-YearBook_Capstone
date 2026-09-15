@@ -100,7 +100,7 @@ const createAdjustedCanvas = (image, settings, filterValue, sourceRotation = 0) 
   canvas.width = crop.width
   canvas.height = crop.height
   const context = canvas.getContext('2d')
-  context.filter = `${filterValue} blur(${settings.retouch / 85}px)`
+  context.filter = `${filterValue} brightness(${100 + settings.retouch / 28}%) contrast(${100 - settings.retouch / 18}%) saturate(${100 - settings.retouch / 25}%) blur(${settings.retouch / 42}px)`
   context.translate(canvas.width / 2, canvas.height / 2)
   context.scale(settings.mirror ? -1 : 1, 1)
   context.drawImage(source, crop.x, crop.y, crop.width, crop.height, -canvas.width / 2, -canvas.height / 2, canvas.width, canvas.height)
@@ -461,7 +461,7 @@ export function PhotoCapturePage() {
           <div className="session-control-list">
             {controlsByTab[controlTab].map(([key, label, min, max, suffix]) => <label key={key}><span>{label}<strong>{settings[key]}{suffix}</strong></span><input type="range" min={min} max={max} value={settings[key]} onChange={(event) => updateSetting(key, Number(event.target.value))} /></label>)}
           </div>
-          {controlTab === 'retouch' && <p className="retouch-note">Use low values for a natural graduation portrait. Spotlight is centered on the face area.</p>}
+          {controlTab === 'retouch' && <p className="retouch-note">Soft retouch smooths texture, gently brightens skin, and lowers contrast. Use 10–25 for a natural graduation portrait.</p>}
           <label className="editor-toggle session-toggle"><input type="checkbox" checked={settings.mirror} onChange={(event) => updateSetting('mirror', event.target.checked)} /><span>Mirror image</span></label>
           <label className="editor-toggle"><input type="checkbox" checked={settings.grayscale} onChange={(event) => updateSetting('grayscale', event.target.checked)} /><span>Black and white</span></label>
           <div className="capture-save-actions">

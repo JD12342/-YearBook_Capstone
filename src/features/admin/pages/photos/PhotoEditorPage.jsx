@@ -63,7 +63,7 @@ export function PhotoEditorPage() {
   }, [photoId])
 
   const imageStyle = useMemo(() => ({
-    filter: `brightness(${100 + settings.exposure + settings.spotlight / 10 + settings.highlights / 12 + settings.whites / 16 + settings.shadows / 20 + settings.blacks / 25}%) contrast(${100 + settings.contrast + settings.clarity / 2 + settings.sharpness / 5}%) saturate(${100 + settings.saturation + settings.vibrance / 2}%) sepia(${Math.max(0, settings.temperature)}%) hue-rotate(${settings.tint}deg) grayscale(${settings.grayscale ? 1 : 0}) blur(${settings.retouch / 85}px)`,
+    filter: `brightness(${100 + settings.exposure + settings.spotlight / 10 + settings.highlights / 12 + settings.whites / 16 + settings.shadows / 20 + settings.blacks / 25 + settings.retouch / 28}%) contrast(${100 + settings.contrast + settings.clarity / 2 + settings.sharpness / 5 - settings.retouch / 18}%) saturate(${100 + settings.saturation + settings.vibrance / 2 - settings.retouch / 25}%) sepia(${Math.max(0, settings.temperature)}%) hue-rotate(${settings.tint}deg) grayscale(${settings.grayscale ? 1 : 0}) blur(${settings.retouch / 42}px)`,
     transform: `rotate(${settings.rotation}deg) scale(${settings.zoom / 100}) scaleX(${settings.mirror ? -1 : 1})`,
   }), [settings])
   const photoFrameStyle = useMemo(() => settings.aspectRatio === 'original'
@@ -102,7 +102,7 @@ export function PhotoEditorPage() {
       canvas.width = Math.max(1, Math.round((sourceWidth / (settings.zoom / 100)) * scale))
       canvas.height = Math.max(1, Math.round((sourceHeight / (settings.zoom / 100)) * scale))
       const context = canvas.getContext('2d')
-      context.filter = `brightness(${100 + settings.exposure + settings.spotlight / 10}%) contrast(${100 + settings.contrast + settings.clarity / 2 + settings.sharpness / 5}%) saturate(${100 + settings.saturation + settings.vibrance / 2}%) sepia(${Math.max(0, settings.temperature)}%) hue-rotate(${settings.tint}deg) grayscale(${settings.grayscale ? 1 : 0}) blur(${settings.retouch / 85}px)`
+      context.filter = `brightness(${100 + settings.exposure + settings.spotlight / 10 + settings.retouch / 28}%) contrast(${100 + settings.contrast + settings.clarity / 2 + settings.sharpness / 5 - settings.retouch / 18}%) saturate(${100 + settings.saturation + settings.vibrance / 2 - settings.retouch / 25}%) sepia(${Math.max(0, settings.temperature)}%) hue-rotate(${settings.tint}deg) grayscale(${settings.grayscale ? 1 : 0}) blur(${settings.retouch / 42}px)`
       context.translate(canvas.width / 2, canvas.height / 2)
       context.rotate((settings.rotation * Math.PI) / 180)
       context.scale(settings.mirror ? -1 : 1, 1)
@@ -181,7 +181,7 @@ export function PhotoEditorPage() {
           <div className="session-editor-tabs"><button type="button" className={controlTab === 'light' ? 'active' : ''} onClick={() => setControlTab('light')}>Light</button><button type="button" className={controlTab === 'colors' ? 'active' : ''} onClick={() => setControlTab('colors')}>Colors</button><button type="button" className={controlTab === 'detail' ? 'active' : ''} onClick={() => setControlTab('detail')}>Detail</button><button type="button" className={controlTab === 'retouch' ? 'active' : ''} onClick={() => setControlTab('retouch')}>Retouch</button><button type="button" className={controlTab === 'crop' ? 'active' : ''} onClick={() => setControlTab('crop')}>Crop</button></div>
           <button type="button" className="auto-correct-button" onClick={applyAutoEnhance}>Auto enhance</button>
           <div className="session-control-list">{controlsByTab[controlTab].map(([key, label, min, max, suffix]) => <label key={key}><span>{label}<strong>{settings[key]}{suffix}</strong></span><input type="range" min={min} max={max} value={settings[key]} onChange={(event) => updateSetting(key, Number(event.target.value))} /></label>)}</div>
-          {controlTab === 'retouch' && <p className="retouch-note">Use low values for a natural graduation portrait. Spotlight is centered on the face area.</p>}
+          {controlTab === 'retouch' && <p className="retouch-note">Soft retouch now smooths texture, gently brightens skin, and lowers contrast. Use 10–25 for a natural graduation portrait.</p>}
           <label className="editor-toggle session-toggle"><input type="checkbox" checked={settings.mirror} onChange={(event) => updateSetting('mirror', event.target.checked)} /><span>Mirror image</span></label>
           <label className="editor-toggle"><input type="checkbox" checked={settings.grayscale} onChange={(event) => updateSetting('grayscale', event.target.checked)} /><span>Black and white</span></label>
           <div className="editor-photo-meta"><span>Source</span><strong>{photo.source || 'Camera'}</strong><span>Status</span><strong>{photo.status || 'editing'}</strong></div>

@@ -46,9 +46,17 @@ export function StudentProfilePanel({ student, schoolYear, strand, section, onEd
             <div><span>Status</span><strong><Badge status={student.status || 'active'}>{student.status || 'active'}</Badge></strong></div>
           </div>
         </div>
+        {!isEditing && <div className="student-id-profile">
+          <div className="student-id-profile-title"><Award size={17} aria-hidden="true" /><h3>Graduation profile</h3></div>
+          <div className="profile-summary student-profile-summary">
+            <div><span>LRN</span><strong>{student.studentNumber || student.lrn || 'Not added'}</strong></div>
+            <div><span>Email</span><strong>{student.email || 'Not added'}</strong></div>
+            <div><span>Credentials</span><p>{student.credentials || 'No credentials added yet.'}</p></div>
+            <div><span>Graduation awards</span><p>{student.awards || 'No awards added yet.'}</p></div>
+          </div>
+        </div>}
       </div>
 
-      <div className="profile-panel-section-title"><Award size={17} aria-hidden="true" /><h3>Graduation profile</h3></div>
       {isEditing ? (
         <form className="profile-form" onSubmit={saveProfile}>
           <label className="form-field"><span>Email</span><Input type="email" value={profile.email} onChange={(event) => setProfile((current) => ({ ...current, email: event.target.value }))} placeholder="student@email.com" /></label>
@@ -56,14 +64,7 @@ export function StudentProfilePanel({ student, schoolYear, strand, section, onEd
           <label className="form-field"><span>Graduation awards</span><textarea className="field profile-textarea" value={profile.awards} onChange={(event) => setProfile((current) => ({ ...current, awards: event.target.value }))} placeholder="Honors, distinctions, and awards..." /></label>
           <div className="form-actions"><Button type="button" variant="secondary" onClick={() => setIsEditing(false)}>Cancel</Button><Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save profile'}</Button></div>
         </form>
-      ) : (
-        <div className="profile-summary student-profile-summary">
-          <div><span>LRN</span><strong>{student.studentNumber || student.lrn || 'Not added'}</strong></div>
-          <div><span>Email</span><strong>{student.email || 'Not added'}</strong></div>
-          <div><span>Credentials</span><p>{student.credentials || 'No credentials added yet.'}</p></div>
-          <div><span>Graduation awards</span><p>{student.awards || 'No awards added yet.'}</p></div>
-        </div>
-      )}
+      ) : null}
       {!isEditing && <div className="profile-panel-actions"><Button type="button" variant="secondary" onClick={onEditStudent}>Edit student</Button><Button type="button" onClick={() => setIsEditing(true)}><Pencil size={15} aria-hidden="true" /> Edit graduation profile</Button></div>}
     </aside>
   )

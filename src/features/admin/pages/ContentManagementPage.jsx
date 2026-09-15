@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, CheckCircle2, Eye, FilePenLine, ImagePlus, Images, Megaphone, Search, Trash2, UsersRound } from 'lucide-react'
+import { Archive, CheckCircle2, Eye, FilePenLine, ImagePlus, Images, LayoutTemplate, Megaphone, Search, Trash2, UsersRound } from 'lucide-react'
 import { Badge } from '../components/ui/Badge.jsx'
 import { Button } from '../components/ui/Button.jsx'
 import { Card } from '../components/ui/Card.jsx'
@@ -20,6 +20,11 @@ const recordTypes = {
     label: 'School content', singular: 'school story', collection: 'schoolContent', icon: FilePenLine,
     description: 'Manage stories and information displayed in School Story and Updates.',
     defaults: { title: '', category: 'School Story', body: '', status: 'draft' }, statuses: ['draft', 'published', 'archived'], publicStatus: 'published',
+  },
+  landing: {
+    label: 'Landing page', singular: 'landing section', collection: 'landingContent', icon: LayoutTemplate,
+    description: 'Control the Hero, Overview, Explore, Collection, Highlights, Access, and closing landing-page copy.',
+    defaults: { section: 'hero', eyebrow: '', title: '', body: '', ctaLabel: '', status: 'draft' }, statuses: ['draft', 'published', 'archived'], publicStatus: 'published',
   },
   memories: {
     label: 'Memories', singular: 'section memory', collection: 'memories', icon: Images,
@@ -162,6 +167,8 @@ export function ContentManagementPage() {
     title: text(form.title), body: text(form.body), status: form.status,
   } : activeType === 'content' ? {
     title: text(form.title), category: text(form.category), body: text(form.body), status: form.status,
+  } : activeType === 'landing' ? {
+    section: text(form.section), eyebrow: text(form.eyebrow), title: text(form.title), body: text(form.body), ctaLabel: text(form.ctaLabel), status: form.status,
   } : activeType === 'memories' ? {
     title: text(form.sectionName), schoolYearId: form.schoolYearId, schoolYearName: text(form.schoolYearName), sectionId: form.sectionId, sectionName: text(form.sectionName), themeColor: form.themeColor || '#d17c87', status: form.status,
   } : {
@@ -169,6 +176,11 @@ export function ContentManagementPage() {
   }
 
   const validate = (payload) => {
+    if (activeType === 'landing') {
+      if (!payload.section) return 'Choose a landing-page section.'
+      const duplicate = records.some((record) => record.id !== editingRecord?.id && record.section === payload.section)
+      if (duplicate) return 'That landing-page section already has a record. Edit the existing record instead.'
+    }
     if (activeType === 'memories') {
       if (!payload.schoolYearId || !payload.sectionId) return 'Choose a batch and section.'
       const duplicate = records.some((record) => record.id !== editingRecord?.id && record.schoolYearId === payload.schoolYearId && record.sectionId === payload.sectionId)
@@ -320,6 +332,7 @@ export function ContentManagementPage() {
           </> : <>
             <label className="form-field span-2"><span>Title</span><Input value={form.title || ''} onChange={(event) => setValue('title', event.target.value)} required /></label>
             {activeType === 'content' && <label className="form-field span-2"><span>Where this appears</span><Select value={form.category || ''} onChange={(event) => setValue('category', event.target.value)}><option>School Story</option><option>School History</option><option>School Information</option><option>Alumni Gathering</option></Select></label>}
+            {activeType === 'landing' && <><label className="form-field"><span>Landing section</span><Select value={form.section || 'hero'} onChange={(event) => setValue('section', event.target.value)}><option value="hero">Hero</option><option value="legacy">Story opening</option><option value="explore">Explore</option><option value="overview">Overview</option><option value="collection">Collection</option><option value="highlights">Featured chapters</option><option value="access">Access</option><option value="film">Closing film</option></Select></label><label className="form-field"><span>Eyebrow</span><Input value={form.eyebrow || ''} onChange={(event) => setValue('eyebrow', event.target.value)} placeholder="Small label above title" /></label><label className="form-field span-2"><span>Call-to-action label</span><Input value={form.ctaLabel || ''} onChange={(event) => setValue('ctaLabel', event.target.value)} placeholder="Optional button label" /></label></>}
             <label className="form-field span-2"><span>Details</span><textarea className="field content-textarea" value={form.body || ''} onChange={(event) => setValue('body', event.target.value)} placeholder="Write the complete information users should see" required /></label>
           </>}
           {activeType !== 'memories' && <label className="form-field"><span>Status</span><Select value={form.status || ''} onChange={(event) => setValue('status', event.target.value)}>{config.statuses.map((status) => <option value={status} key={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}</Select></label>}

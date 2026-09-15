@@ -1,8 +1,10 @@
 import { ArrowRight, GraduationCap, LockKeyhole, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { heroContent, landingMedia } from '../../data/landingContent.js'
+import { useLandingSection } from '../../hooks/useLandingContent.js'
 
 export function LandingHero() {
+  const content = useLandingSection('hero', heroContent)
   return (
     <section className="public-hero">
       <div className="public-hero-image" aria-hidden="true" />
@@ -11,11 +13,11 @@ export function LandingHero() {
       </video>
       <div className="public-hero-overlay" aria-hidden="true" />
       <div className="public-hero-content">
-        <span className="public-eyebrow"><Sparkles size={15} /> {heroContent.eyebrow}</span>
-        <h1>{heroContent.title}<br />{heroContent.titleLine} <em>{heroContent.emphasis}</em></h1>
-        <p>{heroContent.description}</p>
+        <span className="public-eyebrow"><Sparkles size={15} /> {content.eyebrow}</span>
+        <h1>{content.title}<br />{content.titleLine} <em>{content.emphasis}</em></h1>
+        <p>{content.description}</p>
         <div className="public-hero-actions">
-          <Link className="public-primary" to="/login?mode=signup">Become part of the story <ArrowRight size={18} /></Link>
+          <Link className="public-primary" to="/login?mode=signup">{content.ctaLabel || 'Become part of the story'} <ArrowRight size={18} /></Link>
           <Link className="public-secondary" to="/login">I already have access</Link>
         </div>
         <div className="public-trust"><LockKeyhole size={15} /><span>Full school records are available only to verified members.</span></div>
@@ -23,8 +25,8 @@ export function LandingHero() {
       <div className="public-yearbook-card" aria-label="GradBook introduction">
         <span>A LIVING YEARBOOK</span>
         <GraduationCap size={42} />
-        <blockquote>{heroContent.quote}</blockquote>
-        <div><b>{heroContent.year}</b><small>{heroContent.yearNote}</small></div>
+        <blockquote>{content.quote}</blockquote>
+        <div><b>{content.year}</b><small>{content.yearNote}</small></div>
       </div>
       <div className="public-scroll-cue" aria-hidden="true"><span>SCROLL TO DISCOVER</span><i /></div>
     </section>

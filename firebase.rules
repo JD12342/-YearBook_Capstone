@@ -104,6 +104,11 @@ service cloud.firestore {
       allow write: if isAdministrator();
     }
 
+    match /landingContent/{contentId} {
+      allow read: if resource.data.status == 'published' || isAdministrator();
+      allow write: if isAdministrator();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
