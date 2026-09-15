@@ -8,7 +8,18 @@ import { Modal } from '../components/ui/Modal.jsx'
 import { Select } from '../components/ui/Select.jsx'
 import { createAdminRecord, deleteAdminRecord, subscribeAdminRecords, updateAdminRecord, updateAdminRecordStatus } from '../services/adminRecordService.js'
 import { deleteContentImage, uploadContentImage } from '../services/firebase/storageService.js'
-import { getSchoolYears, getSections } from '../services/schoolYearService.js'
+import { accessContent, campusFilmContent, featuredStoriesContent, heroContent, landingMedia, legacyContent, livingLegacyContent, mosaicContent, schoolStoryContent } from '../../public/data/landingContent.js'
+
+const builtInLandingRecords = [
+  { id: 'default-hero', section: 'hero', eyebrow: heroContent.eyebrow, title: heroContent.title, body: heroContent.description, ctaLabel: 'Become part of the story', imageUrl: landingMedia.school },
+  { id: 'default-legacy', section: 'legacy', eyebrow: legacyContent.kicker, title: legacyContent.title, body: legacyContent.description, ctaLabel: 'ENTER GRADBOOK', imageUrl: landingMedia.school },
+  { id: 'default-explore', section: 'explore', eyebrow: schoolStoryContent.kicker, title: schoolStoryContent.title, body: schoolStoryContent.notes.map((note) => note.body).join(' '), ctaLabel: 'DISCOVER MORE', imageUrl: landingMedia.school },
+  { id: 'default-overview', section: 'overview', eyebrow: livingLegacyContent.kicker, title: livingLegacyContent.title, body: livingLegacyContent.description, imageUrl: landingMedia.school },
+  { id: 'default-collection', section: 'collection', eyebrow: mosaicContent.kicker, title: mosaicContent.title, body: 'Explore yearbooks, portraits, stories, and school memories.', ctaLabel: 'OPEN THE ARCHIVE', imageUrl: landingMedia.school },
+  { id: 'default-highlights', section: 'highlights', eyebrow: featuredStoriesContent.kicker, title: featuredStoriesContent.title, body: featuredStoriesContent.description, imageUrl: landingMedia.school },
+  { id: 'default-access', section: 'access', eyebrow: accessContent.kicker, title: accessContent.title, body: accessContent.description, ctaLabel: 'REQUEST ACCESS', imageUrl: landingMedia.seal },
+  { id: 'default-film', section: 'film', eyebrow: campusFilmContent.kicker, title: campusFilmContent.title, body: campusFilmContent.description, ctaLabel: 'BECOME PART OF THE STORY', imageUrl: landingMedia.school },
+].map((record) => ({ ...record, status: 'published', isDefault: true }))
 
 const recordTypes = {
   announcements: {
@@ -27,9 +38,9 @@ const recordTypes = {
     defaults: { section: 'hero', eyebrow: '', title: '', body: '', ctaLabel: '', status: 'draft' }, statuses: ['draft', 'published', 'archived'], publicStatus: 'published',
   },
   memories: {
-    label: 'Memories', singular: 'section memory', collection: 'memories', icon: Images,
-    description: 'Publish up to four memory photos for each section and batch.',
-    defaults: { title: '', schoolYearId: '', schoolYearName: '', sectionId: '', sectionName: '', themeColor: '#d17c87', status: 'draft', images: [] }, statuses: ['draft', 'published', 'archived'], publicStatus: 'published',
+    label: 'Memories', singular: 'memory gallery', collection: 'memories', icon: Images,
+    description: 'Publish captioned photos for classes, clubs, events, and the wider school community.',
+    defaults: { title: '', caption: '', themeColor: '#d17c87', status: 'draft', images: [] }, statuses: ['draft', 'published', 'archived'], publicStatus: 'published',
   },
   alumni: {
     label: 'Alumni records', singular: 'alumni record', collection: 'alumni', icon: UsersRound,
@@ -62,8 +73,6 @@ export function ContentManagementPage() {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState('')
   const [removeImage, setRemoveImage] = useState(false)
-  const [schoolYears, setSchoolYears] = useState([])
-  const [sections, setSections] = useState([])
   const [memoryFiles, setMemoryFiles] = useState([null, null, null, null])
   const [memoryImages, setMemoryImages] = useState([null, null, null, null])
   const [memoryPreviews, setMemoryPreviews] = useState(['', '', '', ''])
@@ -84,18 +93,14 @@ export function ContentManagementPage() {
 
   useEffect(() => () => { if (imagePreview.startsWith('blob:')) URL.revokeObjectURL(imagePreview) }, [imagePreview])
 
-  useEffect(() => {
-    if (activeType !== 'memories') return
-    Promise.all([getSchoolYears(), getSections()]).then(([years, sectionRecords]) => { setSchoolYears(years); setSections(sectionRecords) }).catch(() => setError('Academic choices could not be loaded.'))
-  }, [activeType])
-
-  const visibleRecords = useMemo(() => records.filter((record) => {
-    const haystack = [record.title, record.fullName, record.body, record.biography, record.category, record.graduationYear, record.occupation, record.schoolYearName, record.sectionName].join(' ').toLowerCase()
+  const displayRecords = useMemo(() => activeType === 'landing' ? [...records, ...builtInLandingRecords.filter((fallback) => !records.some((record) => record.section === fallback.section))] : records, [activeType, records])
+  const visibleRecords = useMemo(() => displayRecords.filter((record) => {
+    const haystack = [record.title, record.fullName, record.body, record.biography, record.category, record.section, record.caption, record.graduationYear, record.occupation, record.schoolYearName, record.sectionName].join(' ').toLowerCase()
     return (statusFilter === 'all' || record.status === statusFilter) && haystack.includes(query.trim().toLowerCase())
-  }), [records, query, statusFilter])
+  }), [displayRecords, query, statusFilter])
 
-  const publicCount = records.filter((record) => record.status === config.publicStatus).length
-  const draftCount = records.filter((record) => record.status === 'draft').length
+  const publicCount = displayRecords.filter((record) => record.status === config.publicStatus).length
+  const draftCount = displayRecords.filter((record) => record.status === 'draft').length
 
   const closeForm = () => {
     setIsFormOpen(false)
@@ -170,7 +175,7 @@ export function ContentManagementPage() {
   } : activeType === 'landing' ? {
     section: text(form.section), eyebrow: text(form.eyebrow), title: text(form.title), body: text(form.body), ctaLabel: text(form.ctaLabel), status: form.status,
   } : activeType === 'memories' ? {
-    title: text(form.sectionName), schoolYearId: form.schoolYearId, schoolYearName: text(form.schoolYearName), sectionId: form.sectionId, sectionName: text(form.sectionName), themeColor: form.themeColor || '#d17c87', status: form.status,
+    title: text(form.title), caption: text(form.caption), themeColor: form.themeColor || '#d17c87', status: form.status,
   } : {
     fullName: text(form.fullName), graduationYear: text(form.graduationYear), email: text(form.email), occupation: text(form.occupation), biography: text(form.biography), status: form.status,
   }
@@ -182,10 +187,8 @@ export function ContentManagementPage() {
       if (duplicate) return 'That landing-page section already has a record. Edit the existing record instead.'
     }
     if (activeType === 'memories') {
-      if (!payload.schoolYearId || !payload.sectionId) return 'Choose a batch and section.'
-      const duplicate = records.some((record) => record.id !== editingRecord?.id && record.schoolYearId === payload.schoolYearId && record.sectionId === payload.sectionId)
-      if (duplicate) return 'This section already has a memory gallery for the selected batch.'
-      if (!memoryPreviews.some(Boolean)) return 'Add at least one memory picture for this section.'
+      if (!payload.title) return 'Add a gallery title such as STEM-A, Science Club, or Foundation Day.'
+      if (!memoryPreviews.some(Boolean)) return 'Add at least one memory picture.'
       return ''
     }
     if (!(payload.title || payload.fullName)) return activeType === 'alumni' ? 'Alumni name is required.' : 'Title is required.'
@@ -202,7 +205,7 @@ export function ContentManagementPage() {
     setSaving(true)
     setError('')
     try {
-      let recordId = editingRecord?.id
+      let recordId = editingRecord?.isDefault ? '' : editingRecord?.id
       if (!recordId) recordId = await createAdminRecord(config.collection, (imageFile || memoryFiles.some(Boolean)) ? { ...payload, status: 'draft' } : payload)
       if (activeType === 'memories') {
         const nextImages = []
@@ -276,7 +279,7 @@ export function ContentManagementPage() {
     </div>
 
     <div className="content-admin-stats">
-      <Card className="mini-stat-card"><span className="mini-stat-label">Total records</span><strong className="mini-stat-value">{records.length}</strong></Card>
+      <Card className="mini-stat-card"><span className="mini-stat-label">Total records</span><strong className="mini-stat-value">{displayRecords.length}</strong></Card>
       <Card className="mini-stat-card"><span className="mini-stat-label">Visible to users</span><strong className="mini-stat-value">{publicCount}</strong></Card>
       <Card className="mini-stat-card"><span className="mini-stat-label">Drafts</span><strong className="mini-stat-value">{draftCount}</strong></Card>
     </div>
@@ -300,17 +303,17 @@ export function ContentManagementPage() {
             <div><Badge variant={record.status === config.publicStatus ? 'success' : record.status === 'archived' ? 'neutral' : 'warning'}>{record.status || 'draft'}</Badge><span>{formatDate(record)}</span></div>
             <h4>{record.title || record.fullName || 'Untitled'}</h4>
             <p>{record.body || record.biography || record.occupation || 'No details added yet.'}</p>
-            <small>{activeType === 'memories' ? [record.schoolYearName, record.sectionName, `${record.images?.length || 0} highlights`].filter(Boolean).join(' · ') : activeType === 'content' ? record.category || 'School Story' : activeType === 'alumni' ? [record.graduationYear, record.occupation].filter(Boolean).join(' · ') || 'Alumni profile' : 'Community announcement'}</small>
+            <small>{activeType === 'memories' ? [record.caption, `${record.images?.length || 0} photos`].filter(Boolean).join(' · ') : activeType === 'landing' ? `${record.section} section${record.isDefault ? ' · built-in content' : ''}` : activeType === 'content' ? record.category || 'School Story' : activeType === 'alumni' ? [record.graduationYear, record.occupation].filter(Boolean).join(' · ') || 'Alumni profile' : 'Community announcement'}</small>
           </div>
           <div className="content-record-actions">
             <Button size="sm" variant="secondary" onClick={() => openForm(record)}>Edit</Button>
-            {record.status !== config.publicStatus && <Button size="sm" disabled={workingId === record.id} onClick={() => changeStatus(record, config.publicStatus)}><Eye size={14} /> {activeType === 'alumni' ? 'Activate' : 'Publish'}</Button>}
-            {record.status === config.publicStatus && <Button size="sm" variant="ghost" disabled={workingId === record.id} onClick={() => changeStatus(record, activeType === 'alumni' ? 'archived' : 'draft')}>{activeType === 'alumni' ? 'Archive' : 'Unpublish'}</Button>}
-            {record.status !== 'archived' && <Button size="sm" variant="ghost" disabled={workingId === record.id} onClick={() => changeStatus(record, 'archived')}><Archive size={14} /> Archive</Button>}
-            <Button size="sm" variant="danger" disabled={workingId === record.id} onClick={() => setPendingDelete(record)}><Trash2 size={14} /> Delete</Button>
+            {!record.isDefault && record.status !== config.publicStatus && <Button size="sm" disabled={workingId === record.id} onClick={() => changeStatus(record, config.publicStatus)}><Eye size={14} /> {activeType === 'alumni' ? 'Activate' : 'Publish'}</Button>}
+            {!record.isDefault && record.status === config.publicStatus && <Button size="sm" variant="ghost" disabled={workingId === record.id} onClick={() => changeStatus(record, activeType === 'alumni' ? 'archived' : 'draft')}>{activeType === 'alumni' ? 'Archive' : 'Unpublish'}</Button>}
+            {!record.isDefault && record.status !== 'archived' && <Button size="sm" variant="ghost" disabled={workingId === record.id} onClick={() => changeStatus(record, 'archived')}><Archive size={14} /> Archive</Button>}
+            {!record.isDefault && <Button size="sm" variant="danger" disabled={workingId === record.id} onClick={() => setPendingDelete(record)}><Trash2 size={14} /> Delete</Button>}
           </div>
         </article>)}
-      </div> : <div className="empty-state"><div className="empty-state-title">No matching {config.label.toLowerCase()}</div><div>{records.length ? 'Adjust the search or status filter.' : `Add the first ${config.singular} to begin.`}</div></div>}
+      </div> : <div className="empty-state"><div className="empty-state-title">No matching {config.label.toLowerCase()}</div><div>{displayRecords.length ? 'Adjust the search or status filter.' : `Add the first ${config.singular} to begin.`}</div></div>}
     </Card>
 
     <Modal isOpen={isFormOpen} title={`${editingRecord ? 'Edit' : 'Add'} ${config.singular}`} panelClassName="content-editor-modal" onClose={closeForm}>
@@ -318,8 +321,8 @@ export function ContentManagementPage() {
         {error && <div className="form-error" role="alert">{error}</div>}
         <div className="field-grid">
           {activeType === 'memories' ? <>
-            <label className="form-field"><span>Graduating batch</span><Select value={form.schoolYearId || ''} onChange={(event) => { const year = schoolYears.find((item) => item.id === event.target.value); setForm((current) => ({ ...current, schoolYearId: event.target.value, schoolYearName: year?.name || '', sectionId: '', sectionName: '' })) }} required><option value="">Choose batch</option>{schoolYears.map((year) => <option value={year.id} key={year.id}>{year.name}</option>)}</Select></label>
-            <label className="form-field"><span>Section</span><Select value={form.sectionId || ''} onChange={(event) => { const section = sections.find((item) => item.id === event.target.value); setForm((current) => ({ ...current, sectionId: event.target.value, sectionName: section?.code || section?.name || '' })) }} required disabled={!form.schoolYearId}><option value="">Choose section</option>{sections.filter((section) => section.schoolYearId === form.schoolYearId).map((section) => <option value={section.id} key={section.id}>{section.code || section.name}</option>)}</Select></label>
+            <label className="form-field"><span>Gallery title</span><Input value={form.title || ''} onChange={(event) => setValue('title', event.target.value)} placeholder="STEM-A, Science Club, Foundation Day…" required /></label>
+            <label className="form-field"><span>Caption or group</span><Input value={form.caption || ''} onChange={(event) => setValue('caption', event.target.value)} placeholder="Optional context shown with the photos" /></label>
             <label className="form-field memory-color-field"><span>Gallery accent color</span><div><input type="color" value={form.themeColor || '#d17c87'} onChange={(event) => setValue('themeColor', event.target.value)} /><Input value={form.themeColor || '#d17c87'} onChange={(event) => setValue('themeColor', event.target.value)} aria-label="Gallery accent color value" /></div></label>
             <label className="form-field"><span>Status</span><Select value={form.status || ''} onChange={(event) => setValue('status', event.target.value)}>{config.statuses.map((status) => <option value={status} key={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}</Select></label>
             <div className="memory-admin-highlights span-2"><div><strong>Memory photos</strong><span>Add one to four portrait or landscape pictures. Their natural shapes are preserved.</span></div><div className="memory-admin-slots">{[0, 1, 2, 3].map((index) => <label className={memoryPreviews[index] ? 'has-image' : ''} key={index}><input type="file" accept="image/*" onChange={(event) => chooseMemoryImage(index, event.target.files?.[0])} /><span>{memoryPreviews[index] ? <img src={memoryPreviews[index]} alt="Memory preview" /> : <><ImagePlus size={23} /><strong>Choose picture</strong></>}</span>{memoryPreviews[index] && <button type="button" onClick={(event) => { event.preventDefault(); removeMemoryImage(index) }}>Remove</button>}</label>)}</div></div>

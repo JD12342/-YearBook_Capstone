@@ -6,7 +6,7 @@ export function CampusFilm() {
   const content = useLandingSection('film', campusFilmContent)
   return (
     <section className="editorial-film" data-reveal>
-      <video autoPlay muted loop playsInline preload="metadata" poster={landingMedia.school} aria-label="A moving view of Sorsogon National High School">
+      <video autoPlay muted loop playsInline preload="metadata" poster={content.imageUrl || landingMedia.school} aria-label="A moving view of Sorsogon National High School">
         <source src={landingMedia.campusFilm} type="video/mp4" />
       </video>
       <div className="editorial-film-shade" aria-hidden="true" />

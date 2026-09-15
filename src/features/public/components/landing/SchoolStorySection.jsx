@@ -13,7 +13,7 @@ export function SchoolStorySection() {
         <span className="editorial-kicker">{content.eyebrow || content.kicker}</span><h2>{content.title}<br />{content.titleLine}</h2>
         <EditorialLink>{content.ctaLabel || 'DISCOVER MORE'}</EditorialLink>
       </div>
-      <div className="editorial-feature-photo" role="img" aria-label="A closer view of the SNHS campus"><span>PAST & PRESENT</span></div>
+      <div className="editorial-feature-photo" style={content.imageUrl ? { backgroundImage: `url(${content.imageUrl})` } : undefined} role="img" aria-label="A closer view of the SNHS campus"><span>PAST & PRESENT</span></div>
       <div className="editorial-page-notes">
         {content.notes.map((note) => {
           const Icon = noteIcons[note.icon]

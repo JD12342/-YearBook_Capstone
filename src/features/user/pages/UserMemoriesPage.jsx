@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { useOutletContext } from 'react-router-dom'
 import { useScrollReveal } from '../../public/hooks/useScrollReveal.js'
 
-const batchLabel = (memory) => memory.schoolYearName || memory.batch || 'School memories'
+const batchLabel = (memory) => memory.caption || memory.title || memory.schoolYearName || memory.batch || 'School memories'
 const cardTilts = ['-3deg', '3deg', '1deg', '2deg', '-1deg', '-2deg', '-2deg', '2deg', '2deg', '-3deg']
 
 const safeFileName = (value) => String(value || 'memory').replace(/[^a-z0-9-_]+/gi, '-').replace(/^-|-$/g, '').toLowerCase()
@@ -33,7 +33,7 @@ export function UserMemoriesPage() {
       grouped.get(label).push(memory)
     })
     return [...grouped.entries()]
-      .map(([label, memories]) => ({ label, memories: memories.sort((a, b) => String(a.sectionName || '').localeCompare(String(b.sectionName || ''))) }))
+      .map(([label, memories]) => ({ label, memories: memories.sort((a, b) => String(a.title || '').localeCompare(String(b.title || ''))) }))
       .sort((a, b) => b.label.localeCompare(a.label, undefined, { numeric: true }))
   }, [content.memories])
   const [activeBatch, setActiveBatch] = useState('')
@@ -62,7 +62,7 @@ export function UserMemoriesPage() {
   const galleryPhotos = useMemo(() => selected?.memories.flatMap((memory) => memoryImages(memory).map((image, index) => ({
     ...image,
     key: `${memory.id}-${index}`,
-    section: memory.sectionName || memory.title || 'School memory',
+    section: memory.title || memory.caption || memory.sectionName || 'School memory',
     themeColor: memory.themeColor || '#d17c87',
     position: index + 1,
   }))) || [], [selected])
@@ -104,10 +104,10 @@ export function UserMemoriesPage() {
       </header>
 
       {batches.length ? <>
-        {batches.length > 1 && <nav className="memory-batch-picker" aria-label="Choose a graduating batch">
+        {batches.length > 1 && <nav className="memory-batch-picker" aria-label="Choose a memory gallery">
           {batches.map((batch) => {
             const photoCount = batch.memories.reduce((count, memory) => count + memoryImages(memory).length, 0)
-            return <button type="button" key={batch.label} className={batch.label === selected?.label ? 'is-active' : ''} onClick={() => setActiveBatch(batch.label)}><small>BATCH</small><strong>{batch.label}</strong><span>{photoCount} photo{photoCount === 1 ? '' : 's'}</span></button>
+            return <button type="button" key={batch.label} className={batch.label === selected?.label ? 'is-active' : ''} onClick={() => setActiveBatch(batch.label)}><small>GALLERY</small><strong>{batch.label}</strong><span>{photoCount} photo{photoCount === 1 ? '' : 's'}</span></button>
           })}
         </nav>}
         {galleryPhotos.length ? <main className="memory-photo-wall" aria-live="polite">
@@ -118,7 +118,7 @@ export function UserMemoriesPage() {
             </figure>
           </button>)}
         </main> : <div className="memory-single-missing"><Images size={32} />Pictures unavailable</div>}
-      </> : <section className="memory-empty" data-reveal><Images size={39} /><div><strong>The first memories are being gathered.</strong><p>When an administrator publishes pictures for a section, its batch will appear here.</p></div><Camera size={22} /></section>}
+      </> : <section className="memory-empty" data-reveal><Images size={39} /><div><strong>The first memories are being gathered.</strong><p>When an administrator publishes a captioned gallery, it will appear here.</p></div><Camera size={22} /></section>}
     </section>
 
     {activePhoto && createPortal(<div className="memory-lightbox-portal"><div className="memory-lightbox" role="dialog" aria-modal="true" aria-label={`${activePhoto.section} photo preview`} onMouseDown={(event) => { if (event.target === event.currentTarget) setActivePhoto(null) }}>

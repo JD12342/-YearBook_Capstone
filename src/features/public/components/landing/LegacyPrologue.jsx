@@ -11,7 +11,7 @@ export function LegacyPrologue() {
         <h2>{content.title}<br />{content.titleLine} <em>{content.emphasis}</em></h2><p>{content.description}</p>
         <EditorialLink>{content.ctaLabel || 'ENTER GRADBOOK'}</EditorialLink>
       </div>
-      <div className="editorial-prologue-photo" role="img" aria-label="Sorsogon National High School campus"><span>THE SNHS CAMPUS</span></div>
+      <div className="editorial-prologue-photo" style={content.imageUrl ? { backgroundImage: `url(${content.imageUrl})` } : undefined} role="img" aria-label="Sorsogon National High School campus"><span>THE SNHS CAMPUS</span></div>
     </section>
   )
 }

@@ -7,7 +7,7 @@ export function LandingHero() {
   const content = useLandingSection('hero', heroContent)
   return (
     <section className="public-hero">
-      <div className="public-hero-image" aria-hidden="true" />
+      <div className="public-hero-image" style={content.imageUrl ? { backgroundImage: `url(${content.imageUrl})` } : undefined} aria-hidden="true" />
       <video className="public-hero-video" autoPlay muted loop playsInline preload="metadata" poster={landingMedia.school} aria-hidden="true">
         <source src={landingMedia.campusFilm} type="video/mp4" />
       </video>
