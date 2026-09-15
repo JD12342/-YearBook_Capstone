@@ -29,8 +29,8 @@ export const profileTypes = [
   {
     value: 'Student',
     label: 'Student',
-    referenceLabel: 'Student number / LRN',
-    referencePlaceholder: 'Enter your student number or LRN',
+    referenceLabel: 'LRN',
+    referencePlaceholder: 'Enter your LRN',
   },
   {
     value: 'Teacher',

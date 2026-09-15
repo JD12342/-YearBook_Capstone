@@ -353,6 +353,10 @@ function createClosingTexture(presentation) {
   })
 }
 
+export function createShelfCoverTextures(presentation) {
+  return { front: createCoverTexture(presentation), back: createBackCoverTexture(presentation) }
+}
+
 export function createYearbookTextureSet(presentation) {
   const pages = presentation.pages || []
   const textures = []

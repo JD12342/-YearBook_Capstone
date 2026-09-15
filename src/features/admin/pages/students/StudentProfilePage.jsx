@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button.jsx'
 import { Card } from '../../components/ui/Card.jsx'
 import { Badge } from '../../components/ui/Badge.jsx'
 import { useStudents } from '../../hooks/useStudents.js'
+import { UserRound } from 'lucide-react'
 
 export function StudentProfilePage() {
   const { studentId } = useParams()
@@ -52,10 +53,10 @@ export function StudentProfilePage() {
 
           <div className="student-profile-box">
             <div className="student-profile-header">
-              <div className="profile-avatar large">{[student.firstName, student.lastName].filter(Boolean).join(' ').charAt(0).toUpperCase()}</div>
+              <div className="profile-avatar large">{student.approvedPhotoUrl ? <img src={student.approvedPhotoUrl} alt="" /> : <UserRound size={34} strokeWidth={1.5} aria-label="No profile photo" />}</div>
               <div>
                 <h3>{[student.firstName, student.middleName, student.lastName].filter(Boolean).join(' ')}</h3>
-                <p>{student.studentNumber || 'No student number'}</p>
+                <p>{student.studentNumber || student.lrn || 'No LRN'}</p>
               </div>
             </div>
 
@@ -85,7 +86,7 @@ export function StudentProfilePage() {
               </div>
               <div>
                 <span className="detail-label">LRN</span>
-                <strong>{student.lrn || '—'}</strong>
+                <strong>{student.studentNumber || student.lrn || '—'}</strong>
               </div>
               <div>
                 <span className="detail-label">Email</span>

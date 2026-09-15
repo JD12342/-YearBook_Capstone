@@ -20,7 +20,7 @@ export function BulkStudentPreview({ rows = [], onCancel, onConfirm, importing =
           <thead>
             <tr>
               <th>#</th>
-              <th>Student No.</th>
+              <th>LRN</th>
               <th>First Name</th>
               <th>Last Name</th>
               <th>Validation</th>

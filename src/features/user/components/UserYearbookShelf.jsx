@@ -1,69 +1,67 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ArrowUpRight, BookMarked, LibraryBig, ScanFace } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
-import { getYearbookPresentation } from '../../yearbook/data/yearbookDefaults.js'
-import { ThreeYearbook } from './ThreeYearbook.jsx'
-import { isYearbookCoverTextureReady, preloadYearbookCoverTexture } from './yearbook3d/yearbookTextures.js'
-
-const normalizeYearbook = (yearbook, index) => ({
-  ...yearbook,
-  title: yearbook.title || `Published yearbook ${index + 1}`,
-  subtitle: yearbook.description || yearbook.schoolYear || yearbook.schoolYearName || 'Published school collection',
-  status: yearbook.status === 'active' ? 'Active edition' : yearbook.status || 'Archive edition',
-  tone: ['heritage', 'portraits', 'campus'][index % 3],
-})
-
-function YearbookShelfModel({ yearbook, onOpen }) {
-  const presentation = useMemo(
-    () => getYearbookPresentation(yearbook, yearbook.schoolYearName),
-    [yearbook],
-  )
-  const [ready, setReady] = useState(() => isYearbookCoverTextureReady(presentation))
-
-  useEffect(() => {
-    let active = true
-    setReady(isYearbookCoverTextureReady(presentation))
-    preloadYearbookCoverTexture(presentation).then(() => {
-      if (active) setReady(true)
-    })
-    return () => { active = false }
-  }, [presentation])
-
-  return ready
-    ? <ThreeYearbook presentation={presentation} isOpen={false} pageIndex={0} onOpen={onOpen} />
-    : <span className="user-yearbook-model-loading" aria-label={`Preparing 3D cover for ${presentation.title}`} />
-}
+import { useMemo, useRef, useState } from 'react'
+import { BookOpen, ChevronLeft, ChevronRight, LibraryBig, ScanFace } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { ThreeShelfCarousel } from './ThreeShelfCarousel.jsx'
 
 export function UserYearbookShelf({ yearbooks, onFaceSearch }) {
   const navigate = useNavigate()
-  const visibleYearbooks = yearbooks.map(normalizeYearbook)
-
-  return (
-    <section className="user-yearbook-section" id="yearbooks" data-reveal>
-      <div className="user-yearbook-heading">
-        <div><span className="user-eyebrow">THE SHOWROOM</span><h2>Pull a book <em>from the shelf.</em></h2><p>Every graduating batch, bound and shelved. Choose a book to open its pages and revisit the people behind it.</p></div>
-        <button className="yearbook-face-search-trigger" type="button" onClick={onFaceSearch}><ScanFace size={17} /><strong>Face Search</strong><ArrowUpRight size={14} /></button>
-      </div>
-
-      {visibleYearbooks.length ? <div className="user-yearbook-shelf">
-        {visibleYearbooks.map((yearbook) => (
-          <article
-            className={`user-yearbook-card tone-${yearbook.tone || 'heritage'}`}
-            key={yearbook.id || yearbook.title}
-            style={{ '--shelf-cover': yearbook.coverColor, '--shelf-accent': yearbook.accentColor }}
-          >
-            <div className="user-yearbook-model-stage">
-              <YearbookShelfModel yearbook={yearbook} onOpen={() => navigate(`/community/yearbooks/${yearbook.id}`)} />
-            </div>
-            <div className="user-yearbook-details">
-              <span>{yearbook.status}</span>
-              <h3>{yearbook.title}</h3>
-              <p>{yearbook.subtitle}</p>
-              <Link className="user-yearbook-availability" to={`/community/yearbooks/${yearbook.id}`}><BookMarked size={15} />Open 3D yearbook<ArrowUpRight size={14} /></Link>
-            </div>
-          </article>
-        ))}
-      </div> : <div className="user-yearbook-empty"><LibraryBig size={34} /><div><strong>No active yearbooks yet.</strong><p>An edition will appear here only after an administrator creates it and marks it Active.</p></div></div>}
-    </section>
-  )
+  const books = useMemo(() => yearbooks.map((book, index) => ({ ...book, title: book.title || `Yearbook ${index + 1}` })), [yearbooks])
+  const [selected, setSelected] = useState(0)
+  const [mode, setMode] = useState('SHELF')
+  const [busy, setBusy] = useState(false)
+  const locked = useRef(false)
+  const gesture = useRef(null)
+  const wheelTime = useRef(0)
+  const activeIndex = Math.min(selected, Math.max(0, books.length - 1))
+  const active = books[activeIndex]
+  const settle = () => { locked.current = false; setBusy(false) }
+  const select = index => {
+    if (locked.current || index < 0 || index >= books.length || (index === activeIndex && mode === 'COVER_VIEW')) return
+    locked.current = true; setBusy(true)
+    setSelected(index); setMode('COVER_VIEW')
+  }
+  const open = () => {
+    if (locked.current || !active) return
+    if (mode === 'SHELF') { select(activeIndex); return }
+    locked.current = true; setBusy(true)
+    navigate(`/community/yearbooks/${active.id}`, { state: { openRequested: true } })
+  }
+  return <section className="user-yearbook-section reference-shelf" id="yearbooks">
+    <header className="reference-shelf-toolbar">
+      <div><span className="user-eyebrow">THE YEARBOOK COLLECTION</span><h2>Your years. Your stories.</h2></div>
+      <button className="yearbook-face-search-trigger" type="button" onClick={onFaceSearch}><ScanFace size={18} /><strong>Face Search</strong></button>
+    </header>
+    {active ? <div className="reference-shelf-room" data-interaction-state={mode} aria-busy={busy}
+      onKeyDown={e => {
+        if (e.target.tagName === 'SELECT') return
+        if (e.key === 'ArrowLeft') { e.preventDefault(); select(activeIndex - 1) }
+        if (e.key === 'ArrowRight') { e.preventDefault(); select(activeIndex + 1) }
+      }}
+      onPointerDown={e => { if (e.button === 0) gesture.current = { x: e.clientX, y: e.clientY } }}
+      onPointerCancel={() => { gesture.current = null }}
+      onPointerUp={e => {
+        const start = gesture.current; gesture.current = null
+        if (!start) return
+        const dx = e.clientX - start.x, dy = e.clientY - start.y
+        if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.3) select(activeIndex + (dx < 0 ? 1 : -1))
+      }}
+      onWheel={e => {
+        const delta = Math.abs(e.deltaX) > 20 ? e.deltaX : e.shiftKey ? e.deltaY : 0
+        if (Math.abs(delta) > 20 && performance.now() - wheelTime.current > 950) {
+          wheelTime.current = performance.now(); select(activeIndex + Math.sign(delta))
+        }
+      }}>
+      <ThreeShelfCarousel yearbooks={books} activeIndex={activeIndex} mode={mode} locked={busy} onSelect={select} onOpen={open} onSettled={settle} />
+      <button className="reference-shelf-arrow previous" aria-label="Previous yearbook" disabled={busy || activeIndex === 0} onClick={() => select(activeIndex - 1)}><ChevronLeft /></button>
+      <button className="reference-shelf-arrow next" aria-label="Next yearbook" disabled={busy || activeIndex === books.length - 1} onClick={() => select(activeIndex + 1)}><ChevronRight /></button>
+      <footer className="reference-shelf-controls">
+        <div className="reference-shelf-caption" aria-live="polite"><span>{activeIndex + 1} / {books.length}</span><h3>{active.title}</h3><p>{active.schoolYearName}</p></div>
+        <div className="reference-shelf-actions">
+          <select aria-label="Select a yearbook" value={activeIndex} disabled={busy} onChange={e => select(Number(e.target.value))}>{books.map((book,index) => <option key={book.id || index} value={index}>{book.title}</option>)}</select>
+          <button type="button" disabled={busy} onClick={open}><BookOpen size={18} />{busy ? 'Moving yearbook…' : mode === 'SHELF' ? 'View front cover' : 'Open yearbook'}</button>
+        </div>
+        <p className="reference-shelf-hint">{busy ? 'Bringing your book forward…' : mode === 'SHELF' ? 'Choose a spine to see its cover.' : 'Choose another spine to browse · Click the front cover to open'}</p>
+      </footer>
+    </div> : <div className="user-yearbook-empty"><LibraryBig /><p>No active yearbooks yet.</p></div>}
+  </section>
 }

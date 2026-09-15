@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BookOpen, Hand, Maximize, Minimize, Pause, Play, X } from 'lucide-react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { loadActiveYearbook } from '../services/userPortalService.js'
 import { ThreeYearbook } from '../components/ThreeYearbook.jsx'
 import { preloadYearbookCoverTexture } from '../components/yearbook3d/yearbookTextures.js'
@@ -10,6 +10,10 @@ import { coverSurfaceColor } from '../../yearbook/data/coverArtwork.js'
 export function UserYearbookViewerPage() {
   const { yearbookId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const openRequested = location.state?.openRequested === true
+  const [interactionState, setInteractionState] = useState('COVER_VIEW')
+  const openingLock = useRef(false)
   const [yearbook, setYearbook] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -30,12 +34,17 @@ export function UserYearbookViewerPage() {
         const preparedPresentation = getYearbookPresentation(record, record.schoolYearName)
         await preloadYearbookCoverTexture(preparedPresentation)
       }
-      if (active) setYearbook(record)
+      if (active) {
+        setYearbook(record)
+        openingLock.current = openRequested
+        setInteractionState(openRequested ? 'OPEN' : 'COVER_VIEW')
+        setIsOpen(openRequested)
+      }
     })
       .catch(() => { if (active) setError('We could not load this edition. Check your connection and try again.') })
       .finally(() => { if (active) setLoading(false) })
     return () => { active = false }
-  }, [yearbookId])
+  }, [yearbookId, openRequested])
   const saveAudioPosition = useCallback(() => {
     const audio = audioRef.current
     if (!audio || !yearbookId || !Number.isFinite(audio.currentTime)) return
@@ -75,7 +84,7 @@ export function UserYearbookViewerPage() {
     return () => { document.removeEventListener('fullscreenchange', update); window.clearTimeout(turnTimer.current) }
   }, [])
   const exitViewer = useCallback(async () => {
-    if (isExiting) return
+    if (isExiting || openingLock.current) return
     audioRef.current?.pause()
     if (document.fullscreenElement === viewerRef.current) await document.exitFullscreen().catch(() => {})
     if (!isOpen || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -94,11 +103,11 @@ export function UserYearbookViewerPage() {
     window.setTimeout(() => navigate('/community/yearbooks'), closeAfter + 1950)
   }, [isExiting, isOpen, navigate, pageIndex])
   const goToPage = useCallback(index => {
-    if (turning.current || index < 0 || index >= presentation.pages.length) return
+    if (openingLock.current || interactionState !== 'READING' || turning.current || index < 0 || index >= presentation.pages.length) return
     turning.current = true
     setPageIndex(index)
     turnTimer.current = window.setTimeout(() => { turning.current = false }, window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 900)
-  }, [presentation.pages.length])
+  }, [presentation.pages.length, interactionState])
   useEffect(() => {
     const handleKey = event => {
       if (event.target.closest('input, select, textarea, button')) return
@@ -128,7 +137,9 @@ export function UserYearbookViewerPage() {
     else audio.pause()
   }
   const openBook = async () => {
-    if (isExiting) return
+    if (isExiting || openingLock.current || isOpen) return
+    openingLock.current = true
+    setInteractionState('OPEN')
     setIsOpen(true)
     if (window.matchMedia('(max-width: 900px)').matches && viewerRef.current?.requestFullscreen) {
       try {
@@ -138,7 +149,7 @@ export function UserYearbookViewerPage() {
     }
   }
   const startSwipe = event => {
-    if (!isOpen || !event.isPrimary || event.button !== 0) return
+    if (interactionState !== 'READING' || !event.isPrimary || event.button !== 0) return
     gesture.current = { x: event.clientX, y: event.clientY, id: event.pointerId }
     event.currentTarget.setPointerCapture(event.pointerId)
   }
@@ -156,17 +167,17 @@ export function UserYearbookViewerPage() {
     <div className="yearbook-reader-tools" aria-label="Yearbook controls">
       <button type="button" disabled={isExiting} onClick={toggleFullscreen} aria-label={fullscreen ? 'Exit full screen' : 'Enter full screen'} title={fullscreen ? 'Exit full screen' : 'Full screen'}>{fullscreen ? <Minimize size={19} /> : <Maximize size={19} />}</button>
       {presentation.graduationSongUrl && <button type="button" onClick={toggleSong} aria-label={isPlaying ? 'Pause graduation song' : 'Play graduation song'} title={isPlaying ? 'Pause graduation song' : 'Play graduation song'}>{isPlaying ? <Pause size={19} /> : <Play size={19} />}</button>}
-      <button type="button" disabled={isExiting} onClick={exitViewer} aria-label={isExiting ? 'Closing yearbook' : 'Close yearbook'} title="Close yearbook"><X size={21} /></button>
+      <button type="button" disabled={isExiting || interactionState === 'OPEN'} onClick={exitViewer} aria-label={isExiting ? 'Closing yearbook' : 'Close yearbook'} title="Close yearbook"><X size={21} /></button>
     </div>
     {notice && <div className="yearbook-reader-notice" role="status">{notice}<button type="button" onClick={() => setNotice('')} aria-label="Dismiss message"><X size={16} /></button></div>}
     <div className="yearbook-viewer-stage">
       <div className="yearbook-stage-glow" aria-hidden="true" />
-      <div className="yearbook-book-shell" onPointerDown={startSwipe} onPointerUp={endSwipe} onPointerCancel={() => { gesture.current = null }}>
-        <ThreeYearbook presentation={presentation} isOpen={isOpen} pageIndex={pageIndex} onOpen={openBook} />
+      <div className="yearbook-book-shell" data-interaction-state={interactionState} aria-busy={interactionState === 'OPEN'} onPointerDown={startSwipe} onPointerUp={endSwipe} onPointerCancel={() => { gesture.current = null }}>
+        <ThreeYearbook presentation={presentation} isOpen={isOpen} pageIndex={pageIndex} onOpen={openBook} onReadingReady={() => { openingLock.current = false; setInteractionState('READING') }} />
       </div>
     </div>
-    <div className={`yearbook-reader-hint ${isOpen ? 'is-open' : ''} ${showHint ? '' : 'is-hidden'}`}><Hand size={20} aria-hidden="true" /><span>{isOpen ? 'Swipe left or right to turn pages' : 'Tap the cover to open'}</span></div>
-    {isOpen && <label className="yearbook-spread-picker"><span className="yearbook-screen-reader-status">Choose spread</span><select aria-label="Choose yearbook spread" value={pageIndex} onChange={event => goToPage(Number(event.target.value))}>{presentation.pages.map((item, index) => <option value={index} key={item.id}>{index + 1} / {presentation.pages.length} — {item.eyebrow || 'Pages'}</option>)}</select></label>}
+    <div className={`yearbook-reader-hint ${isOpen ? 'is-open' : ''} ${showHint ? '' : 'is-hidden'}`}><Hand size={20} aria-hidden="true" /><span>{interactionState === 'OPEN' ? 'Opening your yearbook…' : isOpen ? 'Swipe left or right to turn pages' : 'Tap the cover to open'}</span></div>
+    {interactionState === 'READING' && <label className="yearbook-spread-picker"><span className="yearbook-screen-reader-status">Choose spread</span><select aria-label="Choose yearbook spread" value={pageIndex} onChange={event => goToPage(Number(event.target.value))}>{presentation.pages.map((item, index) => <option value={index} key={item.id}>{index + 1} / {presentation.pages.length} — {item.eyebrow || 'Pages'}</option>)}</select></label>}
     <span className="yearbook-screen-reader-status" aria-live="polite">{isOpen ? `Spread ${pageIndex + 1} of ${presentation.pages.length}${pageIndex === presentation.pages.length - 1 ? '. Last spread.' : ''}` : 'Cover'}</span>
   </div>
 }

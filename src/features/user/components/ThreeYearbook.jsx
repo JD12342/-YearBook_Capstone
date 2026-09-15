@@ -13,13 +13,25 @@ import { updateHardcover, updatePageLeaf } from './yearbook3d/yearbookLayering.j
 import { createYearbookTextureSet } from './yearbook3d/yearbookTextures.js'
 import { coverSurfaceColor } from '../../yearbook/data/coverArtwork.js'
 
-export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interactive = true }) {
+export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interactive = true, shelfPose, onPoseReady, onReadingReady }) {
+  const poseRef = useRef(shelfPose)
+  const poseReadyRef = useRef(onPoseReady)
+  const readingReadyRef = useRef(onReadingReady)
+  const animatingRef = useRef(false)
+  useEffect(() => { poseRef.current = shelfPose }, [shelfPose])
+  useEffect(() => { poseReadyRef.current = onPoseReady }, [onPoseReady])
+  useEffect(() => { readingReadyRef.current = onReadingReady }, [onReadingReady])
   const mountRef = useRef(null)
   const isOpenRef = useRef(isOpen)
   const pageIndexRef = useRef(pageIndex)
   const onOpenRef = useRef(onOpen)
   const interactiveRef = useRef(interactive)
   const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    if (!failed) return
+    if (shelfPose) poseReadyRef.current?.(shelfPose)
+    if (isOpen) readingReadyRef.current?.()
+  }, [failed, shelfPose, isOpen])
 
   useEffect(() => { isOpenRef.current = isOpen }, [isOpen])
   useEffect(() => { pageIndexRef.current = pageIndex }, [pageIndex])
@@ -67,6 +79,11 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
 
       const book = new THREE.Group()
       scene.add(book)
+      let previousPose = poseRef.current ? 'SHELF' : undefined
+      let poseStartedAt = performance.now()
+      let poseAmount = previousPose === 'SHELF' ? 0 : 1
+      let poseFrom = poseAmount
+      let readingReported = false
 
       const {
         leaves: leafDefinitions,
@@ -198,6 +215,36 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
       geometries.push(spineGeometry)
       materials.push(spineMaterial)
 
+      // A flat cloth binding closes the full gap between both cover boards.
+      const bindingDepth = frontCoverClosedDepth - backCoverDepth + COVER_DEPTH
+      const bindingGeometry = new THREE.BoxGeometry(0.13, COVER_HEIGHT, bindingDepth)
+      const labelCanvas = document.createElement('canvas')
+      labelCanvas.width = 256
+      labelCanvas.height = 2048
+      const labelContext = labelCanvas.getContext('2d')
+      labelContext.fillStyle = coverSurfaceColor(presentation)
+      labelContext.fillRect(0, 0, 256, 2048)
+      labelContext.strokeStyle = '#e8cf95'
+      labelContext.lineWidth = 5
+      labelContext.strokeRect(18, 32, 220, 1984)
+      labelContext.translate(128, 1024)
+      labelContext.rotate(Math.PI / 2)
+      labelContext.fillStyle = '#fff0c6'
+      labelContext.textAlign = 'center'
+      labelContext.font = 'bold 76px Georgia'
+      labelContext.fillText(presentation.title, 0, -12, 1660)
+      labelContext.font = '48px Georgia'
+      labelContext.fillText(presentation.schoolYearName || presentation.coverSubtitle, 0, 62, 1660)
+      const bindingTexture = new THREE.CanvasTexture(labelCanvas)
+      bindingTexture.colorSpace = THREE.SRGBColorSpace
+      textures.push(bindingTexture)
+      const bindingLabel = new THREE.MeshBasicMaterial({ map: bindingTexture })
+      const binding = new THREE.Mesh(bindingGeometry, [spineMaterial, bindingLabel, spineMaterial, spineMaterial, spineMaterial, spineMaterial])
+      binding.position.set(-0.065, 0, (frontCoverClosedDepth + backCoverDepth) / 2)
+      book.add(binding)
+      geometries.push(bindingGeometry)
+      materials.push(bindingLabel)
+
       const floorGeometry = new THREE.PlaneGeometry(13, 8)
       const floorMaterial = new THREE.ShadowMaterial({ color: 0x00160f, opacity: 0.26 })
       const floor = new THREE.Mesh(floorGeometry, floorMaterial)
@@ -209,6 +256,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
       materials.push(floorMaterial)
 
       const pointer = { x: 0, y: 0 }
+      let pointerStart = null
       const raycaster = new THREE.Raycaster()
       const pointerPosition = new THREE.Vector2()
       const updatePointer = (event) => {
@@ -227,13 +275,23 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
         mount.classList.toggle('is-book-hovered', !isOpenRef.current && isBookHit())
       }
       const handlePointerLeave = () => mount.classList.remove('is-book-hovered')
+      const handlePointerDown = (event) => {
+        pointerStart = { x: event.clientX, y: event.clientY }
+      }
       const handlePointerUp = (event) => {
-        if (!interactiveRef.current || isOpenRef.current) return
+        if (!pointerStart || event.button !== 0) return
+        const moved = pointerStart
+          ? Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y)
+          : 0
+        pointerStart = null
+        if (!interactiveRef.current || isOpenRef.current || animatingRef.current) return
+        if (moved > 10) return
         updatePointer(event)
         if (isBookHit()) onOpenRef.current?.()
       }
       mount.addEventListener('pointermove', handlePointerMove)
       mount.addEventListener('pointerleave', handlePointerLeave)
+      mount.addEventListener('pointerdown', handlePointerDown)
       mount.addEventListener('pointerup', handlePointerUp)
 
       const resize = () => {
@@ -253,9 +311,15 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
 
       const startedAt = performance.now()
       const render = (now) => {
-        const requestedPage = isOpenRef.current ? pageIndexRef.current + 1 : 0
         const openingProgress = updateHardcover({ cover: frontCoverState, isOpen: isOpenRef.current, now, reduceMotion })
+        // Let the rigid board clear the paper before turning the first leaf.
+        const requestedPage = isOpenRef.current && openingProgress === 1 ? pageIndexRef.current + 1 : 0
         leaves.forEach((leaf, leafIndex) => updatePageLeaf({ leaf, leafIndex, leafCount: leaves.length, requestedPage, now, reduceMotion }))
+        if (!isOpenRef.current) readingReported = false
+        if (isOpenRef.current && openingProgress === 1 && !readingReported && leaves.every(leaf => leaf.currentAngle === leaf.targetAngle)) {
+          readingReported = true
+          readingReadyRef.current?.()
+        }
 
         // As the front board opens, place it behind the left page at the same
         // depth as the back board. Both halves then keep the same footprint.
@@ -272,6 +336,8 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
         spine.scale.x = THREE.MathUtils.lerp(1, 0.3, openingProgress)
         spine.scale.z = THREE.MathUtils.lerp(1, 0.22, openingProgress)
         spine.castShadow = openingProgress < 0.35
+        binding.visible = openingProgress < 0.025
+        spine.visible = openingProgress > 0.025
 
         // The compressed page block is a closed-book construction detail. Once the
         // cover opens, individual animated leaves take over with no solid block
@@ -279,10 +345,26 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
         closedBookPageBlock.visible = openingProgress < 0.025
 
         const idle = (now - startedAt) * 0.00055
-        book.position.x = THREE.MathUtils.lerp(-PAGE_WIDTH / 2, 0, openingProgress)
-        book.position.y = reduceMotion ? 0 : Math.sin(idle) * 0.055 * (1 - openingProgress)
-        book.rotation.y = THREE.MathUtils.lerp(book.rotation.y, (-0.38 * (1 - openingProgress)) + (pointer.x * 0.035 * (1 - openingProgress)), 0.06)
-        book.rotation.x = THREE.MathUtils.lerp(book.rotation.x, -0.025 + (pointer.y * 0.025 * (1 - openingProgress)), 0.06)
+        if (poseRef.current !== previousPose) {
+          previousPose = poseRef.current
+          poseFrom = poseAmount
+          poseStartedAt = now
+          animatingRef.current = true
+        }
+        const poseTarget = poseRef.current === 'SHELF' ? 0 : 1
+        const poseTime = reduceMotion ? 1 : Math.min(1, (now - poseStartedAt) / 1100)
+        const rotationTime = Math.max(0, (poseTime - 0.25) / 0.75)
+        const eased = rotationTime * rotationTime * (3 - 2 * rotationTime)
+        poseAmount = THREE.MathUtils.lerp(poseFrom, poseTarget, eased)
+        if (animatingRef.current && poseTime === 1) {
+          animatingRef.current = false
+          poseReadyRef.current?.(poseRef.current)
+        }
+        book.position.x = THREE.MathUtils.lerp(-Math.cos((1 - poseAmount) * Math.PI / 2) * PAGE_WIDTH / 2, 0, openingProgress)
+        book.position.z = poseRef.current ? THREE.MathUtils.lerp(0, 0.65, Math.min(1, poseTime * 4)) * poseTarget : 0
+        book.position.y = poseRef.current ? 0 : reduceMotion ? 0 : Math.sin(idle) * 0.055 * (1 - openingProgress)
+        book.rotation.y = poseRef.current ? (1 - poseAmount) * Math.PI / 2 : THREE.MathUtils.lerp(book.rotation.y, 0, 0.06)
+        book.rotation.x = poseRef.current ? 0 : THREE.MathUtils.lerp(book.rotation.x, -0.025 + (pointer.y * 0.025 * (1 - openingProgress)), 0.06)
         book.scale.setScalar(THREE.MathUtils.lerp(1.08, 1, openingProgress))
 
         const halfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))
@@ -301,6 +383,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
         resizeObserver?.disconnect()
         mount.removeEventListener('pointermove', handlePointerMove)
         mount.removeEventListener('pointerleave', handlePointerLeave)
+        mount.removeEventListener('pointerdown', handlePointerDown)
         mount.removeEventListener('pointerup', handlePointerUp)
         textures.forEach((texture) => {
           texture.userData.cancelImageLoad?.()
@@ -320,16 +403,16 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
 
   if (failed) {
     return (
-      <div className="yearbook-webgl-fallback">
+      <button type="button" disabled={!interactive || isOpen} onClick={onOpen} className="yearbook-webgl-fallback">
         <small>SORSOGON NATIONAL HIGH SCHOOL</small>
         <strong>{presentation.coverTitle}</strong>
         <span>{presentation.coverSubtitle}</span>
-      </div>
+      </button>
     )
   }
 
   const openFromKeyboard = (event) => {
-    if (interactive && !isOpen && (event.key === 'Enter' || event.key === ' ')) {
+    if (interactive && !isOpen && !animatingRef.current && !event.repeat && (event.key === 'Enter' || event.key === ' ')) {
       event.preventDefault()
       onOpenRef.current?.()
     }
@@ -341,7 +424,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
       ref={mountRef}
       role={interactive && !isOpen ? 'button' : 'img'}
       tabIndex={interactive && !isOpen ? 0 : -1}
-      aria-label={interactive ? (isOpen ? `Open 3D yearbook, page ${pageIndex + 1}` : `Open ${presentation.title}`) : `3D preview of ${presentation.title}`}
+      aria-label={shelfPose === 'SHELF' ? `Select spine: ${presentation.title}, ${presentation.schoolYearName || presentation.coverSubtitle}` : interactive ? (isOpen ? `Open 3D yearbook, page ${pageIndex + 1}` : `Open ${presentation.title}`) : `3D preview of ${presentation.title}`}
       onKeyDown={openFromKeyboard}
     />
   )

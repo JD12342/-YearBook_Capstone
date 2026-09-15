@@ -10,6 +10,7 @@ export function UserFaceSearchPage({ embedded = false }) {
   const inputRef = useRef(null)
   const videoRef = useRef(null)
   const streamRef = useRef(null)
+  const cameraRequestRef = useRef(0)
   const [file, setFile] = useState(null)
   const [searchMode, setSearchMode] = useState('face')
   const [sourceMode, setSourceMode] = useState('camera')
@@ -30,10 +31,13 @@ export function UserFaceSearchPage({ embedded = false }) {
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }, [previewUrl])
 
   const stopCamera = useCallback(() => {
+    cameraRequestRef.current += 1
     streamRef.current?.getTracks().forEach((track) => track.stop())
     streamRef.current = null
+    if (videoRef.current) videoRef.current.srcObject = null
     setCameraStream(null)
     setCameraReady(false)
+    setCameraStarting(false)
   }, [])
 
   useEffect(() => () => stopCamera(), [stopCamera])
@@ -52,6 +56,7 @@ export function UserFaceSearchPage({ embedded = false }) {
     }
 
     stopCamera()
+    const requestId = cameraRequestRef.current
     clearPhoto()
     setSourceMode('camera')
     setCameraStarting(true)
@@ -61,13 +66,18 @@ export function UserFaceSearchPage({ embedded = false }) {
         audio: false,
         video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } },
       })
+      if (requestId !== cameraRequestRef.current) {
+        stream.getTracks().forEach((track) => track.stop())
+        return
+      }
       streamRef.current = stream
       setCameraStream(stream)
     } catch {
+      if (requestId !== cameraRequestRef.current) return
       setError('Camera access was not available. Allow camera access or choose an image from your device.')
       setSourceMode('upload')
     } finally {
-      setCameraStarting(false)
+      if (requestId === cameraRequestRef.current) setCameraStarting(false)
     }
   }
 
@@ -125,12 +135,12 @@ export function UserFaceSearchPage({ embedded = false }) {
         return
       }
       chooseFile(new File([blob], `gradbook-camera-${Date.now()}.jpg`, { type: 'image/jpeg' }))
+      stopCamera()
     }, 'image/jpeg', 0.92)
   }
 
   const retakeCameraPhoto = () => {
-    clearPhoto()
-    setError('')
+    startCamera()
   }
 
   const runSearch = async () => {
@@ -158,6 +168,12 @@ export function UserFaceSearchPage({ embedded = false }) {
     setError('')
   }
 
+  const resetSearch = () => {
+    setStatus('ready')
+    if (sourceMode === 'camera') startCamera()
+    else clearPhoto()
+  }
+
   return (
     <section className={`user-face-search-page ${embedded ? 'is-embedded is-visible' : ''}`.trim()} data-reveal>
       <section className="face-search-hero">
@@ -170,7 +186,7 @@ export function UserFaceSearchPage({ embedded = false }) {
         <div className="face-search-count"><ScanFace size={29} /><strong>{portraitCount}</strong><span>approved portrait{portraitCount === 1 ? '' : 's'} available</span></div>
       </section>
 
-      <section className="face-search-workspace" aria-labelledby="face-search-title">
+      <section className={`face-search-workspace ${results ? 'has-search-results' : ''}`.trim()} aria-labelledby="face-search-title" aria-busy={status === 'searching'}>
         <div className="face-search-upload-panel">
           <div className="face-search-mode" aria-label="Choose a search type">
             <button type="button" className={isFaceMode ? 'is-active' : ''} aria-pressed={isFaceMode} disabled={status === 'searching'} onClick={() => changeMode('face')}><ScanFace size={18} /><span><strong>Face search</strong><small>Match facial features</small></span></button>
@@ -197,20 +213,23 @@ export function UserFaceSearchPage({ embedded = false }) {
               <ImagePlus size={34} /><strong>Select or take a photo</strong><span>JPG or PNG · up to 10 MB</span>
             </button>
           )}
-          {(file || (sourceMode === 'camera' && cameraReady)) && <div className="face-search-actions">
-            {sourceMode === 'camera' && !file && <button className="face-search-primary" type="button" onClick={captureCameraPhoto}><Camera size={18} />Take photo</button>}
+          <div className="face-search-actions">
+            {sourceMode === 'camera' && !file && <button className="face-search-primary" type="button" disabled={cameraStarting} onClick={cameraReady ? captureCameraPhoto : startCamera}><Camera size={18} />{cameraStarting ? 'Starting camera…' : cameraReady ? 'Take photo' : 'Start camera'}</button>}
             {sourceMode === 'camera' && file && <button className="face-search-secondary" type="button" onClick={retakeCameraPhoto}>Retake photo</button>}
             {sourceMode === 'upload' && file && <button className="face-search-secondary" type="button" onClick={() => inputRef.current?.click()}>Choose another</button>}
             <button className="face-search-primary" type="button" disabled={!file || status === 'loading' || status === 'searching' || !portraitCount} onClick={runSearch}>
               {isFaceMode ? <ScanFace size={18} /> : <Images size={18} />}{status === 'loading' ? 'Preparing secure search…' : status === 'searching' ? `Comparing ${progressPercent}%` : isFaceMode ? 'Search by face' : 'Search by image'}
             </button>
-          </div>}
-          {status === 'searching' && <div className="face-search-progress" aria-label={`${progressPercent}% complete`}><span style={{ width: `${progressPercent}%` }} /></div>}
+          </div>
+          {status === 'searching' && <div className="face-search-progress" role="progressbar" aria-label="Searching published portraits" aria-valuemin="0" aria-valuemax="100" aria-valuenow={progressPercent}><span style={{ width: `${progressPercent}%` }} /></div>}
           {error && <div className="face-search-error" role="alert">{error}</div>}
         </div>
 
         <div className={`face-search-results-panel ${results ? 'has-results' : 'is-awaiting'}`.trim()}>
-          <div className="face-search-panel-title"><span><Sparkles size={18} /> STEP 2</span><h2>{isFaceMode ? 'Possible face matches' : 'Similar images'}</h2><p>{isFaceMode ? 'Face similarity is a search aid. Check the portrait and yearbook details before deciding it is the same person.' : 'Image search compares the full picture, including pose, colors, lighting, and background.'}</p></div>
+          <div className="face-search-results-heading-row">
+            <div className="face-search-panel-title"><span><Sparkles size={18} /> STEP 2</span><h2>{isFaceMode ? 'Possible face matches' : 'Similar images'}</h2><p>{isFaceMode ? 'Face similarity is a search aid. Check the portrait and yearbook details before deciding it is the same person.' : 'Image search compares the full picture, including pose, colors, lighting, and background.'}</p></div>
+            {results && <button className="face-search-secondary face-search-again" type="button" onClick={resetSearch}>Search again</button>}
+          </div>
           {!results && <div className="face-search-empty"><ScanFace size={43} /><strong>Your closest matches will appear here.</strong><span>No profile is changed or approved by this search.</span></div>}
           {results && !results.matches.length && <div className="face-search-empty"><ScanFace size={43} /><strong>No close match was found.</strong><span>{results.readableCount} of {results.searchedCount} approved portraits could be compared. Try a clearer or more recent photo.</span></div>}
           {results?.matches.length > 0 && <div className="face-search-results">

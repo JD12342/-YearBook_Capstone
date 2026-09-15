@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { Button } from '../ui/Button.jsx'
-import { Input } from '../ui/Input.jsx'
 import { Select } from '../ui/Select.jsx'
 import { BulkStudentPreview } from './BulkStudentPreview.jsx'
 import { parseStudentCSV, validateStudentRows } from '../../utils/studentImport.js'
@@ -126,7 +125,7 @@ export function BulkStudentImport({
       </div>
 
       <label className="form-field">
-        <span>Student data</span>
+        <span>Student data <small>(LRN, first name, middle name, last name, suffix)</small></span>
         <textarea
           className="field bulk-textarea"
           value={rawText}

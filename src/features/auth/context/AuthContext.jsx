@@ -202,7 +202,7 @@ export function AuthProvider({ children }) {
       throw createAccessError('auth/invalid-profile-type', 'Choose Student, Teacher, or Staff for your school profile.')
     }
     if (!String(referenceId || '').trim()) {
-      throw createAccessError('auth/missing-reference-id', 'Enter your student, LRN, or employee number.')
+      throw createAccessError('auth/missing-reference-id', 'Enter your LRN or employee number.')
     }
 
     const credential = await createUserWithEmailAndPassword(auth, email, password)

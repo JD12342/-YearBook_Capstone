@@ -51,7 +51,7 @@ export function detectDuplicates(rows = [], existingStudents = []) {
     return {
       ...row,
       duplicate: duplicateInImport || duplicateInFirestore,
-      duplicateMessage: duplicateInImport ? `Duplicate student number: ${studentNumber}` : duplicateInFirestore ? `Duplicate student number: ${studentNumber}` : '',
+      duplicateMessage: duplicateInImport ? `Duplicate LRN: ${studentNumber}` : duplicateInFirestore ? `Duplicate LRN: ${studentNumber}` : '',
     }
   })
 }

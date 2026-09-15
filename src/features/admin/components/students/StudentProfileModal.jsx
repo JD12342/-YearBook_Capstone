@@ -1,11 +1,6 @@
 import { Button } from '../ui/Button.jsx'
 import { Modal } from '../ui/Modal.jsx'
-
-function getInitials(student) {
-  const first = student?.firstName?.trim()?.charAt(0) ?? ''
-  const last = student?.lastName?.trim()?.charAt(0) ?? ''
-  return `${first}${last}`.toUpperCase() || 'S'
-}
+import { UserRound } from 'lucide-react'
 
 export function StudentProfileModal({ isOpen, student, schoolYear, strand, onClose, onEdit, onArchive, onRestore, onDelete }) {
   if (!isOpen || !student) return null
@@ -17,11 +12,11 @@ export function StudentProfileModal({ isOpen, student, schoolYear, strand, onClo
       <div className="student-profile-box">
         <div className="student-profile-header">
           <div className="profile-avatar large">
-            {hasApprovedPhoto ? <img src={student.approvedPhotoUrl} alt={student.firstName} className="student-photo-thumb" /> : getInitials(student)}
+            {hasApprovedPhoto ? <img src={student.approvedPhotoUrl} alt={student.firstName} className="student-photo-thumb" /> : <UserRound size={34} strokeWidth={1.5} aria-label="No profile photo" />}
           </div>
           <div>
             <h3>{[student.firstName, student.middleName, student.lastName].filter(Boolean).join(' ')}</h3>
-            <p>{student.studentNumber || 'No student number'}</p>
+            <p>{student.studentNumber || student.lrn || 'No LRN'}</p>
           </div>
         </div>
 

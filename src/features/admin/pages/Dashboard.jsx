@@ -5,28 +5,6 @@ import { Card } from '../components/ui/Card.jsx'
 import { getDashboardStats } from '../services/dashboardService.js'
 import { isFirebaseConfigured } from '../services/firebase/firebaseConfig.js'
 
-function DistributionList({ entries }) {
-  if (!entries?.length) return <div className="empty-state">No data available yet.</div>
-
-  const largestValue = Math.max(...entries.map((entry) => entry.value), 1)
-
-  return (
-    <div className="progress-list">
-      {entries.map((entry) => (
-        <div key={entry.label} className="progress-row">
-          <div className="progress-label-row">
-            <span>{entry.label}</span>
-            <span>{entry.value}</span>
-          </div>
-          <div className="progress-bar-track" aria-label={`${entry.label}: ${entry.value}`}>
-            <div className="progress-bar-fill" style={{ width: `${(entry.value / largestValue) * 100}%` }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
 export function Dashboard() {
   const navigate = useNavigate()
   const [stats, setStats] = useState([])
@@ -96,23 +74,24 @@ export function Dashboard() {
       {loading ? (
         <div className="empty-state">Loading dashboard statistics...</div>
       ) : (
-        <>
-          <div className="dashboard-grid">
-            <Card className="panel-card">
-              <div className="section-title-row">
-                <div><h3>Students by School Year</h3><span className="panel-caption">Enrollment overview</span></div>
-              </div>
-              <DistributionList entries={stats.studentsBySchoolYear} />
-            </Card>
-
-            <Card className="panel-card">
-              <div className="section-title-row">
-                <div><h3>Students by Strand</h3><span className="panel-caption">Academic distribution</span></div>
-              </div>
-              <DistributionList entries={stats.studentsByStrand} />
-            </Card>
+        <Card className="school-welcome-card">
+          <div className="school-welcome-title">Welcome to Sorsogon National High School</div>
+          <div className="school-welcome-content">
+            <div className="school-welcome-emblem">
+              <img className="school-welcome-logo" src="/snhs-seal.png" alt="Sorsogon National High School seal" />
+            </div>
+            <div className="school-purpose-copy">
+              <section>
+                <h3>Vision</h3>
+                <p>A trusted digital home where every SNHS graduating class can be remembered and revisited.</p>
+              </section>
+              <section>
+                <h3>Mission</h3>
+                <p>GradBook organizes student records, standardizes graduation portraits, and preserves each yearbook for the SNHS community.</p>
+              </section>
+            </div>
           </div>
-        </>
+        </Card>
       )}
     </div>
   )

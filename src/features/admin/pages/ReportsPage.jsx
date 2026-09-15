@@ -66,7 +66,7 @@ export function ReportsPage() {
   }))
 
   const exportCsv = () => {
-    const headings = ['Student number', 'Student name', 'School year', 'Strand', 'Section', 'Student status', 'Portrait status']
+    const headings = ['LRN', 'Student name', 'School year', 'Strand', 'Section', 'Student status', 'Portrait status']
     const rows = report.studentRows.map((student) => [student.studentNumber, student.name, student.schoolYear, student.strand, student.section, student.studentStatus, student.photoStatus])
     const csv = [headings, ...rows].map((row) => row.map(csvCell).join(',')).join('\r\n')
     const url = URL.createObjectURL(new Blob([`\ufeff${csv}`], { type: 'text/csv;charset=utf-8' }))
@@ -133,7 +133,7 @@ export function ReportsPage() {
 
       <Card className="panel-card report-roster-panel">
         <div className="section-title-row"><div><h3>Report roster</h3><span className="panel-caption">{report.studentRows.length} student record{report.studentRows.length === 1 ? '' : 's'} included in the export</span></div></div>
-        {report.studentRows.length ? <div className="table-wrapper"><table className="data-table"><thead><tr><th>Student</th><th>School year</th><th>Class</th><th>Record</th><th>Portrait</th></tr></thead><tbody>{report.studentRows.map((student) => <tr key={student.id}><td><strong>{student.name}</strong><small className="table-subtext">{student.studentNumber || 'No student number'}</small></td><td>{student.schoolYear}</td><td>{student.strand} · {student.section}</td><td><span className={`report-status report-status-${student.studentStatus}`}>{title(student.studentStatus)}</span></td><td><span className={`report-status report-status-${student.photoStatus}`}>{title(student.photoStatus)}</span></td></tr>)}</tbody></table></div> : <div className="empty-state"><div className="empty-state-title">No students match this report</div><div>Change the school year, strand, or section filter.</div></div>}
+        {report.studentRows.length ? <div className="table-wrapper"><table className="data-table"><thead><tr><th>Student</th><th>School year</th><th>Class</th><th>Record</th><th>Portrait</th></tr></thead><tbody>{report.studentRows.map((student) => <tr key={student.id}><td><strong>{student.name}</strong><small className="table-subtext">{student.studentNumber || 'No LRN'}</small></td><td>{student.schoolYear}</td><td>{student.strand} · {student.section}</td><td><span className={`report-status report-status-${student.studentStatus}`}>{title(student.studentStatus)}</span></td><td><span className={`report-status report-status-${student.photoStatus}`}>{title(student.photoStatus)}</span></td></tr>)}</tbody></table></div> : <div className="empty-state"><div className="empty-state-title">No students match this report</div><div>Change the school year, strand, or section filter.</div></div>}
       </Card>
     </>}
   </div>

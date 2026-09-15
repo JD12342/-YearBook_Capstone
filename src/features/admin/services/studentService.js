@@ -118,7 +118,7 @@ export const createStudent = async (studentData) => {
     const hasDuplicate = !duplicateCheck.empty
 
     if (hasDuplicate) {
-      throw new Error(`Duplicate student number: ${payload.studentNumber}`)
+      throw new Error(`Duplicate LRN: ${payload.studentNumber}`)
     }
 
     const ref = await addDoc(studentsCollection, {

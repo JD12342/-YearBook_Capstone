@@ -109,8 +109,8 @@ export function StudentForm({ student = null, schoolYears = [], strands = [], se
         </label>
 
         <label className="form-field span-2">
-          <span>Student Number</span>
-          <Input required value={form.studentNumber} onChange={handleChange('studentNumber')} placeholder="2026-001" />
+          <span>LRN</span>
+          <Input required value={form.studentNumber} onChange={handleChange('studentNumber')} placeholder="Enter learner reference number" inputMode="numeric" />
         </label>
 
         <label className="form-field">

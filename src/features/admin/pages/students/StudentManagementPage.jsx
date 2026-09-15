@@ -77,7 +77,7 @@ export function StudentManagementPage() {
     try {
       setSubmitError('')
       if (!payload.firstName?.trim() || !payload.lastName?.trim() || !payload.studentNumber?.trim()) {
-        throw new Error('First name, last name, and student number are required.')
+        throw new Error('First name, last name, and LRN are required.')
       }
       if (!payload.schoolYearId || !payload.strandId || !payload.sectionId) {
         throw new Error('Please select a school year, strand, and section.')
@@ -150,7 +150,7 @@ export function StudentManagementPage() {
             type="text"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="Search by student number or name"
+            placeholder="Search by LRN or name"
             className="data-search"
           />
 
@@ -192,7 +192,7 @@ export function StudentManagementPage() {
       {submitError && !isFormOpen && <div className="form-error" role="alert">{submitError}</div>}
       {successMessage && <div className="form-success">{successMessage}</div>}
 
-      <div className={`student-directory-workspace ${selectedStudent ? 'profile-open' : ''}`}>
+      <div className="student-directory-workspace">
         <Card className="panel-card student-list-card">
           {loading ? (
             <div className="empty-state">Loading students...</div>
@@ -219,21 +219,27 @@ export function StudentManagementPage() {
           )}
         </Card>
 
-        {selectedStudent && (
-          <Card className="panel-card student-detail-card">
-            <StudentProfilePanel
-              student={selectedStudent}
-              schoolYear={schoolYears.find((year) => year.id === selectedStudent.schoolYearId) ?? null}
-              strand={selectedProfileStrand}
-              section={selectedProfileSection}
-              saving={profileSaving}
-              onClose={() => setSelectedStudentId('')}
-              onEditStudent={() => handleFormOpen(selectedStudent)}
-              onSaveProfile={saveGraduationProfile}
-            />
-          </Card>
-        )}
       </div>
+
+      <Modal
+        isOpen={Boolean(selectedStudent)}
+        title="Selected student"
+        panelClassName="student-profile-modal"
+        onClose={() => setSelectedStudentId('')}
+      >
+        <StudentProfilePanel
+          student={selectedStudent}
+          schoolYear={schoolYears.find((year) => year.id === selectedStudent?.schoolYearId) ?? null}
+          strand={selectedProfileStrand}
+          section={selectedProfileSection}
+          saving={profileSaving}
+          onEditStudent={() => {
+            handleFormOpen(selectedStudent)
+            setSelectedStudentId('')
+          }}
+          onSaveProfile={saveGraduationProfile}
+        />
+      </Modal>
 
       <Modal isOpen={isFormOpen} title={editingStudent ? 'Edit student' : 'Add student'} onClose={() => { setIsFormOpen(false); setEditingStudent(null); setSubmitError('') }}>
         {submitError && <div className="form-error" role="alert">{submitError}</div>}

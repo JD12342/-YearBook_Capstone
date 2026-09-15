@@ -1,11 +1,6 @@
 import { Badge } from '../ui/Badge.jsx'
 import { Button } from '../ui/Button.jsx'
-
-function getInitials(student) {
-  const first = student?.firstName?.trim()?.charAt(0) ?? ''
-  const last = student?.lastName?.trim()?.charAt(0) ?? ''
-  return `${first}${last}`.toUpperCase() || 'S'
-}
+import { UserRound } from 'lucide-react'
 
 export function StudentTable({ students = [], onSelect, onEdit, onArchive, onRestore, onDelete }) {
   if (!students.length) {
@@ -18,7 +13,7 @@ export function StudentTable({ students = [], onSelect, onEdit, onArchive, onRes
         <thead>
           <tr>
             <th>Photo</th>
-            <th>Student No.</th>
+            <th>LRN</th>
             <th>Student Name</th>
             <th>School Year</th>
             <th>Strand</th>
@@ -35,7 +30,7 @@ export function StudentTable({ students = [], onSelect, onEdit, onArchive, onRes
                   {student.approvedPhotoUrl ? (
                     <img src={student.approvedPhotoUrl} alt={student.firstName || 'Student'} className="student-photo-thumb" />
                   ) : (
-                    <span className="student-avatar-small">{getInitials(student)}</span>
+                    <span className="student-avatar-small"><UserRound size={25} strokeWidth={1.5} aria-label="No profile photo" /></span>
                   )}
                 </div>
               </td>

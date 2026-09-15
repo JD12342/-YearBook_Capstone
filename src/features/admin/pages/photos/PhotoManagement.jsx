@@ -1,4 +1,4 @@
-import { Camera, CheckCircle2, Image as ImageIcon, Search } from 'lucide-react'
+import { Camera, CheckCircle2, Image as ImageIcon, Search, UserRound } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/Button.jsx'
@@ -313,7 +313,7 @@ export function PhotoManagement() {
               <tbody>
                 {filteredStudents.map((student) => (
                   <tr key={student.id}>
-                    <td><div className="photo-student-cell">{student.photo?.imageUrl ? <img src={student.photo.imageUrl} alt={`Portrait of ${student.firstName || 'student'}`} /> : <span className="photo-student-placeholder">{[student.firstName, student.lastName].filter(Boolean).map((part) => part[0]).join('').toUpperCase() || 'S'}</span>}<div><strong>{[student.firstName, student.middleName, student.lastName].filter(Boolean).join(' ') || student.name || 'Unnamed student'}</strong><small>{[strands.find((strand) => strand.id === student.strandId)?.code, sections.find((section) => section.id === student.sectionId)?.code].filter(Boolean).join(' · ') || 'No class assignment'}</small></div></div></td>
+                    <td><div className="photo-student-cell">{student.photo?.imageUrl ? <img src={student.photo.imageUrl} alt={`Portrait of ${student.firstName || 'student'}`} /> : <span className="photo-student-placeholder"><UserRound size={27} strokeWidth={1.5} aria-label="No profile photo" /></span>}<div><strong>{[student.firstName, student.middleName, student.lastName].filter(Boolean).join(' ') || student.name || 'Unnamed student'}</strong><small>{[strands.find((strand) => strand.id === student.strandId)?.code, sections.find((section) => section.id === student.sectionId)?.code].filter(Boolean).join(' · ') || 'No class assignment'}</small></div></div></td>
                     <td>{student.photo?.imageUrl ? <span className={`photo-status photo-status-${student.photo.status || 'captured'}`}><CheckCircle2 size={14} />{student.photo.status || 'captured'}</span> : <span className="photo-status photo-status-missing">No portrait</span>}</td>
                     <td><div className="inline-actions"><button type="button" className="table-action-button" onClick={() => openCapture(student)}>{student.photo ? 'Replace' : 'Capture'}</button>{student.photo?.imageUrl && !hasPublishedPortrait(student.photo) && <button type="button" className="table-action-button alt" disabled={publishingStudentId === student.id} onClick={() => publishPortrait(student)}>{publishingStudentId === student.id ? 'Publishing…' : 'Approve for yearbook'}</button>}{student.photo && !student.photo.storageOnly && <button type="button" className="table-action-button alt" onClick={() => navigate(`/photos/edit/${student.photo.id}`)}>Edit</button>}</div></td>
                   </tr>

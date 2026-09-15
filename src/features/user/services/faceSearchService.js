@@ -28,7 +28,27 @@ export const loadFaceSearchModels = async () => {
   return modelsPromise
 }
 
-const detectorOptions = (faceapi) => new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 })
+const detectorOptions = (faceapi, inputSize = 320, scoreThreshold = 0.42) => new faceapi.TinyFaceDetectorOptions({ inputSize, scoreThreshold })
+
+const detectPublishedFace = async (faceapi, image) => {
+  const detect = (options) => faceapi
+    .detectSingleFace(image, options)
+    .withFaceLandmarks(true)
+    .withFaceDescriptor()
+
+  const firstPass = await detect(detectorOptions(faceapi))
+  return firstPass || detect(detectorOptions(faceapi, 512, 0.3))
+}
+
+const detectQueryFaces = async (faceapi, image) => {
+  const detect = (options) => faceapi
+    .detectAllFaces(image, options)
+    .withFaceLandmarks(true)
+    .withFaceDescriptors()
+
+  const firstPass = await detect(detectorOptions(faceapi))
+  return firstPass.length ? firstPass : detect(detectorOptions(faceapi, 512, 0.3))
+}
 
 const imageFromUrl = async (faceapi, url) => {
   const response = await fetch(url, { mode: 'cors' })
@@ -40,10 +60,7 @@ const descriptorFromPublishedPortrait = async (url) => {
   if (!descriptorCache.has(url)) {
     descriptorCache.set(url, loadFaceSearchModels().then(async (faceapi) => {
       const image = await imageFromUrl(faceapi, url)
-      const detection = await faceapi
-        .detectSingleFace(image, detectorOptions(faceapi))
-        .withFaceLandmarks(true)
-        .withFaceDescriptor()
+      const detection = await detectPublishedFace(faceapi, image)
       return detection?.descriptor || null
     }).catch((error) => {
       descriptorCache.delete(url)
@@ -161,10 +178,7 @@ export const rankImageMatches = (candidates, limit = 5) => candidates
 export const searchPublishedFaces = async ({ file, yearbooks, onProgress }) => {
   const faceapi = await loadFaceSearchModels()
   const queryImage = await faceapi.bufferToImage(file)
-  const faces = await faceapi
-    .detectAllFaces(queryImage, detectorOptions(faceapi))
-    .withFaceLandmarks(true)
-    .withFaceDescriptors()
+  const faces = await detectQueryFaces(faceapi, queryImage)
 
   if (!faces.length) throw new Error('No clear face was found. Choose a bright, front-facing photo and try again.')
   if (faces.length > 1) throw new Error('More than one face was found. Choose or crop a photo with one person only.')
@@ -186,6 +200,8 @@ export const searchPublishedFaces = async ({ file, yearbooks, onProgress }) => {
     }
     onProgress?.({ completed: index + 1, total: portraits.length })
   }
+
+  if (!compared.length) throw new Error('The published portraits could not be read. Check your connection and try again.')
 
   return {
     matches: rankFaceMatches(compared),
@@ -210,6 +226,8 @@ export const searchPublishedImages = async ({ file, yearbooks, onProgress }) => 
     }
     onProgress?.({ completed: index + 1, total: portraits.length })
   }
+
+  if (!compared.length) throw new Error('The published portraits could not be read. Check your connection and try again.')
 
   return {
     matches: rankImageMatches(compared),

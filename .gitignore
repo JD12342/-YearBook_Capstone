@@ -16,6 +16,7 @@ Thumbs.db
 build/
 dist/
 coverage/
+.firebase/
 .vercel/
 .expo/
 .expo-shared/

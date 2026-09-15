@@ -63,7 +63,7 @@ export function StudentFilters({
 
       <label className="filter-field full-span">
         <span>Search</span>
-        <Input value={searchTerm} onChange={onSearchChange} placeholder="Search by name or student number" />
+        <Input value={searchTerm} onChange={onSearchChange} placeholder="Search by name or LRN" />
       </label>
     </div>
   )
