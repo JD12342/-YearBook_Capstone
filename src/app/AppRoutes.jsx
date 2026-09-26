@@ -4,7 +4,8 @@ import { ProtectedRoute } from '../features/auth/components/ProtectedRoute.jsx'
 import { AdminLayout } from '../features/admin/components/layout/AdminLayout.jsx'
 import { Dashboard } from '../features/admin/pages/Dashboard.jsx'
 import { LoginPage } from '../features/auth/pages/LoginPage.jsx'
-import { PlaceholderPage } from '../features/admin/pages/placeholders/PlaceholderPage.jsx'
+import { SettingsPage } from '../features/admin/pages/SettingsPage.jsx'
+import { AccountProfilePage } from '../features/admin/pages/AccountProfilePage.jsx'
 import { PhotoManagement } from '../features/admin/pages/photos/PhotoManagement.jsx'
 import { PhotoEditing } from '../features/admin/pages/photos/PhotoEditing.jsx'
 import { PhotoRetakes } from '../features/admin/pages/photos/PhotoRetakes.jsx'
@@ -25,6 +26,8 @@ import { UserHomePage } from '../features/user/pages/UserHomePage.jsx'
 import { UserMemoriesPage } from '../features/user/pages/UserMemoriesPage.jsx'
 import { UserUpdatesPage } from '../features/user/pages/UserUpdatesPage.jsx'
 import { UserYearbooksPage } from '../features/user/pages/UserYearbooksPage.jsx'
+import { TeacherStudioPage } from '../features/teacher/pages/TeacherStudioPage.jsx'
+import { TeacherManagementPage } from '../features/admin/pages/TeacherManagementPage.jsx'
 
 const UserYearbookViewerPage = lazy(() => import('../features/user/pages/UserYearbookViewerPage.jsx').then((module) => ({ default: module.UserYearbookViewerPage })))
 
@@ -33,7 +36,7 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
-      <Route element={<ProtectedRoute allowedRoles={['User', 'Administrator']} />}>
+      <Route element={<ProtectedRoute allowedRoles={['User', 'Teacher', 'Administrator']} />}>
         <Route path="/community" element={<UserPortalLayout />}>
           <Route index element={<UserHomePage />} />
           <Route path="explore" element={<UserExplorePage />} />
@@ -43,6 +46,9 @@ export function AppRoutes() {
           <Route path="yearbooks/:yearbookId" element={<Suspense fallback={<div className="yearbook-viewer-message">Opening the 3D yearbook…</div>}><UserYearbookViewerPage /></Suspense>} />
           <Route path="history" element={<UserHistoryPage />} />
           <Route path="updates" element={<UserUpdatesPage />} />
+          <Route element={<ProtectedRoute allowedRoles={['Teacher']} />}>
+            <Route path="teacher" element={<TeacherStudioPage />} />
+          </Route>
         </Route>
       </Route>
 
@@ -67,10 +73,11 @@ export function AppRoutes() {
             <Route path="/verification-requests" element={<VerificationRequestsPage />} />
           </Route>
           <Route path="/content" element={<ContentManagementPage />} />
+          <Route path="/teachers" element={<TeacherManagementPage />} />
           <Route path="/alumni" element={<Navigate to="/content" replace />} />
           <Route path="/reports" element={<ReportsPage />} />
-          <Route path="/settings" element={<PlaceholderPage title="Settings" description="System configuration is planned for a later update." />} />
-          <Route path="/profile" element={<PlaceholderPage title="Admin Profile" description="Profile management is not yet implemented." />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/profile" element={<AccountProfilePage />} />
           <Route path="/logout" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Route>

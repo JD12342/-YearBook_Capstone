@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogOut, Menu, X } from 'lucide-react'
+import { GraduationCap, LayoutDashboard, LogOut, Menu, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { userPortalNavigation } from '../data/userPortalContent.js'
@@ -56,6 +56,7 @@ export function UserPortalHeader({ profile, role, user, logout }) {
       </nav>
 
       <div className="user-account-actions">
+        {role === 'Teacher' && <Link className="user-workspace-link teacher" to="/community/teacher"><GraduationCap size={16} /> Teacher Studio</Link>}
         {role === 'Administrator' && <Link className="user-workspace-link" to="/dashboard"><LayoutDashboard size={16} /> Workspace</Link>}
         <div className="user-account-chip" title={user?.email || ''}>
           <span className="user-account-avatar">{initials || 'GB'}</span>

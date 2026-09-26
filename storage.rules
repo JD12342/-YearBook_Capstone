@@ -25,9 +25,13 @@ service firebase.storage {
     function canViewCommunity() {
       return isAdministrator()
         || (isSignedIn() && (
-          request.auth.token.role == 'User'
-          || hasActiveProfileRole('User')
+          hasActiveProfileRole('User')
+          || hasActiveProfileRole('Teacher')
         ));
+    }
+
+    function isTeacher() {
+      return hasActiveProfileRole('Teacher');
     }
 
     function canViewYearbook(yearbookId) {
@@ -82,6 +86,31 @@ service firebase.storage {
       allow read: if isAdministrator() || canViewPublishedContent(collectionName, recordId);
       allow create, update: if isAdministrator()
         && request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isAdministrator();
+    }
+
+    match /teacher-content/{teacherId}/{memoryId}/{fileName} {
+      allow read: if canViewCommunity()
+        && firestore.exists(/databases/(default)/documents/memories/$(memoryId))
+        && (firestore.get(/databases/(default)/documents/memories/$(memoryId)).data.status == 'published'
+          || isAdministrator()
+          || request.auth.uid == teacherId);
+      allow create: if isTeacher()
+        && request.auth.uid == teacherId
+        && firestore.exists(/databases/(default)/documents/memories/$(memoryId))
+        && firestore.get(/databases/(default)/documents/memories/$(memoryId)).data.ownerUid == request.auth.uid
+        && firestore.get(/databases/(default)/documents/memories/$(memoryId)).data.status == 'pending'
+        && ((request.resource.contentType.matches('image/.*') && request.resource.size < 10 * 1024 * 1024)
+          || (request.resource.contentType.matches('video/(mp4|webm|quicktime)') && request.resource.size < 80 * 1024 * 1024));
+      allow update: if false;
+      allow delete: if isAdministrator() || (isTeacher() && request.auth.uid == teacherId);
+    }
+
+    match /teacher-portraits/{teacherId}/approved/{fileName} {
+      allow read: if canViewCommunity();
+      allow create, update: if isAdministrator()
+        && request.resource.size < 15 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
       allow delete: if isAdministrator();
     }

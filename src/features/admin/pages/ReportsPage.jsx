@@ -3,6 +3,7 @@ import { BookOpenText, CheckCircle2, Download, Image as ImageIcon, Printer, Shie
 import { Button } from '../components/ui/Button.jsx'
 import { Card } from '../components/ui/Card.jsx'
 import { Select } from '../components/ui/Select.jsx'
+import { DatabaseAnalyticsPanel } from '../components/reports/DatabaseAnalyticsPanel.jsx'
 import { buildReport, subscribeReportData } from '../services/reportService.js'
 
 const emptyData = {
@@ -130,6 +131,8 @@ export function ReportsPage() {
         <Card className="panel-card report-panel"><div className="section-title-row"><div><h3>Strand coverage</h3><span className="panel-caption">Approved portraits by strand</span></div></div><CoverageList records={report.strandCoverage} emptyMessage="No strand records match these filters." /></Card>
         <Card className="panel-card report-panel"><div className="section-title-row"><div><h3>Section coverage</h3><span className="panel-caption">Approved portraits by section</span></div></div><CoverageList records={report.sectionCoverage} emptyMessage="No section records match these filters." /></Card>
       </div>
+
+      <DatabaseAnalyticsPanel />
 
       <Card className="panel-card report-roster-panel">
         <div className="section-title-row"><div><h3>Report roster</h3><span className="panel-caption">{report.studentRows.length} student record{report.studentRows.length === 1 ? '' : 's'} included in the export</span></div></div>

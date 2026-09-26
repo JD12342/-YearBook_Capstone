@@ -243,14 +243,14 @@ export function PhotoCapturePage() {
         })
         if (ignore) return
         setSessionStudents(records)
-        if (!activeStudentId && records[0]) setActiveStudentId(records[0].id)
+        if ((!activeStudentId || !records.some((item) => item.id === activeStudentId)) && records[0]) setActiveStudentId(records[0].id)
       } catch {
         if (!ignore) setSessionStudents([])
       }
     }
     loadQueue()
     return () => { ignore = true }
-  }, [])
+  }, [activeStudentId])
 
   useEffect(() => {
     if (!navigator.mediaDevices?.enumerateDevices) return undefined

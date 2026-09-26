@@ -108,7 +108,7 @@ function drawPaper(context, presentation) {
   context.restore()
 }
 
-function createCanvasTexture(paint, imageUrl = '') {
+function createCanvasTexture(paint, imageUrl = '', onUpdate) {
   const canvas = document.createElement('canvas')
   canvas.width = TEXTURE_WIDTH
   canvas.height = TEXTURE_HEIGHT
@@ -124,6 +124,7 @@ function createCanvasTexture(paint, imageUrl = '') {
     if (!active) return
     paint(context, Array.isArray(imageUrl) ? images : images[0])
     texture.needsUpdate = true
+    onUpdate?.()
   }
   repaint()
   sources.forEach((url, index) => {
@@ -140,11 +141,11 @@ function createCanvasTexture(paint, imageUrl = '') {
   return texture
 }
 
-function createCoverTexture(presentation) {
-  return createCanvasTexture((context, image) => paintYearbookCover(context, presentation, image), presentation.coverImageUrl || '/snhs-seal.png')
+function createCoverTexture(presentation, onUpdate) {
+  return createCanvasTexture((context, image) => paintYearbookCover(context, presentation, image), presentation.coverImageUrl || '/snhs-seal.png', onUpdate)
 }
 
-function createInsideCoverTexture(presentation, label) {
+function createInsideCoverTexture(presentation, label, onUpdate) {
   return createCanvasTexture((context, seal) => {
     const surfaceColor = coverSurfaceColor(presentation)
     const gradient = context.createLinearGradient(0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT)
@@ -171,10 +172,10 @@ function createInsideCoverTexture(presentation, label) {
     context.fillStyle = presentation.accentColor
     context.font = '700 17px Arial'
     context.fillText('SORSOGON NATIONAL HIGH SCHOOL', TEXTURE_WIDTH / 2, 612)
-  }, '/snhs-seal.png')
+  }, '/snhs-seal.png', onUpdate)
 }
 
-function createBackCoverTexture(presentation) {
+function createBackCoverTexture(presentation, onUpdate) {
   return createCanvasTexture((context, seal) => {
     const surfaceColor = coverSurfaceColor(presentation)
     const coverInk = coverTextColor(surfaceColor)
@@ -199,10 +200,10 @@ function createBackCoverTexture(presentation) {
     context.font = '500 20px Georgia'
     context.fillText(String(presentation.coverSubtitle || ''), TEXTURE_WIDTH / 2, 642)
     context.globalAlpha = 1
-  }, '/snhs-seal.png')
+  }, '/snhs-seal.png', onUpdate)
 }
 
-function createEndpaperTexture(presentation) {
+function createEndpaperTexture(presentation, onUpdate) {
   return createCanvasTexture((context, seal) => {
     drawPaper(context, presentation)
     context.save()
@@ -217,10 +218,10 @@ function createEndpaperTexture(presentation) {
     context.font = '500 24px Georgia'
     context.fillText(String(presentation.coverSubtitle || ''), TEXTURE_WIDTH / 2, 808)
     context.globalAlpha = 1
-  }, '/snhs-seal.png')
+  }, '/snhs-seal.png', onUpdate)
 }
 
-function createProfilePageTexture(presentation, page, pageNumber, side) {
+function createProfilePageTexture(presentation, page, pageNumber, side, onUpdate) {
   const artworkUrl = side === 'left' ? page.leftPageImageUrl : page.rightPageImageUrl
   const profiles = Array.isArray(page.profiles) ? page.profiles : []
   // One portrait per physical page: left then right, continuing on the next spread.
@@ -283,10 +284,10 @@ function createProfilePageTexture(presentation, page, pageNumber, side) {
       drawLines(context, wrapText(context, profile.awards ? `Awards: ${profile.awards}` : '', 392, 7), detailsX, questionEnd + 24, 27)
       context.globalAlpha = 1
     })
-  }, [artworkUrl || '', ...visibleProfiles.map(profile => profile.photoUrl || '')])
+  }, [artworkUrl || '', ...visibleProfiles.map(profile => profile.photoUrl || '')], onUpdate)
 }
 
-function createEditorialPageTexture(presentation, page, pageNumber, side) {
+function createEditorialPageTexture(presentation, page, pageNumber, side, onUpdate) {
   const artworkUrl = side === 'left' ? page.leftPageImageUrl : page.rightPageImageUrl
   const featureImageUrl = side === 'right' ? (page.imageUrl || '/school.jpg') : '/snhs-seal.png'
 
@@ -335,10 +336,10 @@ function createEditorialPageTexture(presentation, page, pageNumber, side) {
     context.font = '18px Georgia'
     context.fillText(String(pageNumber).padStart(2, '0'), 686, 104)
     context.globalAlpha = 1
-  }, artworkUrl || featureImageUrl)
+  }, artworkUrl || featureImageUrl, onUpdate)
 }
 
-function createClosingTexture(presentation) {
+function createClosingTexture(presentation, onUpdate) {
   return createCanvasTexture((context) => {
     drawPaper(context, presentation)
     context.fillStyle = presentation.inkColor
@@ -350,32 +351,32 @@ function createClosingTexture(presentation) {
     context.font = '22px Arial'
     context.fillText('Sorsogon National High School', TEXTURE_WIDTH / 2, 525)
     context.globalAlpha = 1
-  })
+  }, '', onUpdate)
 }
 
-export function createShelfCoverTextures(presentation) {
-  return { front: createCoverTexture(presentation), back: createBackCoverTexture(presentation) }
+export function createShelfCoverTextures(presentation, onUpdate) {
+  return { front: createCoverTexture(presentation, onUpdate), back: createBackCoverTexture(presentation, onUpdate) }
 }
 
-export function createYearbookTextureSet(presentation) {
+export function createYearbookTextureSet(presentation, onUpdate) {
   const pages = presentation.pages || []
   const textures = []
   const pageTexture = (page, index, side) => {
     const pageNumber = (index * 2) + (side === 'left' ? 1 : 2)
     const texture = page.layout === 'profiles' || page.id === 'portraits'
-      ? createProfilePageTexture(presentation, page, pageNumber, side)
-      : createEditorialPageTexture(presentation, page, pageNumber, side)
+      ? createProfilePageTexture(presentation, page, pageNumber, side, onUpdate)
+      : createEditorialPageTexture(presentation, page, pageNumber, side, onUpdate)
     textures.push(texture)
     return texture
   }
   const leftTextures = pages.map((page, index) => pageTexture(page, index, 'left'))
   const rightTextures = pages.map((page, index) => pageTexture(page, index, 'right'))
-  const coverTexture = createCoverTexture(presentation)
-  const backCoverTexture = createBackCoverTexture(presentation)
-  const insideFrontCoverTexture = createInsideCoverTexture(presentation, 'This is our story.')
-  const insideBackCoverTexture = createInsideCoverTexture(presentation, 'Once a student, always part of the story.')
-  const endpaperTexture = createEndpaperTexture(presentation)
-  const closingTexture = createClosingTexture(presentation)
+  const coverTexture = createCoverTexture(presentation, onUpdate)
+  const backCoverTexture = createBackCoverTexture(presentation, onUpdate)
+  const insideFrontCoverTexture = createInsideCoverTexture(presentation, 'This is our story.', onUpdate)
+  const insideBackCoverTexture = createInsideCoverTexture(presentation, 'Once a student, always part of the story.', onUpdate)
+  const endpaperTexture = createEndpaperTexture(presentation, onUpdate)
+  const closingTexture = createClosingTexture(presentation, onUpdate)
   textures.push(coverTexture, backCoverTexture, insideFrontCoverTexture, insideBackCoverTexture, endpaperTexture, closingTexture)
 
   const leaves = [{ front: endpaperTexture, back: leftTextures[0] }]

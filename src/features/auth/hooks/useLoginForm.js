@@ -23,7 +23,7 @@ export function useLoginForm() {
   const [error, setError] = useState(location.state?.error || '')
   const [notice, setNotice] = useState('')
 
-  const redirectPath = location.state?.from || (authenticatedRole === 'Administrator' ? '/dashboard' : '/community')
+  const redirectPath = location.state?.from || (authenticatedRole === 'Administrator' ? '/dashboard' : authenticatedRole === 'Teacher' ? '/community/teacher' : '/community')
   const updateField = (name, value) => {
     clearAuthorizationError()
     setError('')
@@ -51,7 +51,7 @@ export function useLoginForm() {
         setNotice('Your access request was submitted. You can sign in after an administrator approves it.')
       } else {
         const result = await login({ email: fields.email.trim(), password: fields.password, rememberMe: fields.rememberMe })
-        navigate(result.role === 'Administrator' ? '/dashboard' : '/community', { replace: true })
+        navigate(result.role === 'Administrator' ? '/dashboard' : result.role === 'Teacher' ? '/community/teacher' : '/community', { replace: true })
       }
     } catch (loginError) {
       setError(loginError?.message || 'Unable to sign in. Please check your credentials and try again.')

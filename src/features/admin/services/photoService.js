@@ -125,6 +125,7 @@ export const uploadStudentPhotoRecord = async ({
   schoolYearId,
   strandId,
   sectionId,
+  submittedByUid = '',
   source = 'camera',
   status = 'captured',
 }) => {
@@ -154,6 +155,7 @@ export const uploadStudentPhotoRecord = async ({
     schoolYearId,
     strandId,
     sectionId,
+    submittedByUid,
     source,
     status,
     originalPath: uploadedOriginal.path,

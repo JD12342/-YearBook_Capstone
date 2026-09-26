@@ -40,7 +40,7 @@ const recordTypes = {
   memories: {
     label: 'Memories', singular: 'memory gallery', collection: 'memories', icon: Images,
     description: 'Publish captioned photos for classes, clubs, events, and the wider school community.',
-    defaults: { title: '', caption: '', themeColor: '#d17c87', status: 'draft', images: [] }, statuses: ['draft', 'published', 'archived'], publicStatus: 'published',
+    defaults: { title: '', caption: '', themeColor: '#d17c87', status: 'draft', images: [] }, statuses: ['pending', 'draft', 'published', 'rejected', 'archived'], publicStatus: 'published',
   },
   alumni: {
     label: 'Alumni records', singular: 'alumni record', collection: 'alumni', icon: UsersRound,
@@ -298,17 +298,18 @@ export function ContentManagementPage() {
 
       {loading ? <div className="empty-state">Loading {config.label.toLowerCase()}…</div> : visibleRecords.length ? <div className="content-record-grid">
         {visibleRecords.map((record) => <article className="content-record-card" key={record.id}>
-          <div className="content-record-image">{(record.imageUrl || record.images?.[0]?.url) ? <img src={record.imageUrl || record.images[0].url} alt="" /> : <ActiveIcon size={28} />}</div>
+          <div className="content-record-image">{record.media?.[0]?.type === 'video' ? <video src={record.media[0].url} muted preload="metadata" /> : (record.imageUrl || record.media?.[0]?.url || record.images?.[0]?.url) ? <img src={record.imageUrl || record.media?.[0]?.url || record.images[0].url} alt="" /> : <ActiveIcon size={28} />}</div>
           <div className="content-record-copy">
             <div><Badge variant={record.status === config.publicStatus ? 'success' : record.status === 'archived' ? 'neutral' : 'warning'}>{record.status || 'draft'}</Badge><span>{formatDate(record)}</span></div>
             <h4>{record.title || record.fullName || 'Untitled'}</h4>
             <p>{record.body || record.biography || record.occupation || 'No details added yet.'}</p>
-            <small>{activeType === 'memories' ? [record.caption, `${record.images?.length || 0} photos`].filter(Boolean).join(' · ') : activeType === 'landing' ? `${record.section} section${record.isDefault ? ' · built-in content' : ''}` : activeType === 'content' ? record.category || 'School Story' : activeType === 'alumni' ? [record.graduationYear, record.occupation].filter(Boolean).join(' · ') || 'Alumni profile' : 'Community announcement'}</small>
+            <small>{activeType === 'memories' ? [record.caption, `${record.media?.length || record.images?.length || 0} media`, record.source === 'teacher' ? `Teacher: ${record.contributorName || 'Contributor'}` : ''].filter(Boolean).join(' · ') : activeType === 'landing' ? `${record.section} section${record.isDefault ? ' · built-in content' : ''}` : activeType === 'content' ? record.category || 'School Story' : activeType === 'alumni' ? [record.graduationYear, record.occupation].filter(Boolean).join(' · ') || 'Alumni profile' : 'Community announcement'}</small>
           </div>
           <div className="content-record-actions">
-            <Button size="sm" variant="secondary" onClick={() => openForm(record)}>Edit</Button>
+            {record.source !== 'teacher' && <Button size="sm" variant="secondary" onClick={() => openForm(record)}>Edit</Button>}
             {!record.isDefault && record.status !== config.publicStatus && <Button size="sm" disabled={workingId === record.id} onClick={() => changeStatus(record, config.publicStatus)}><Eye size={14} /> {activeType === 'alumni' ? 'Activate' : 'Publish'}</Button>}
             {!record.isDefault && record.status === config.publicStatus && <Button size="sm" variant="ghost" disabled={workingId === record.id} onClick={() => changeStatus(record, activeType === 'alumni' ? 'archived' : 'draft')}>{activeType === 'alumni' ? 'Archive' : 'Unpublish'}</Button>}
+            {activeType === 'memories' && record.status === 'pending' && <Button size="sm" variant="secondary" disabled={workingId === record.id} onClick={() => changeStatus(record, 'rejected')}>Reject</Button>}
             {!record.isDefault && record.status !== 'archived' && <Button size="sm" variant="ghost" disabled={workingId === record.id} onClick={() => changeStatus(record, 'archived')}><Archive size={14} /> Archive</Button>}
             {!record.isDefault && <Button size="sm" variant="danger" disabled={workingId === record.id} onClick={() => setPendingDelete(record)}><Trash2 size={14} /> Delete</Button>}
           </div>

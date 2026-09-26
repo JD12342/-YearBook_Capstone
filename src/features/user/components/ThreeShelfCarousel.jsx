@@ -8,22 +8,38 @@ const smooth = t => t * t * (3 - 2 * t)
 
 export function ThreeShelfCarousel({ yearbooks, activeIndex, mode, locked, onSelect, onOpen, onSettled }) {
   const mountRef = useRef(null)
+  const invalidateRef = useRef(null)
   const current = useRef({ activeIndex, mode, locked, onSelect, onOpen, onSettled })
   const [failed, setFailed] = useState(false)
   useEffect(() => { if (failed) current.current.onSettled() }, [failed, activeIndex, mode])
-  useEffect(() => { current.current = { activeIndex, mode, locked, onSelect, onOpen, onSettled } }, [activeIndex, mode, locked, onSelect, onOpen, onSettled])
+  useEffect(() => {
+    current.current = { activeIndex, mode, locked, onSelect, onOpen, onSettled }
+    invalidateRef.current?.()
+  }, [activeIndex, mode, locked, onSelect, onOpen, onSettled])
   useEffect(() => {
     const mount = mountRef.current
     if (!mount) return undefined
-    let renderer, frame, observer
+    let renderer, frame, observer, viewportObserver
+    let disposed = false
+    let frameQueued = false
+    let inViewport = true
+    let renderFrame = () => {}
+    const requestRender = () => {
+      if (disposed || frameQueued || document.hidden || !inViewport) return
+      frameQueued = true
+      frame = requestAnimationFrame((now) => renderFrame(now))
+    }
+    const handleVisibilityChange = () => { if (!document.hidden) requestRender() }
+    invalidateRef.current = requestRender
     const geometry = [], materials = [], textures = []
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const lowPower = window.matchMedia('(max-width: 760px)').matches || (navigator.hardwareConcurrency || 8) <= 4
     try {
       const scene = new THREE.Scene()
       scene.background = new THREE.Color('#2c3e50')
       const camera = new THREE.PerspectiveCamera(39, 1, 0.1, 100)
-      renderer = new THREE.WebGLRenderer({ antialias: true })
-      renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75))
+      renderer = new THREE.WebGLRenderer({ antialias: !lowPower, powerPreference: 'high-performance' })
+      renderer.setPixelRatio(Math.min(devicePixelRatio, lowPower ? 1.15 : 1.5))
       renderer.outputColorSpace = THREE.SRGBColorSpace
       renderer.shadowMap.enabled = true
       renderer.shadowMap.type = THREE.PCFSoftShadowMap
@@ -32,7 +48,7 @@ export function ThreeShelfCarousel({ yearbooks, activeIndex, mode, locked, onSel
       const light = new THREE.DirectionalLight('#fff4df', 2.5)
       light.position.set(-4, 8, 7)
       light.castShadow = true
-      light.shadow.mapSize.set(2048, 2048)
+      light.shadow.mapSize.set(lowPower ? 512 : 1024, lowPower ? 512 : 1024)
       Object.assign(light.shadow.camera, { left: -12, right: 12, top: 10, bottom: -10 })
       light.shadow.normalBias = 0.025
       scene.add(light)
@@ -73,7 +89,7 @@ export function ThreeShelfCarousel({ yearbooks, activeIndex, mode, locked, onSel
         const presentation = getYearbookPresentation(record, record.schoolYearName)
         const group = new THREE.Group()
         group.userData.index = index
-        const covers = createShelfCoverTextures(presentation)
+        const covers = createShelfCoverTextures(presentation, requestRender)
         textures.push(covers.front, covers.back)
         const cloth = new THREE.MeshStandardMaterial({ color: coverSurfaceColor(presentation), roughness: .68 })
         const front = new THREE.MeshBasicMaterial({ map: covers.front })
@@ -118,8 +134,17 @@ export function ThreeShelfCarousel({ yearbooks, activeIndex, mode, locked, onSel
         camera.position.set(0, .65, Math.max(8.8, 6.1 / camera.aspect + 1.95))
         camera.lookAt(0, -.4, 0)
         camera.updateProjectionMatrix()
+        requestRender()
       }
       observer = new ResizeObserver(resize); observer.observe(mount); resize()
+      if ('IntersectionObserver' in window) {
+        viewportObserver = new IntersectionObserver(([entry]) => {
+          inViewport = entry.isIntersecting
+          if (inViewport) requestRender()
+        }, { rootMargin: '120px' })
+        viewportObserver.observe(mount)
+      }
+      document.addEventListener('visibilitychange', handleVisibilityChange)
       const raycaster = new THREE.Raycaster(), pointer = new THREE.Vector2()
       let down = null
       const pointerDown = e => { if (e.button === 0) down = { x: e.clientX, y: e.clientY } }
@@ -139,7 +164,9 @@ export function ThreeShelfCarousel({ yearbooks, activeIndex, mode, locked, onSel
       }
       mount.addEventListener('pointerdown', pointerDown)
       mount.addEventListener('pointerup', pointerUp)
-      const render = now => {
+      renderFrame = now => {
+        frameQueued = false
+        if (disposed || document.hidden || !inViewport) return
         const { activeIndex: selected, mode: view } = current.current
         const key = `${selected}:${view}`
         if (key !== lastKey) {
@@ -158,20 +185,26 @@ export function ThreeShelfCarousel({ yearbooks, activeIndex, mode, locked, onSel
         })
         if (!settled && t === 1) { settled = true; current.current.onSettled() }
         renderer.render(scene, camera)
-        frame = requestAnimationFrame(render)
+        if (!settled) requestRender()
       }
-      frame = requestAnimationFrame(render)
+      requestRender()
       return () => {
-        cancelAnimationFrame(frame); observer.disconnect()
+        disposed = true
+        invalidateRef.current = null
+        cancelAnimationFrame(frame); observer.disconnect(); viewportObserver?.disconnect()
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
         mount.removeEventListener('pointerdown', pointerDown); mount.removeEventListener('pointerup', pointerUp)
         geometry.forEach(g => g.dispose()); materials.forEach(m => m.dispose())
         textures.forEach(t => { t.userData.cancelImageLoad?.(); t.dispose() })
         renderer.dispose(); renderer.domElement.remove()
       }
     } catch {
+      disposed = true
+      invalidateRef.current = null
       setFailed(true)
       current.current.onSettled()
-      observer?.disconnect(); cancelAnimationFrame(frame)
+      observer?.disconnect(); viewportObserver?.disconnect(); cancelAnimationFrame(frame)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       geometry.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); textures.forEach(t => t.dispose())
       renderer?.dispose(); renderer?.domElement.remove()
     }

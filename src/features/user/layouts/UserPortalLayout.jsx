@@ -33,7 +33,7 @@ export function UserPortalLayout() {
     >
       {!isImmersiveYearbook && <UserPortalHeader profile={profile} role={role} user={user} logout={logout} />}
       <main className={`user-portal-main ${isImmersiveYearbook ? 'user-portal-main-immersive' : ''}`}>
-        <Outlet context={{ content, contentReady, displayName, profile }} />
+        <Outlet context={{ content, contentReady, displayName, profile, role, user }} />
       </main>
       {!isImmersiveYearbook && <UserPortalFooter />}
     </div>

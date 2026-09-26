@@ -28,7 +28,19 @@ service cloud.firestore {
     }
 
     function isUser() {
-      return hasTokenRole('User') || hasActiveProfileRole('User');
+      return hasActiveProfileRole('User');
+    }
+
+    function isTeacher() {
+      return hasActiveProfileRole('Teacher');
+    }
+
+    function canViewCommunity() {
+      return isAdministrator() || isUser() || isTeacher();
+    }
+
+    function teacherAssignment() {
+      return get(/databases/$(database)/documents/teacherAssignments/$(request.auth.uid)).data;
     }
 
     match /users/{userId} {
@@ -40,7 +52,8 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.email == request.auth.token.email
-        && request.resource.data.role == 'User'
+        && request.resource.data.role in ['User', 'Teacher']
+        && (request.resource.data.profileType == 'Teacher' ? request.resource.data.role == 'Teacher' : request.resource.data.role == 'User')
         && request.resource.data.profileType in ['Student', 'Teacher', 'Staff']
         && request.resource.data.referenceId is string
         && request.resource.data.referenceId.size() > 0
@@ -59,15 +72,23 @@ service cloud.firestore {
     }
 
     match /schoolYears/{schoolYearId} {
-      allow read, write: if isAdministrator();
+      allow read: if canViewCommunity();
+      allow write: if isAdministrator();
     }
 
     match /strands/{strandId} {
-      allow read, write: if isAdministrator();
+      allow read: if canViewCommunity();
+      allow write: if isAdministrator();
     }
 
     match /sections/{sectionId} {
-      allow read, write: if isAdministrator();
+      allow read: if isAdministrator() || isUser() || (isTeacher() && sectionId in teacherAssignment().sectionIds);
+      allow write: if isAdministrator();
+    }
+
+    match /teacherAssignments/{teacherId} {
+      allow get: if isAdministrator() || (isTeacher() && request.auth.uid == teacherId);
+      allow list, create, update, delete: if isAdministrator();
     }
 
     match /photos/{photoId} {
@@ -76,31 +97,58 @@ service cloud.firestore {
 
     match /yearbooks/{yearbookId} {
       allow read: if isAdministrator()
-        || (isUser() && resource.data.status == 'active');
+        || (canViewCommunity() && resource.data.status == 'active');
       allow write: if isAdministrator();
     }
 
     match /announcements/{announcementId} {
       allow read: if isAdministrator()
-        || (isUser() && resource.data.status == 'published');
+        || (canViewCommunity() && resource.data.status == 'published');
       allow write: if isAdministrator();
     }
 
     match /memories/{memoryId} {
       allow read: if isAdministrator()
-        || (isUser() && resource.data.status == 'published');
-      allow write: if isAdministrator();
+        || (canViewCommunity() && resource.data.status == 'published')
+        || (isTeacher() && resource.data.ownerUid == request.auth.uid);
+      allow create: if false;
+      allow update: if isAdministrator() || (isTeacher()
+        && resource.data.ownerUid == request.auth.uid
+        && resource.data.status == 'pending'
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.sectionId == resource.data.sectionId
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['media', 'images', 'updatedAt']));
+      allow delete: if isAdministrator();
+
+      match /reactions/{userId} {
+        allow read: if canViewCommunity();
+        allow write: if false;
+      }
+
+      match /comments/{commentId} {
+        allow read: if canViewCommunity() && get(/databases/$(database)/documents/memories/$(memoryId)).data.status == 'published';
+        allow create: if canViewCommunity()
+          && get(/databases/$(database)/documents/memories/$(memoryId)).data.status == 'published'
+          && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.status == 'visible'
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500;
+        allow update: if false;
+        allow delete: if isAdministrator() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
+      }
     }
 
     match /alumni/{alumniId} {
       allow read: if isAdministrator()
-        || (isUser() && resource.data.status == 'active');
+        || (canViewCommunity() && resource.data.status == 'active');
       allow write: if isAdministrator();
     }
 
     match /schoolContent/{contentId} {
       allow read: if isAdministrator()
-        || (isUser() && resource.data.status == 'published');
+        || (canViewCommunity() && resource.data.status == 'published');
       allow write: if isAdministrator();
     }
 

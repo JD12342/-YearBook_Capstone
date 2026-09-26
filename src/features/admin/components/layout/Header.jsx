@@ -5,7 +5,7 @@ import { useAuth } from '../../../auth/context/AuthContext.jsx'
 
 export function Header({ title, subtitle, onMenuToggle }) {
   const navigate = useNavigate()
-  const { logout, role, user } = useAuth()
+  const { logout, profile, role, user } = useAuth()
   const [profileOpen, setProfileOpen] = useState(false)
   const profileMenuRef = useRef(null)
 
@@ -32,7 +32,8 @@ export function Header({ title, subtitle, onMenuToggle }) {
   }
 
   const profileEmail = user?.email || 'GradBook account'
-  const initials = profileEmail.slice(0, 2).toUpperCase()
+  const profileName = profile?.fullName || user?.displayName || profileEmail
+  const initials = profileName.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase()
   const accountRole = role || 'GradBook user'
 
   return (
@@ -58,7 +59,7 @@ export function Header({ title, subtitle, onMenuToggle }) {
             aria-haspopup="menu"
           >
             <span className="profile-avatar">{initials}</span>
-            <span className="profile-email">{profileEmail}</span>
+            <span className="profile-email">{profileName}</span>
             <ChevronDown className="chevron" size={15} aria-hidden="true" />
           </button>
 
@@ -67,8 +68,8 @@ export function Header({ title, subtitle, onMenuToggle }) {
               <div className="account-menu-summary">
                 <span className="account-menu-avatar">{initials}</span>
                 <span>
-                  <strong>{accountRole}</strong>
-                  <small>{profileEmail}</small>
+                  <strong>{profileName}</strong>
+                  <small>{accountRole} · {profileEmail}</small>
                 </span>
               </div>
               <div className="account-menu-divider" />

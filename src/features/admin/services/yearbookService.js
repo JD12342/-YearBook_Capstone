@@ -142,8 +142,11 @@ async function buildPublication(payload) {
   if (!payload.schoolYearId) throw new Error('Choose an existing school year.')
   const year = await getDoc(doc(db, 'schoolYears', payload.schoolYearId))
   if (!year.exists()) throw new Error('This yearbook is linked to a school year that no longer exists.')
-  const [students, strands, sections] = await Promise.all(['students', 'strands', 'sections'].map(name =>
-    getDocs(query(collection(db, name), where('schoolYearId', '==', payload.schoolYearId)))))
+  const [students, strands, sections, teachers, teacherAssignments] = await Promise.all([
+    ...['students', 'strands', 'sections'].map(name => getDocs(query(collection(db, name), where('schoolYearId', '==', payload.schoolYearId)))),
+    getDocs(query(collection(db, 'users'), where('profileType', '==', 'Teacher'))),
+    getDocs(collection(db, 'teacherAssignments')),
+  ])
   // Printed yearbook profiles use the short codes students recognize (for example,
   // STEM and STEM-A), while the admin forms can still show their full descriptions.
   const labels = snapshot => new Map(snapshot.docs.map(record => {
@@ -169,7 +172,38 @@ async function buildPublication(payload) {
       }
     })))
   }
-  const pages = buildStudentPages(payload.pages || createDefaultYearbookPages(year.data().name), profiles)
+  const sectionIds = new Set(sections.docs.map(record => record.id))
+  const assignments = new Map(teacherAssignments.docs.map(record => [record.id, record.data()]))
+  const teacherProfiles = teachers.docs.map(record => ({ id: record.id, ...record.data() }))
+    .filter(teacher => teacher.status === 'active' && assignments.get(teacher.id)?.active === true)
+    .map(teacher => {
+      const assignedSections = (assignments.get(teacher.id)?.sectionIds || []).filter(id => sectionIds.has(id))
+      if (!assignedSections.length) return null
+      return {
+        id: teacher.id,
+        name: teacher.fullName || teacher.email || 'Teacher',
+        strand: 'FACULTY',
+        section: assignedSections.map(id => sectionLabels.get(id)).filter(Boolean).join(' · '),
+        awards: teacher.position || 'Class Teacher',
+        photoUrl: teacher.portraitUrl || '',
+      }
+    }).filter(Boolean).sort((left, right) => left.name.localeCompare(right.name))
+
+  const sourcePages = (payload.pages || createDefaultYearbookPages(year.data().name)).filter(page => !String(page.id || '').startsWith('faculty'))
+  const studentPages = buildStudentPages(sourcePages, profiles)
+  const facultyPages = Array.from({ length: Math.ceil(teacherProfiles.length / 2) }, (_, index) => ({
+    id: index ? `faculty-${index + 1}` : 'faculty',
+    layout: 'profiles',
+    eyebrow: 'THE FACULTY',
+    title: 'The mentors behind the memories.',
+    body: 'The teachers who guided each class, supported every milestone, and helped shape this graduating chapter.',
+    quote: 'A lasting legacy begins with those who teach us how to grow.',
+    profiles: teacherProfiles.slice(index * 2, index * 2 + 2),
+  }))
+  const campusIndex = studentPages.findIndex(page => page.id === 'campus')
+  const pages = facultyPages.length
+    ? [...studentPages.slice(0, campusIndex < 0 ? studentPages.length : campusIndex), ...facultyPages, ...studentPages.slice(campusIndex < 0 ? studentPages.length : campusIndex)]
+    : studentPages
   if (new TextEncoder().encode(JSON.stringify({ ...payload, pages })).length > 900000) throw new Error('This edition is too large to save. Shorten the editorial text or reduce embedded artwork data.')
-  return { pages, schoolYearName: year.data().name, recordsVersion: 1, studentCount: profiles.length, archivedStudentCount: students.docs.filter(record => record.data().status === 'archived').length, recordsSyncedAt: serverTimestamp() }
+  return { pages, schoolYearName: year.data().name, recordsVersion: 1, studentCount: profiles.length, teacherCount: teacherProfiles.length, archivedStudentCount: students.docs.filter(record => record.data().status === 'archived').length, recordsSyncedAt: serverTimestamp() }
 }

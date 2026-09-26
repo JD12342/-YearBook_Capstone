@@ -15,10 +15,11 @@ import { coverSurfaceColor } from '../../yearbook/data/coverArtwork.js'
 
 export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interactive = true, shelfPose, onPoseReady, onReadingReady }) {
   const poseRef = useRef(shelfPose)
+  const invalidateRef = useRef(null)
   const poseReadyRef = useRef(onPoseReady)
   const readingReadyRef = useRef(onReadingReady)
   const animatingRef = useRef(false)
-  useEffect(() => { poseRef.current = shelfPose }, [shelfPose])
+  useEffect(() => { poseRef.current = shelfPose; invalidateRef.current?.() }, [shelfPose])
   useEffect(() => { poseReadyRef.current = onPoseReady }, [onPoseReady])
   useEffect(() => { readingReadyRef.current = onReadingReady }, [onReadingReady])
   const mountRef = useRef(null)
@@ -33,8 +34,8 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
     if (isOpen) readingReadyRef.current?.()
   }, [failed, shelfPose, isOpen])
 
-  useEffect(() => { isOpenRef.current = isOpen }, [isOpen])
-  useEffect(() => { pageIndexRef.current = pageIndex }, [pageIndex])
+  useEffect(() => { isOpenRef.current = isOpen; invalidateRef.current?.() }, [isOpen])
+  useEffect(() => { pageIndexRef.current = pageIndex; invalidateRef.current?.() }, [pageIndex])
   useEffect(() => { onOpenRef.current = onOpen }, [onOpen])
   useEffect(() => { interactiveRef.current = interactive }, [interactive])
 
@@ -45,9 +46,22 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
     let renderer
     let frame
     let resizeObserver
+    let viewportObserver
+    let disposed = false
+    let frameQueued = false
+    let inViewport = true
+    let renderFrame = () => {}
+    const requestRender = () => {
+      if (disposed || frameQueued || document.hidden || !inViewport) return
+      frameQueued = true
+      frame = requestAnimationFrame((now) => renderFrame(now))
+    }
+    const handleVisibilityChange = () => { if (!document.hidden) requestRender() }
+    invalidateRef.current = requestRender
     const geometries = []
     const materials = []
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const lowPower = window.matchMedia('(max-width: 760px)').matches || (navigator.hardwareConcurrency || 8) <= 4
 
     try {
       const scene = new THREE.Scene()
@@ -55,8 +69,8 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
       camera.position.set(0, 0.2, 11.7)
       camera.lookAt(0, 0, 0)
 
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+      renderer = new THREE.WebGLRenderer({ antialias: !lowPower, alpha: true, powerPreference: 'high-performance' })
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, lowPower ? 1.15 : 1.5))
       renderer.outputColorSpace = THREE.SRGBColorSpace
       renderer.toneMapping = THREE.NoToneMapping
       renderer.toneMappingExposure = 1.08
@@ -68,7 +82,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
       const keyLight = new THREE.DirectionalLight(0xfffbef, 3.8)
       keyLight.position.set(-4.5, 6, 8)
       keyLight.castShadow = true
-      keyLight.shadow.mapSize.set(2048, 2048)
+      keyLight.shadow.mapSize.set(lowPower ? 512 : 1024, lowPower ? 512 : 1024)
       keyLight.shadow.radius = 4
       keyLight.shadow.normalBias = 0.025
       scene.add(keyLight)
@@ -92,7 +106,7 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
         backCoverTexture,
         insideFrontCoverTexture,
         insideBackCoverTexture,
-      } = createYearbookTextureSet(presentation)
+      } = createYearbookTextureSet(presentation, requestRender)
       const maxAnisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy())
       textures.forEach((texture) => { texture.anisotropy = maxAnisotropy })
 
@@ -273,8 +287,14 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
         if (!interactiveRef.current) return
         updatePointer(event)
         mount.classList.toggle('is-book-hovered', !isOpenRef.current && isBookHit())
+        requestRender()
       }
-      const handlePointerLeave = () => mount.classList.remove('is-book-hovered')
+      const handlePointerLeave = () => {
+        pointer.x = 0
+        pointer.y = 0
+        mount.classList.remove('is-book-hovered')
+        requestRender()
+      }
       const handlePointerDown = (event) => {
         pointerStart = { x: event.clientX, y: event.clientY }
       }
@@ -304,13 +324,23 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
         camera.position.y = aspect < 0.72 ? 0 : 0.2
         camera.lookAt(0, 0, 0)
         camera.updateProjectionMatrix()
+        requestRender()
       }
       resizeObserver = new ResizeObserver(resize)
       resizeObserver.observe(mount)
       resize()
+      if ('IntersectionObserver' in window) {
+        viewportObserver = new IntersectionObserver(([entry]) => {
+          inViewport = entry.isIntersecting
+          if (inViewport) requestRender()
+        }, { rootMargin: '120px' })
+        viewportObserver.observe(mount)
+      }
+      document.addEventListener('visibilitychange', handleVisibilityChange)
 
-      const startedAt = performance.now()
-      const render = (now) => {
+      renderFrame = (now) => {
+        frameQueued = false
+        if (disposed || document.hidden || !inViewport) return
         const openingProgress = updateHardcover({ cover: frontCoverState, isOpen: isOpenRef.current, now, reduceMotion })
         // Let the rigid board clear the paper before turning the first leaf.
         const requestedPage = isOpenRef.current && openingProgress === 1 ? pageIndexRef.current + 1 : 0
@@ -344,7 +374,6 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
         // behind them, so the two-page spread cannot be covered or overlap.
         closedBookPageBlock.visible = openingProgress < 0.025
 
-        const idle = (now - startedAt) * 0.00055
         if (poseRef.current !== previousPose) {
           previousPose = poseRef.current
           poseFrom = poseAmount
@@ -362,9 +391,10 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
         }
         book.position.x = THREE.MathUtils.lerp(-Math.cos((1 - poseAmount) * Math.PI / 2) * PAGE_WIDTH / 2, 0, openingProgress)
         book.position.z = poseRef.current ? THREE.MathUtils.lerp(0, 0.65, Math.min(1, poseTime * 4)) * poseTarget : 0
-        book.position.y = poseRef.current ? 0 : reduceMotion ? 0 : Math.sin(idle) * 0.055 * (1 - openingProgress)
+        book.position.y = 0
         book.rotation.y = poseRef.current ? (1 - poseAmount) * Math.PI / 2 : THREE.MathUtils.lerp(book.rotation.y, 0, 0.06)
-        book.rotation.x = poseRef.current ? 0 : THREE.MathUtils.lerp(book.rotation.x, -0.025 + (pointer.y * 0.025 * (1 - openingProgress)), 0.06)
+        const targetRotationX = poseRef.current ? 0 : -0.025 + (pointer.y * 0.025 * (1 - openingProgress))
+        book.rotation.x = reduceMotion ? targetRotationX : THREE.MathUtils.lerp(book.rotation.x, targetRotationX, 0.16)
         book.scale.setScalar(THREE.MathUtils.lerp(1.08, 1, openingProgress))
 
         const halfFov = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2))
@@ -372,15 +402,24 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
         // to use the available space without clipping at the screen edges.
         const padding = THREE.MathUtils.lerp(1.3, 1.08, openingProgress)
         const fittedDistance = Math.max(COVER_HEIGHT * padding / (2 * halfFov), COVER_WIDTH * (1 + openingProgress) * padding / (2 * halfFov * camera.aspect)) + THREE.MathUtils.lerp(0.7, 0.22, openingProgress)
-        camera.position.z = reduceMotion ? fittedDistance : THREE.MathUtils.lerp(camera.position.z, fittedDistance, 0.12)
+        camera.position.z = reduceMotion ? fittedDistance : THREE.MathUtils.lerp(camera.position.z, fittedDistance, 0.2)
         renderer.render(scene, camera)
-        frame = requestAnimationFrame(render)
+        const coverMoving = Math.abs(frontCoverState.currentAngle - frontCoverState.targetAngle) > 0.0005
+        const pagesMoving = leaves.some((leaf) => Math.abs(leaf.currentAngle - leaf.targetAngle) > 0.0005)
+        const poseMoving = poseTime < 1 || Math.abs(poseAmount - poseTarget) > 0.0005
+        const rotationMoving = Math.abs(book.rotation.x - targetRotationX) > 0.0005 || (!poseRef.current && Math.abs(book.rotation.y) > 0.0005)
+        const cameraMoving = Math.abs(camera.position.z - fittedDistance) > 0.005
+        if (coverMoving || pagesMoving || poseMoving || rotationMoving || cameraMoving) requestRender()
       }
-      frame = requestAnimationFrame(render)
+      requestRender()
 
       return () => {
+        disposed = true
+        invalidateRef.current = null
         cancelAnimationFrame(frame)
         resizeObserver?.disconnect()
+        viewportObserver?.disconnect()
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
         mount.removeEventListener('pointermove', handlePointerMove)
         mount.removeEventListener('pointerleave', handlePointerLeave)
         mount.removeEventListener('pointerdown', handlePointerDown)
@@ -395,7 +434,11 @@ export function ThreeYearbook({ isOpen, onOpen, pageIndex, presentation, interac
         renderer.domElement.remove()
       }
     } catch {
+      disposed = true
+      invalidateRef.current = null
       setFailed(true)
+      viewportObserver?.disconnect()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
       renderer?.dispose()
       return undefined
     }

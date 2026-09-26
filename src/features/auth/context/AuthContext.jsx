@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import {
   browserLocalPersistence,
   browserSessionPersistence,
@@ -14,7 +14,7 @@ import { auth } from '../../admin/services/firebase/auth.js'
 import { db } from '../../admin/services/firebase/firestore.js'
 
 const AuthContext = createContext(null)
-const supportedRoles = new Set(['User', 'Administrator'])
+const supportedRoles = new Set(['User', 'Teacher', 'Administrator'])
 const requestableProfileTypes = new Set(['Student', 'Teacher', 'Staff'])
 const bootstrapAdministratorUids = new Set(['iVLZld9fcpcPQXbat8jdlmN6AsC3'])
 
@@ -23,7 +23,8 @@ const isBootstrapAdministrator = (firebaseUser) => bootstrapAdministratorUids.ha
 const normalizeRole = (value) => {
   const normalized = String(value || '').trim().toLowerCase()
   if (normalized === 'admin' || normalized === 'administrator') return 'Administrator'
-  if (['user', 'student', 'teacher', 'staff', 'alumni', 'alumnus'].includes(normalized)) return 'User'
+  if (normalized === 'teacher') return 'Teacher'
+  if (['user', 'student', 'staff', 'alumni', 'alumnus'].includes(normalized)) return 'User'
   return ''
 }
 
@@ -54,11 +55,16 @@ const buildProfile = (firebaseUser, source = {}) => ({
   profileType: normalizeProfileType(source.profileType || source.accountType || source.role),
   referenceId: source.referenceId || source.studentNumber || source.employeeNumber || '',
   status: source.status || '',
+  position: source.position || '',
+  phone: source.phone || '',
+  bio: source.bio || '',
+  preferences: source.preferences || null,
 })
 
 async function resolveAuthorizedAccount(firebaseUser) {
   let roleLookupFailed = false
   let claimRole = ''
+  let storedProfile = null
 
   if (isBootstrapAdministrator(firebaseUser)) {
     const administratorProfile = buildProfile(firebaseUser, {
@@ -92,6 +98,7 @@ async function resolveAuthorizedAccount(firebaseUser) {
   try {
     const profileSnapshot = await getDoc(doc(db, 'users', firebaseUser.uid))
     const profile = profileSnapshot.data()
+    if (profileSnapshot.exists()) storedProfile = profile
     const profileRole = normalizeRole(profile?.role)
     if (profileSnapshot.exists() && isActiveProfile(profile)) {
       const assignedRole = claimRole === 'Administrator' ? claimRole : profileRole || claimRole
@@ -101,7 +108,11 @@ async function resolveAuthorizedAccount(firebaseUser) {
     roleLookupFailed = true
   }
 
-  if (supportedRoles.has(claimRole)) {
+  if (storedProfile && !isActiveProfile(storedProfile)) {
+    return { role: '', profile: buildProfile(firebaseUser, storedProfile) }
+  }
+
+  if (!storedProfile && supportedRoles.has(claimRole)) {
     return { role: claimRole, profile: buildProfile(firebaseUser, { role: claimRole, status: 'active' }) }
   }
 
@@ -211,7 +222,7 @@ export function AuthProvider({ children }) {
         uid: credential.user.uid,
         fullName,
         email: credential.user.email,
-        role: 'User',
+        role: normalizedProfileType === 'Teacher' ? 'Teacher' : 'User',
         profileType: normalizedProfileType,
         referenceId: String(referenceId).trim(),
         status: 'pending',
@@ -236,6 +247,16 @@ export function AuthProvider({ children }) {
     setAuthorizationError('')
   }
 
+  const refreshProfile = useCallback(async () => {
+    const currentUser = auth.currentUser
+    if (!currentUser) return null
+    const account = await resolveAuthorizedAccount(currentUser)
+    setUser(currentUser)
+    setRole(account.role)
+    setProfile(account.profile)
+    return account.profile
+  }, [])
+
   const value = useMemo(
     () => ({
       user,
@@ -248,8 +269,9 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      refreshProfile,
     }),
-    [user, role, profile, loading, authorizationError],
+    [user, role, profile, loading, authorizationError, refreshProfile],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -49,7 +49,7 @@ export function VerificationRequestsPage() {
   return (
     <div className="page-stack">
       <div className="page-header-row">
-        <div><div className="page-kicker">User access</div><h2>Verification requests</h2><p className="page-description">Verify students, teachers, and staff before activating their shared User access.</p></div>
+        <div><div className="page-kicker">Role-based access</div><h2>Verification requests</h2><p className="page-description">Verify students and staff as Users, or approve teachers for assignment-managed Teacher access.</p></div>
       </div>
       {error && <div className="form-error" role="alert">{error}</div>}
       <Card className="panel-card">

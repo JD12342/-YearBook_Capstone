@@ -1,4 +1,4 @@
-import { BadgeCheck, BookOpenText, Camera, FileText, GraduationCap, Image, LayoutDashboard, LogOut, Settings, Users, UserRound } from 'lucide-react'
+import { BadgeCheck, BookOpenText, Camera, FileText, GraduationCap, Image, LayoutDashboard, LogOut, Settings, UserCog, Users, UserRound } from 'lucide-react'
 
 function Icon({ children }) {
   return <span className="nav-icon">{children}</span>
@@ -14,13 +14,14 @@ const navigation = [
 
 const management = [
   { label: 'Verification Requests', key: '/verification-requests', icon: <BadgeCheck size={18} />, allowedRoles: ['Administrator'] },
+  { label: 'Teachers', key: '/teachers', icon: <UserCog size={18} />, allowedRoles: ['Administrator'] },
   { label: 'Content & Memories', key: '/content', icon: <BookOpenText size={18} /> },
-  { label: 'Reports', key: '/reports', icon: <FileText size={18} />, future: true },
+  { label: 'Reports', key: '/reports', icon: <FileText size={18} /> },
 ]
 
 const system = [
-  { label: 'Settings', key: '/settings', icon: <Settings size={18} />, future: true },
-  { label: 'Account Profile', key: '/profile', icon: <UserRound size={18} />, future: true },
+  { label: 'Settings', key: '/settings', icon: <Settings size={18} /> },
+  { label: 'Account Profile', key: '/profile', icon: <UserRound size={18} /> },
   { label: 'Logout', key: '/logout', icon: <LogOut size={18} /> },
 ]
 
