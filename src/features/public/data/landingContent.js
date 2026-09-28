@@ -16,9 +16,6 @@ export const heroContent = {
   titleLine: 'a story worth',
   emphasis: 'remembering.',
   description: 'GradBook brings school history, graduating portraits, student achievements, and lifelong connections into one beautiful place.',
-  quote: '“More than names and photos — this is where our shared school story lives.”',
-  year: '1903',
-  yearNote: 'A legacy carried forward',
 }
 
 export const legacyContent = {

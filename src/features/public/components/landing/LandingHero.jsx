@@ -1,4 +1,4 @@
-import { ArrowRight, GraduationCap, LockKeyhole, Sparkles } from 'lucide-react'
+import { ArrowRight, LockKeyhole, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { heroContent, landingMedia } from '../../data/landingContent.js'
 import { useLandingSection } from '../../hooks/useLandingContent.js'
@@ -21,12 +21,6 @@ export function LandingHero() {
           <Link className="public-secondary" to="/login">I already have access</Link>
         </div>
         <div className="public-trust"><LockKeyhole size={15} /><span>Full school records are available only to verified members.</span></div>
-      </div>
-      <div className="public-yearbook-card" aria-label="GradBook introduction">
-        <span>A LIVING YEARBOOK</span>
-        <GraduationCap size={42} />
-        <blockquote>{content.quote}</blockquote>
-        <div><b>{content.year}</b><small>{content.yearNote}</small></div>
       </div>
       <div className="public-scroll-cue" aria-hidden="true"><span>SCROLL TO DISCOVER</span><i /></div>
     </section>
