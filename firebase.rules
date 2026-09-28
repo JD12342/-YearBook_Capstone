@@ -57,10 +57,16 @@ service cloud.firestore {
         && request.resource.data.profileType in ['Student', 'Teacher']
         && request.resource.data.referenceId is string
         && request.resource.data.referenceId.size() > 0
+        && request.resource.data.schoolYearId is string
+        && request.resource.data.schoolYearId.size() > 0
+        && request.resource.data.strandId is string
+        && request.resource.data.strandId.size() > 0
+        && request.resource.data.sectionId is string
+        && request.resource.data.sectionId.size() > 0
         && request.resource.data.status == 'pending'
         && request.resource.data.keys().hasOnly([
           'uid', 'fullName', 'email', 'role', 'profileType', 'referenceId',
-          'status', 'createdAt', 'updatedAt'
+          'schoolYearId', 'strandId', 'sectionId', 'status', 'createdAt', 'updatedAt'
         ]);
       allow get, list: if isAdministrator()
         || (isSignedIn() && resource.data.uid == request.auth.uid);

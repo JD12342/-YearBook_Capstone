@@ -5,6 +5,9 @@ GradBook uses Firebase Authentication for sign-in, Cloud Firestore for applicati
 ```mermaid
 erDiagram
   USERS ||--o| ACCOUNT_REQUESTS : submits
+  SCHOOL_YEARS ||--o{ ACCOUNT_REQUESTS : requested_by
+  STRANDS ||--o{ ACCOUNT_REQUESTS : requested_by
+  SECTIONS ||--o{ ACCOUNT_REQUESTS : requested_by
   USERS ||--o| STUDENTS : may_link_to
   USERS ||--o| TEACHER_ASSIGNMENTS : receives
   USERS ||--o{ MEMORIES : submits
@@ -30,6 +33,9 @@ erDiagram
     string id PK
     string uid FK
     string requestedRole
+    string schoolYearId FK
+    string strandId FK
+    string sectionId FK
     string status
   }
   STUDENTS {
@@ -106,6 +112,7 @@ erDiagram
 ## Important workflow rules
 
 - `teachers` contains manually created graduation-photo participants. It does not grant login access.
+- `accountRequests` stores the school year, strand, and section chosen during student or teacher registration. Approval validates the hierarchy and copies it into the account profile; teacher approval also creates the initial section assignment.
 - `teacherAssignments` grants teacher or alumni-leader memory contribution access and stores the administrator-configured limits. New assignments default to 5 photos, 2 videos, and 120 seconds per video.
 - `alumniLeaderSections` enforces one alumni leader per section while the person remains visible as a student account.
 - Contributor uploads create a `memories` document with `status: pending`. Content Management publishes or rejects that same Firebase record.

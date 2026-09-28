@@ -17,6 +17,8 @@ export function LoginPage() {
       <div className="login-card panel-card">
         <LoginBrandPanel />
         <LoginFormPanel
+          academicOptions={loginForm.academicOptions}
+          academicOptionsLoading={loginForm.academicOptionsLoading}
           error={loginForm.error}
           fields={loginForm.fields}
           isSigningUp={loginForm.isSigningUp}

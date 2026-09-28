@@ -2,9 +2,11 @@ import { ArrowLeft, ArrowRight, Eye, EyeOff, IdCard, LockKeyhole, Mail, UserRoun
 import { Link } from 'react-router-dom'
 import { authModeContent, profileTypes } from '../data/authContent.js'
 
-export function LoginFormPanel({ error, fields, isSigningUp, notice, onSubmit, onToggleMode, onUpdateField, passwordVisible, setPasswordVisible, submitting }) {
+export function LoginFormPanel({ academicOptions, academicOptionsLoading, error, fields, isSigningUp, notice, onSubmit, onToggleMode, onUpdateField, passwordVisible, setPasswordVisible, submitting }) {
   const content = isSigningUp ? authModeContent.signUp : authModeContent.signIn
   const selectedProfileType = profileTypes.find((profileType) => profileType.value === fields.profileType) || profileTypes[0]
+  const availableStrands = (academicOptions?.strands || []).filter((strand) => strand.schoolYearId === fields.schoolYearId)
+  const availableSections = (academicOptions?.sections || []).filter((section) => section.schoolYearId === fields.schoolYearId && section.strandId === fields.strandId)
 
   return (
     <section className={`login-form-panel ${isSigningUp ? 'is-signing-up' : ''}`.trim()} aria-labelledby="login-title">
@@ -16,7 +18,7 @@ export function LoginFormPanel({ error, fields, isSigningUp, notice, onSubmit, o
       </div>
       <form className="login-form" onSubmit={onSubmit}>
         {isSigningUp && (
-          <label className="form-field">
+          <label className="form-field signup-field-full">
             <span>Full name</span>
             <div className="login-input-wrap"><UserRound size={18} aria-hidden="true" /><input className="field login-input" value={fields.fullName} onChange={(event) => onUpdateField('fullName', event.target.value)} placeholder="Your full name" required /></div>
           </label>
@@ -38,14 +40,22 @@ export function LoginFormPanel({ error, fields, isSigningUp, notice, onSubmit, o
             </div>
           </label>
         )}
-        <label className="form-field">
+        {isSigningUp && (
+          <fieldset className="signup-academic-fields" disabled={academicOptionsLoading}>
+            <legend>Academic assignment</legend>
+            <label className="form-field"><span>School year</span><select className="login-role-select" value={fields.schoolYearId} onChange={(event) => onUpdateField('schoolYearId', event.target.value)} required><option value="">{academicOptionsLoading ? 'Loading school years…' : 'Choose school year'}</option>{(academicOptions?.schoolYears || []).map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+            <label className="form-field"><span>Strand</span><select className="login-role-select" value={fields.strandId} onChange={(event) => onUpdateField('strandId', event.target.value)} disabled={!fields.schoolYearId || academicOptionsLoading} required><option value="">Choose strand</option>{availableStrands.map((item) => <option key={item.id} value={item.id}>{item.code || item.name}</option>)}</select></label>
+            <label className="form-field"><span>Section</span><select className="login-role-select" value={fields.sectionId} onChange={(event) => onUpdateField('sectionId', event.target.value)} disabled={!fields.strandId || academicOptionsLoading} required><option value="">Choose section</option>{availableSections.map((item) => <option key={item.id} value={item.id}>{item.code || item.name}</option>)}</select></label>
+          </fieldset>
+        )}
+        <label className={`form-field ${isSigningUp ? '' : 'signup-field-full'}`.trim()}>
           <span>Email address</span>
           <div className="login-input-wrap">
             <Mail size={18} aria-hidden="true" />
             <input className="field login-input" type="email" autoComplete="email" value={fields.email} onChange={(event) => onUpdateField('email', event.target.value)} placeholder="you@school.edu" required />
           </div>
         </label>
-        <label className="form-field">
+        <label className={`form-field ${isSigningUp ? '' : 'signup-field-full'}`.trim()}>
           <span>Password</span>
           <div className="login-input-wrap">
             <LockKeyhole size={18} aria-hidden="true" />

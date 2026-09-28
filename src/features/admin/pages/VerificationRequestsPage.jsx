@@ -4,6 +4,7 @@ import { Badge } from '../components/ui/Badge.jsx'
 import { Button } from '../components/ui/Button.jsx'
 import { Card } from '../components/ui/Card.jsx'
 import { approveAccountRequest, getAdminRecords, updateAdminRecord } from '../services/adminRecordService.js'
+import { getSchoolYears, getSections, getStrands } from '../services/schoolYearService.js'
 
 const statuses = ['all', 'pending', 'approved', 'rejected']
 
@@ -14,12 +15,19 @@ export function VerificationRequestsPage({ embedded = false }) {
   const [savingId, setSavingId] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [academicLabels, setAcademicLabels] = useState({ years: new Map(), strands: new Map(), sections: new Map() })
 
   const loadRequests = async () => {
     setLoading(true)
     setError('')
     try {
-      setRequests(await getAdminRecords('accountRequests'))
+      const [nextRequests, years, strands, sections] = await Promise.all([getAdminRecords('accountRequests'), getSchoolYears(), getStrands(), getSections()])
+      setRequests(nextRequests)
+      setAcademicLabels({
+        years: new Map(years.map((item) => [item.id, item.name])),
+        strands: new Map(strands.map((item) => [item.id, item.code || item.name])),
+        sections: new Map(sections.map((item) => [item.id, item.code || item.name])),
+      })
     } catch (loadError) {
       setError(loadError.message)
     } finally {
@@ -70,9 +78,10 @@ export function VerificationRequestsPage({ embedded = false }) {
       </Card>
       <Card className="panel-card">
         {loading ? <div className="empty-state">Loading verification requests...</div> : visibleRequests.length ? (
-          <div className="table-wrapper"><table className="data-table"><thead><tr><th>Requester</th><th>School profile</th><th>Reference ID</th><th>Status</th><th>Actions</th></tr></thead><tbody>{visibleRequests.map((request) => {
+          <div className="table-wrapper"><table className="data-table"><thead><tr><th>Requester</th><th>School profile</th><th>Reference ID</th><th>Requested assignment</th><th>Status</th><th>Actions</th></tr></thead><tbody>{visibleRequests.map((request) => {
             const status = request.status || 'pending'
-            return <tr key={request.id}><td><strong>{request.fullName || request.name || 'Unnamed requester'}</strong><small className="table-subtext">{request.email || 'No email provided'}</small></td><td>{request.profileType || request.accountType || (request.role === 'User' ? 'User' : request.role) || 'User'}</td><td>{request.referenceId || request.linkedRecordName || request.linkedRecordId || 'Not provided'}</td><td><Badge status={status}>{status}</Badge></td><td><div className="inline-actions">{status === 'pending' && <><Button size="sm" disabled={savingId === request.id} onClick={() => updateStatus(request, 'approved')}>Approve</Button><Button size="sm" variant="secondary" disabled={savingId === request.id} onClick={() => updateStatus(request, 'rejected')}>Reject</Button></>}</div></td></tr>
+            const assignment = [academicLabels.years.get(request.schoolYearId), academicLabels.strands.get(request.strandId), academicLabels.sections.get(request.sectionId)].filter(Boolean)
+            return <tr key={request.id}><td><strong>{request.fullName || request.name || 'Unnamed requester'}</strong><small className="table-subtext">{request.email || 'No email provided'}</small></td><td>{request.profileType || request.accountType || (request.role === 'User' ? 'User' : request.role) || 'User'}</td><td>{request.referenceId || request.linkedRecordName || request.linkedRecordId || 'Not provided'}</td><td>{assignment.length ? assignment.join(' · ') : 'Legacy request — assign after approval'}</td><td><Badge status={status}>{status}</Badge></td><td><div className="inline-actions">{status === 'pending' && <><Button size="sm" disabled={savingId === request.id} onClick={() => updateStatus(request, 'approved')}>Approve</Button><Button size="sm" variant="secondary" disabled={savingId === request.id} onClick={() => updateStatus(request, 'rejected')}>Reject</Button></>}</div></td></tr>
           })}</tbody></table></div>
         ) : <div className="empty-state"><div className="empty-state-title">No {statusFilter === 'all' ? '' : statusFilter} requests</div><div>New registration requests will appear here for administrator review.</div></div>}
       </Card>

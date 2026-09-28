@@ -71,6 +71,29 @@ async function assertTeacher(request) {
 
 const cleanIds = (value) => [...new Set((Array.isArray(value) ? value : []).map((item) => String(item || '').trim()).filter(Boolean))]
 const clampLimit = (value, fallback, maximum) => Math.min(Math.max(Number.parseInt(value, 10) || fallback, 1), maximum)
+let registrationOptionsCache = null
+let registrationOptionsExpiresAt = 0
+
+exports.getRegistrationAcademicOptions = onCall({ region: 'asia-southeast1' }, async () => {
+  if (registrationOptionsCache && registrationOptionsExpiresAt > Date.now()) return registrationOptionsCache
+  const [yearSnapshot, strandSnapshot, sectionSnapshot] = await Promise.all([
+    db.collection('schoolYears').get(),
+    db.collection('strands').get(),
+    db.collection('sections').get(),
+  ])
+  const activeRecords = (snapshot) => snapshot.docs
+    .map((item) => ({ id: item.id, ...item.data() }))
+    .filter((item) => item.archived !== true && String(item.status || 'active').toLowerCase() !== 'archived')
+    .sort((left, right) => (Number(left.displayOrder) || 9999) - (Number(right.displayOrder) || 9999) || String(left.name || left.code || '').localeCompare(String(right.name || right.code || '')))
+  registrationOptionsCache = {
+    schoolYears: activeRecords(yearSnapshot).map((item) => ({ id: item.id, name: item.name || `${item.startYear || ''}-${item.endYear || ''}` })),
+    strands: activeRecords(strandSnapshot).map((item) => ({ id: item.id, schoolYearId: item.schoolYearId || '', name: item.name || '', code: item.code || '' })),
+    sections: activeRecords(sectionSnapshot).map((item) => ({ id: item.id, schoolYearId: item.schoolYearId || '', strandId: item.strandId || '', name: item.name || '', code: item.code || '' })),
+  }
+  registrationOptionsExpiresAt = Date.now() + 5 * 60 * 1000
+  return registrationOptionsCache
+})
+
 exports.approveAccountAccess = onCall({ region: 'asia-southeast1' }, async (request) => {
   await assertAdministrator(request)
   const requestId = String(request.data?.requestId || '').trim()
@@ -83,6 +106,25 @@ exports.approveAccountAccess = onCall({ region: 'asia-southeast1' }, async (requ
   const uid = String(accountRequest.uid || '').trim()
   if (!uid) throw new HttpsError('failed-precondition', 'The request has no Firebase user id.')
   const role = accountRequest.profileType === 'Teacher' ? 'Teacher' : 'User'
+  const schoolYearId = String(request.data?.schoolYearId || accountRequest.schoolYearId || '').trim()
+  const strandId = String(request.data?.strandId || accountRequest.strandId || '').trim()
+  const sectionId = String(request.data?.sectionId || accountRequest.sectionId || '').trim()
+  const academicIds = [schoolYearId, strandId, sectionId]
+  if (academicIds.some((id) => id.includes('/'))) throw new HttpsError('failed-precondition', 'The requested academic assignment is invalid.')
+  if (academicIds.some(Boolean) && !academicIds.every(Boolean)) throw new HttpsError('failed-precondition', 'The requested academic assignment is incomplete.')
+  if (academicIds.every(Boolean)) {
+    const [yearSnapshot, strandSnapshot, sectionSnapshot] = await db.getAll(
+      db.doc(`schoolYears/${schoolYearId}`),
+      db.doc(`strands/${strandId}`),
+      db.doc(`sections/${sectionId}`),
+    )
+    if (!yearSnapshot.exists || !strandSnapshot.exists || !sectionSnapshot.exists
+      || strandSnapshot.data()?.schoolYearId !== schoolYearId
+      || sectionSnapshot.data()?.schoolYearId !== schoolYearId
+      || sectionSnapshot.data()?.strandId !== strandId) {
+      throw new HttpsError('failed-precondition', 'The requested school year, strand, and section do not match the current academic records.')
+    }
+  }
   const now = FieldValue.serverTimestamp()
   const batch = db.batch()
   let linkedRecordId = ''
@@ -100,6 +142,7 @@ exports.approveAccountAccess = onCall({ region: 'asia-southeast1' }, async (requ
       batch.set(studentRef, {
         accountUid: uid,
         accountStatus: 'active',
+        ...(schoolYearId ? { schoolYearId, strandId, sectionId } : {}),
         updatedAt: now,
       }, { merge: true })
     }
@@ -113,6 +156,9 @@ exports.approveAccountAccess = onCall({ region: 'asia-southeast1' }, async (requ
     role,
     profileType: accountRequest.profileType || 'Student',
     referenceId: accountRequest.referenceId || '',
+    schoolYearId,
+    strandId,
+    sectionId,
     linkedRecordId,
     status: 'active',
     updatedAt: now,
@@ -123,8 +169,9 @@ exports.approveAccountAccess = onCall({ region: 'asia-southeast1' }, async (requ
     batch.set(db.doc(`teacherAssignments/${uid}`), {
       teacherUid: uid,
       active: true,
-      sectionIds: cleanIds(request.data?.sectionIds),
-      schoolYearId: String(request.data?.schoolYearId || ''),
+      sectionIds: cleanIds(request.data?.sectionIds).length ? cleanIds(request.data?.sectionIds) : (sectionId ? [sectionId] : []),
+      schoolYearId,
+      strandId,
       photoLimit: clampLimit(request.data?.photoLimit, 5, 500),
       videoLimit: clampLimit(request.data?.videoLimit, 2, 100),
       videoDurationLimitSeconds: clampLimit(request.data?.videoDurationLimitSeconds, 120, 3600),

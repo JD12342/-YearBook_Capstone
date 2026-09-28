@@ -218,13 +218,16 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const register = async ({ fullName, email, password, profileType, referenceId }) => {
+  const register = async ({ fullName, email, password, profileType, referenceId, schoolYearId, strandId, sectionId }) => {
     const normalizedProfileType = normalizeProfileType(profileType)
     if (!requestableProfileTypes.has(normalizedProfileType)) {
       throw createAccessError('auth/invalid-profile-type', 'Choose Student or Teacher for your school profile.')
     }
     if (!String(referenceId || '').trim()) {
       throw createAccessError('auth/missing-reference-id', normalizedProfileType === 'Teacher' ? 'Enter your Teacher ID.' : 'Enter your LRN.')
+    }
+    if (!schoolYearId || !strandId || !sectionId) {
+      throw createAccessError('auth/missing-academic-assignment', 'Choose your school year, strand, and section.')
     }
 
     let credential
@@ -242,6 +245,9 @@ export function AuthProvider({ children }) {
         role: normalizedProfileType === 'Teacher' ? 'Teacher' : 'User',
         profileType: normalizedProfileType,
         referenceId: String(referenceId).trim(),
+        schoolYearId: String(schoolYearId).trim(),
+        strandId: String(strandId).trim(),
+        sectionId: String(sectionId).trim(),
         status: 'pending',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

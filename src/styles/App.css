@@ -789,12 +789,24 @@ button { cursor: pointer; }
 .login-role-select { width: 100%; min-height: 44px; padding: 0 13px; border: 1px solid #dce7e1; border-radius: 11px; background: #fbfdfc; color: #10231c; }
 .login-form-panel > * { width: min(100%, 410px); margin-left: auto; margin-right: auto; }
 .login-form-panel.is-signing-up { padding-top: clamp(18px, 2.5vh, 30px); padding-bottom: clamp(18px, 2.5vh, 30px); }
-.login-form-panel.is-signing-up > * { width: min(100%, 390px); }
+.login-form-panel.is-signing-up { overflow-y: auto; }
+.login-form-panel.is-signing-up > * { width: min(100%, 560px); }
 .login-form-panel.is-signing-up .login-form-header { margin-bottom: 14px; }
 .login-form-panel.is-signing-up .login-back-link { margin-bottom: 10px; }
 .login-form-panel.is-signing-up .login-form-header h2 { margin-top: 6px; font-size: 1.45rem; }
 .login-form-panel.is-signing-up .login-form-header p { font-size: .8rem; }
-.login-form-panel.is-signing-up .login-form { gap: 10px; }
+.login-form-panel.is-signing-up .login-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+.login-form-panel.is-signing-up .signup-field-full,
+.login-form-panel.is-signing-up .signup-academic-fields,
+.login-form-panel.is-signing-up .form-success,
+.login-form-panel.is-signing-up .form-error,
+.login-form-panel.is-signing-up .remember-row,
+.login-form-panel.is-signing-up .login-button,
+.login-form-panel.is-signing-up .login-mode-switch { grid-column: 1 / -1; }
+.signup-academic-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; min-width: 0; margin: 0; padding: 10px 12px 12px; border: 1px solid #dce7e1; border-radius: 12px; background: #f8fbf9; }
+.signup-academic-fields legend { padding: 0 6px; color: #047857; font-size: .65rem; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+.signup-academic-fields .form-field { min-width: 0; }
+.signup-academic-fields .login-role-select { min-width: 0; font-size: .75rem; }
 .login-form-panel.is-signing-up .login-input-wrap,
 .login-form-panel.is-signing-up .login-role-select { min-height: 40px; }
 .login-form-panel.is-signing-up .field.login-input { height: 38px; font-size: .84rem; }
@@ -1913,15 +1925,8 @@ button { cursor: pointer; }
   .login-form { gap: 9px; }
   .login-form-panel.is-signing-up .login-form-header { margin-bottom: 8px; }
   .login-form-panel.is-signing-up .login-form-header p { display: none; }
-  .login-form-panel.is-signing-up .login-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 9px; }
-  .login-form-panel.is-signing-up .form-field:nth-of-type(1),
-  .login-form-panel.is-signing-up .form-field:nth-of-type(4),
-  .login-form-panel.is-signing-up .form-field:nth-of-type(5),
-  .login-form-panel.is-signing-up .form-success,
-  .login-form-panel.is-signing-up .form-error,
-  .login-form-panel.is-signing-up .remember-row,
-  .login-form-panel.is-signing-up .login-button,
-  .login-form-panel.is-signing-up .login-mode-switch { grid-column: 1 / -1; }
+  .login-form-panel.is-signing-up .login-form { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 9px; }
+  .signup-academic-fields { padding: 7px 9px 9px; }
   .login-form .form-field { gap: 4px; }
   .login-form .form-field > span { font-size: .69rem; }
   .login-input-wrap, .login-role-select { min-height: 40px; border-radius: 10px; }
@@ -1941,6 +1946,8 @@ button { cursor: pointer; }
 
 @media (max-width: 480px) {
   .login-form-panel.is-signing-up .login-form { grid-template-columns: 1fr; }
+  .login-form-panel.is-signing-up .form-field, .signup-academic-fields { grid-column: 1 / -1; }
+  .signup-academic-fields { grid-template-columns: 1fr; }
   .public-header { min-height: 66px; padding: 0 14px; }
   .public-brand img { width: 37px; height: 37px; }
   .public-join { min-height: 39px; padding: 0 12px; font-size: .7rem; }

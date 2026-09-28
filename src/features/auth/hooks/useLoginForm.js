@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { getRegistrationAcademicOptions } from '../services/registrationOptionsService.js'
 
 const initialFields = () => ({
   fullName: '',
@@ -9,6 +10,9 @@ const initialFields = () => ({
   rememberMe: false,
   profileType: 'Student',
   referenceId: '',
+  schoolYearId: '',
+  strandId: '',
+  sectionId: '',
 })
 
 export function useLoginForm() {
@@ -22,16 +26,33 @@ export function useLoginForm() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(location.state?.error || '')
   const [notice, setNotice] = useState('')
+  const [academicOptions, setAcademicOptions] = useState({ schoolYears: [], strands: [], sections: [] })
+  const [academicOptionsLoading, setAcademicOptionsLoading] = useState(false)
 
   useEffect(() => {
     setError('')
     setNotice('')
   }, [location.key])
 
+  useEffect(() => {
+    if (!isSigningUp || academicOptions.schoolYears.length) return undefined
+    let active = true
+    setAcademicOptionsLoading(true)
+    getRegistrationAcademicOptions()
+      .then((options) => { if (active) setAcademicOptions(options) })
+      .catch(() => { if (active) setError('School year, strand, and section choices could not be loaded. Please try again.') })
+      .finally(() => { if (active) setAcademicOptionsLoading(false) })
+    return () => { active = false }
+  }, [academicOptions.schoolYears.length, isSigningUp])
+
   const redirectPath = location.state?.from || (authenticatedRole === 'Administrator' ? '/dashboard' : authenticatedRole === 'Teacher' ? '/community/teacher' : '/community')
   const updateField = (name, value) => {
     setError('')
-    setFields((current) => ({ ...current, [name]: value }))
+    setFields((current) => {
+      if (name === 'schoolYearId') return { ...current, schoolYearId: value, strandId: '', sectionId: '' }
+      if (name === 'strandId') return { ...current, strandId: value, sectionId: '' }
+      return { ...current, [name]: value }
+    })
   }
 
   const handleSubmit = async (event) => {
@@ -48,6 +69,9 @@ export function useLoginForm() {
           password: fields.password,
           profileType: fields.profileType,
           referenceId: fields.referenceId.trim(),
+          schoolYearId: fields.schoolYearId,
+          strandId: fields.strandId,
+          sectionId: fields.sectionId,
         })
         setFields(initialFields())
         setSearchParams({})
@@ -72,6 +96,8 @@ export function useLoginForm() {
 
   return {
     error,
+    academicOptions,
+    academicOptionsLoading,
     notice,
     fields,
     handleSubmit,

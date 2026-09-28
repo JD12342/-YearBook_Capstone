@@ -27,7 +27,7 @@ const routeMeta = {
       { title: 'Student accounts', text: 'All approved student logins appear here. Alumni leaders remain visible in this list and are marked with their contributor role.' },
       { title: 'Teacher accounts', text: 'Assign every section a teacher handles and set photo, video, and per-video duration limits.' },
       { title: 'Alumni leaders', text: 'Use a student account as the memory contributor for an older batch. Only one alumni leader can be assigned to each section.' },
-      { title: 'Access requests', text: 'Approve or reject new registrations. Approval creates login access but does not create a Graduation Directory record.' },
+      { title: 'Access requests', text: 'Students and teachers choose a school year, strand, and section during registration. Review their requested assignment before approval; it remains editable afterward.' },
       { title: 'Upload limits', text: 'Limits apply per contributor account. Defaults are 5 photos, 2 videos, and a maximum duration of 2 minutes for each video. Administrators can edit all three values.' },
     ],
   },
