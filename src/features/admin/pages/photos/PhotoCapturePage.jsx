@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeft, Camera, Check, ImageUp, Power, RefreshCw, SlidersHorizontal, VideoOff } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/ui/Button.jsx'
+import { PORTRAIT_MAX_EDGE } from '../../services/imageOptimizationService.js'
 import { getStudentById, getStudents, updateStudent } from '../../services/studentService.js'
+import { getTeacherById, getTeachers, teacherDisplayName, uploadTeacherPortrait } from '../../services/teacherDirectoryService.js'
 import { updatePhotoRecord, uploadStudentPhotoRecord } from '../../services/photoService.js'
 
 const standardSettings = { exposure: 2, contrast: 4, saturation: 3, vibrance: 1, clarity: 0, temperature: 0, tint: 0, highlights: 0, shadows: 0, whites: 0, blacks: 0, sharpness: 0, retouch: 0, spotlight: 0, zoom: 100, aspectRatio: '4:5', mirror: false, grayscale: false }
@@ -96,9 +98,10 @@ const createAdjustedCanvas = (image, settings, filterValue, sourceRotation = 0) 
   const sourceWidth = source.naturalWidth || source.width
   const sourceHeight = source.naturalHeight || source.height
   const crop = getCropRectangle(sourceWidth, sourceHeight, settings)
+  const outputScale = Math.min(1, PORTRAIT_MAX_EDGE / Math.max(crop.width, crop.height))
   const canvas = document.createElement('canvas')
-  canvas.width = crop.width
-  canvas.height = crop.height
+  canvas.width = Math.max(1, Math.round(crop.width * outputScale))
+  canvas.height = Math.max(1, Math.round(crop.height * outputScale))
   const context = canvas.getContext('2d')
   context.filter = `${filterValue} brightness(${100 + settings.retouch / 28}%) contrast(${100 - settings.retouch / 18}%) saturate(${100 - settings.retouch / 25}%) blur(${settings.retouch / 42}px)`
   context.translate(canvas.width / 2, canvas.height / 2)
@@ -113,7 +116,9 @@ const createAdjustedCanvas = (image, settings, filterValue, sourceRotation = 0) 
 export function PhotoCapturePage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const studentId = searchParams.get('studentId')
+  const isTeacherSession = searchParams.get('subject') === 'teacher' || Boolean(searchParams.get('teacherId'))
+  const studentId = isTeacherSession ? searchParams.get('teacherId') : searchParams.get('studentId')
+  const sessionSchoolYearId = searchParams.get('schoolYearId') || ''
   const [savedSession] = useState(() => readStoredState(photoSessionStateKey))
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -176,7 +181,9 @@ export function PhotoCapturePage() {
     setCapturedFile(null)
     setCameraError('')
     setActiveStudentId(nextStudentId)
-    navigate(`/photos/camera?studentId=${encodeURIComponent(nextStudentId)}`)
+    navigate(isTeacherSession
+      ? `/photos/camera?subject=teacher&teacherId=${encodeURIComponent(nextStudentId)}&schoolYearId=${encodeURIComponent(sessionSchoolYearId)}`
+      : `/photos/camera?studentId=${encodeURIComponent(nextStudentId)}`)
   }
 
   const startCamera = async () => {
@@ -226,7 +233,7 @@ export function PhotoCapturePage() {
   }
 
   useEffect(() => {
-    const fromUrl = searchParams.get('studentId')
+    const fromUrl = isTeacherSession ? searchParams.get('teacherId') : searchParams.get('studentId')
     if (fromUrl && fromUrl !== activeStudentId) changeStudent(fromUrl)
   }, [searchParams])
 
@@ -235,22 +242,24 @@ export function PhotoCapturePage() {
     const loadQueue = async () => {
       const savedFilters = readStoredState(photoManagementStateKey)
       try {
-        const records = await getStudents({
-          schoolYearId: savedFilters.schoolYearId || undefined,
-          strandId: savedFilters.strandId || undefined,
-          sectionId: savedFilters.sectionId || undefined,
-          search: savedFilters.searchTerm || undefined,
-        })
+        const records = isTeacherSession
+          ? await getTeachers({ schoolYearId: sessionSchoolYearId || undefined, status: 'active' })
+          : await getStudents({
+            schoolYearId: savedFilters.schoolYearId || undefined,
+            strandId: savedFilters.strandId || undefined,
+            sectionId: savedFilters.sectionId || undefined,
+            search: savedFilters.searchTerm || undefined,
+          })
         if (ignore) return
         setSessionStudents(records)
-        if ((!activeStudentId || !records.some((item) => item.id === activeStudentId)) && records[0]) setActiveStudentId(records[0].id)
+        setActiveStudentId((current) => (!current || !records.some((item) => item.id === current)) ? records[0]?.id || '' : current)
       } catch {
         if (!ignore) setSessionStudents([])
       }
     }
     loadQueue()
     return () => { ignore = true }
-  }, [activeStudentId])
+  }, [isTeacherSession, sessionSchoolYearId])
 
   useEffect(() => {
     if (!navigator.mediaDevices?.enumerateDevices) return undefined
@@ -275,21 +284,21 @@ export function PhotoCapturePage() {
       }
       try {
         setLoading(true)
-        const record = await getStudentById(activeStudentId)
-        if (!record) throw new Error('The selected student could not be found.')
+        const record = isTeacherSession ? await getTeacherById(activeStudentId) : await getStudentById(activeStudentId)
+        if (!record) throw new Error(`The selected ${isTeacherSession ? 'teacher' : 'student'} could not be found.`)
         if (!ignore) {
           setStudent(record)
           setSessionStudents((current) => current.some((item) => item.id === record.id) ? current : [record, ...current])
         }
       } catch (loadError) {
-        if (!ignore) setError(loadError.message || 'Unable to load this student.')
+        if (!ignore) setError(loadError.message || `Unable to load this ${isTeacherSession ? 'teacher' : 'student'}.`)
       } finally {
         if (!ignore) setLoading(false)
       }
     }
     loadStudent()
     return () => { ignore = true }
-  }, [activeStudentId])
+  }, [activeStudentId, isTeacherSession])
 
   useEffect(() => {
     if (!previewUrl && cameraEnabled) startCamera()
@@ -316,8 +325,8 @@ export function PhotoCapturePage() {
   }, [previewUrl, capturedFile, settings, filterValue, sourceRotation])
 
   useEffect(() => {
-    localStorage.setItem(photoSessionStateKey, JSON.stringify({ studentId: activeStudentId, settings, cameraEnabled, cameraDeviceId }))
-  }, [activeStudentId, settings, cameraEnabled, cameraDeviceId])
+    localStorage.setItem(photoSessionStateKey, JSON.stringify({ studentId: isTeacherSession ? '' : activeStudentId, settings, cameraEnabled, cameraDeviceId }))
+  }, [activeStudentId, settings, cameraEnabled, cameraDeviceId, isTeacherSession])
 
   const selectPhotoFile = (file) => {
     if (!file) return
@@ -375,27 +384,31 @@ export function PhotoCapturePage() {
 
   const savePhoto = async (mode = 'draft') => {
     if (!student || !capturedFile) return
-    const isApproval = mode === 'approved'
+    const isApproval = isTeacherSession || mode === 'approved'
     setSaving(isApproval ? 'approve' : 'draft')
     setError('')
     try {
       const file = await createAdjustedFile()
-      const photo = await uploadStudentPhotoRecord({
-        file,
-        studentId: student.id,
-        schoolYearId: student.schoolYearId,
-        strandId: student.strandId,
-        sectionId: student.sectionId,
-        source: 'camera',
-        status: isApproval ? 'approved' : 'editing',
-      })
-      await updatePhotoRecord(photo.id, { sessionEdits: settings, edits: settings })
-      await updateStudent(student.id, { ...student, photoId: photo.id })
+      if (isTeacherSession) {
+        await uploadTeacherPortrait({ teacherId: student.id, file })
+      } else {
+        const photo = await uploadStudentPhotoRecord({
+          file,
+          studentId: student.id,
+          schoolYearId: student.schoolYearId,
+          strandId: student.strandId,
+          sectionId: student.sectionId,
+          source: 'camera',
+          status: isApproval ? 'approved' : 'editing',
+        })
+        await updatePhotoRecord(photo.id, { sessionEdits: settings, edits: settings })
+        await updateStudent(student.id, { ...student, photoId: photo.id })
+      }
       if (isApproval) {
         const currentIndex = sessionStudents.findIndex((item) => item.id === student.id)
         const nextStudent = sessionStudents[currentIndex + 1]
         if (nextStudent) changeStudent(nextStudent.id)
-        else navigate('/photos')
+        else navigate(isTeacherSession ? '/graduation-directory?type=teachers' : '/photos')
       } else {
         navigate('/photos')
       }
@@ -406,7 +419,7 @@ export function PhotoCapturePage() {
     }
   }
 
-  const studentName = [student?.firstName, student?.middleName, student?.lastName].filter(Boolean).join(' ')
+  const studentName = isTeacherSession ? teacherDisplayName(student) : [student?.firstName, student?.middleName, student?.lastName].filter(Boolean).join(' ')
   const updateSetting = (key, value) => setSettings((current) => ({ ...current, [key]: value }))
 
   if (loading) return <div className="capture-page-shell"><div className="photo-editor-empty">Preparing camera session...</div></div>
@@ -414,18 +427,18 @@ export function PhotoCapturePage() {
   return (
     <div className="capture-page-shell">
       <div className="capture-page-topbar">
-        <div><span>CAMERA SESSION</span><h2>Consistent graduation portraits</h2><p>{studentName ? `${studentName}${student?.studentNumber ? ` • ${student.studentNumber}` : ''}` : 'Preview mode — choose a student when you are ready to save a portrait.'}</p></div>
-        <Button variant="secondary" onClick={() => navigate('/photos')}><ArrowLeft size={16} /> Back to photos</Button>
+        <div><span>{isTeacherSession ? 'TEACHER PORTRAIT SESSION' : 'CAMERA SESSION'}</span><h2>Consistent graduation portraits</h2><p>{studentName ? `${studentName}${(isTeacherSession ? student?.teacherNumber : student?.studentNumber) ? ` • ${isTeacherSession ? student.teacherNumber : student.studentNumber}` : ''}` : `Preview mode — choose a ${isTeacherSession ? 'teacher' : 'student'} when you are ready to save a portrait.`}</p></div>
+        <Button variant="secondary" onClick={() => navigate(isTeacherSession ? '/graduation-directory?type=teachers' : '/photos')}><ArrowLeft size={16} /> Back to {isTeacherSession ? 'teacher records' : 'photos'}</Button>
       </div>
       {error && <div className="form-error capture-page-error">{error}</div>}
       <div className="capture-page-workbench">
         <main className="capture-page-stage">
-          <div className="capture-stage-label"><span>{previewUrl ? 'Captured portrait' : 'Live camera'}</span><span>{sessionStudents.length ? `${sessionStudents.findIndex((item) => item.id === activeStudentId) + 1} of ${sessionStudents.length}` : 'No selected students'}</span></div>
+          <div className="capture-stage-label"><span>{previewUrl ? 'Captured portrait' : 'Live camera'}</span><span>{sessionStudents.length ? `${sessionStudents.findIndex((item) => item.id === activeStudentId) + 1} of ${sessionStudents.length}` : `No selected ${isTeacherSession ? 'teachers' : 'students'}`}</span></div>
           <div className="camera-student-switcher">
-            <label htmlFor="camera-student">Student</label>
+            <label htmlFor="camera-student">{isTeacherSession ? 'Teacher' : 'Student'}</label>
             <select id="camera-student" value={activeStudentId} onChange={(event) => changeStudent(event.target.value)}>
-              <option value="">Choose a student</option>
-              {sessionStudents.map((item) => <option key={item.id} value={item.id}>{[item.lastName, item.firstName].filter(Boolean).join(', ') || item.studentNumber}</option>)}
+              <option value="">Choose a {isTeacherSession ? 'teacher' : 'student'}</option>
+              {sessionStudents.map((item) => <option key={item.id} value={item.id}>{[item.lastName, item.firstName].filter(Boolean).join(', ') || (isTeacherSession ? item.teacherNumber : item.studentNumber)}</option>)}
             </select>
             <Button type="button" size="sm" variant="secondary" disabled={sessionStudents.findIndex((item) => item.id === activeStudentId) <= 0} onClick={() => changeStudent(sessionStudents[sessionStudents.findIndex((item) => item.id === activeStudentId) - 1]?.id)}>Previous</Button>
             <Button type="button" size="sm" variant="secondary" disabled={sessionStudents.findIndex((item) => item.id === activeStudentId) < 0 || sessionStudents.findIndex((item) => item.id === activeStudentId) >= sessionStudents.length - 1} onClick={() => changeStudent(sessionStudents[sessionStudents.findIndex((item) => item.id === activeStudentId) + 1]?.id)}>Next</Button>
@@ -450,9 +463,10 @@ export function PhotoCapturePage() {
             {!previewUrl && (cameraEnabled ? <Button type="button" variant="secondary" onClick={() => { stopCamera(); setCameraEnabled(false); setCameraError('') }}><Power size={16} /> Turn camera off</Button> : <Button type="button" variant="secondary" onClick={startCamera}><Power size={16} /> Turn camera on</Button>)}
             <Button type="button" variant="secondary" onClick={() => fileInputRef.current?.click()}><ImageUp size={16} /> Upload photo</Button>
           </div>
+          <p className="portrait-optimization-note">Large graduation photos are automatically saved as print-ready, high-quality portraits before upload.</p>
         </main>
         <aside className="capture-page-sidebar">
-          <div className="editor-side-heading"><span><SlidersHorizontal size={13} /> SESSION ADJUSTMENTS</span><h3>Consistency controls</h3><p>These controls start from the same portrait standard for every student.</p></div>
+          <div className="editor-side-heading"><span><SlidersHorizontal size={13} /> SESSION ADJUSTMENTS</span><h3>Consistency controls</h3><p>These controls start from the same portrait standard for every {isTeacherSession ? 'teacher' : 'student'}.</p></div>
           <button type="button" className="session-preset" onClick={() => setSettings(standardSettings)}><span>Standard graduation preset</span><strong>Reset</strong></button>
           <label className="aspect-ratio-picker"><span>Photo size</span><select value={settings.aspectRatio} onChange={(event) => updateSetting('aspectRatio', event.target.value)}><option value="4:5">Portrait — 4:5</option><option value="3:2">Landscape — 3:2</option><option value="1:1">Square — 1:1</option><option value="original">Original camera size</option></select></label>
           <div className="session-control-list camera-framing-control">{cameraZoom ? <label><span>Camera zoom<strong>{Number.isInteger(cameraZoom.value) ? cameraZoom.value : cameraZoom.value.toFixed(1)}×</strong></span><input type="range" min={cameraZoom.min} max={cameraZoom.max} step={cameraZoom.step} value={cameraZoom.value} onChange={(event) => changeCameraZoom(event.target.value)} /></label> : <p className="camera-zoom-note">This camera has no browser-controlled hardware zoom. Move the camera farther away for a wider portrait.</p>}</div>
@@ -465,7 +479,7 @@ export function PhotoCapturePage() {
           <label className="editor-toggle session-toggle"><input type="checkbox" checked={settings.mirror} onChange={(event) => updateSetting('mirror', event.target.checked)} /><span>Mirror image</span></label>
           <label className="editor-toggle"><input type="checkbox" checked={settings.grayscale} onChange={(event) => updateSetting('grayscale', event.target.checked)} /><span>Black and white</span></label>
           <div className="capture-save-actions">
-            <Button type="button" variant="secondary" disabled={!student || !capturedFile || Boolean(saving)} onClick={() => savePhoto('draft')}>{saving === 'draft' ? 'Saving...' : 'Save for later'}</Button>
+            {!isTeacherSession && <Button type="button" variant="secondary" disabled={!student || !capturedFile || Boolean(saving)} onClick={() => savePhoto('draft')}>{saving === 'draft' ? 'Saving...' : 'Save for later'}</Button>}
             <Button type="button" disabled={!student || !capturedFile || Boolean(saving)} onClick={() => savePhoto('approved')}><Check size={16} /> {saving === 'approve' ? 'Saving...' : 'Save & approve'}</Button>
           </div>
         </aside>

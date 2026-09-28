@@ -1,4 +1,4 @@
-import { BadgeCheck, BookOpenText, Camera, FileText, GraduationCap, Image, LayoutDashboard, LogOut, Settings, UserCog, Users, UserRound } from 'lucide-react'
+import { BadgeCheck, BookOpenText, Camera, FileText, GraduationCap, Image, LayoutDashboard, LogOut, Settings, Users, UserRound } from 'lucide-react'
 
 function Icon({ children }) {
   return <span className="nav-icon">{children}</span>
@@ -6,15 +6,14 @@ function Icon({ children }) {
 
 const navigation = [
   { label: 'Dashboard', key: '/dashboard', icon: <LayoutDashboard size={18} /> },
-  { label: 'Students', key: '/students', icon: <Users size={18} /> },
+  { label: 'Graduation Directory', key: '/graduation-directory', icon: <Users size={18} /> },
   { label: 'Academic Management', key: '/academic', icon: <GraduationCap size={18} /> },
   { label: 'Photos', key: '/photos', icon: <Image size={18} /> },
   { label: 'Camera', key: '/photos/camera', icon: <Camera size={17} />, nested: true },
 ]
 
 const management = [
-  { label: 'Verification Requests', key: '/verification-requests', icon: <BadgeCheck size={18} />, allowedRoles: ['Administrator'] },
-  { label: 'Teachers', key: '/teachers', icon: <UserCog size={18} />, allowedRoles: ['Administrator'] },
+  { label: 'Account Management', key: '/accounts', icon: <BadgeCheck size={18} />, allowedRoles: ['Administrator'] },
   { label: 'Content & Memories', key: '/content', icon: <BookOpenText size={18} /> },
   { label: 'Reports', key: '/reports', icon: <FileText size={18} /> },
 ]

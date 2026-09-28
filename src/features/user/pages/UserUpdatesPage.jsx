@@ -11,7 +11,6 @@ export function UserUpdatesPage() {
       <UserUpdates
         announcements={content.announcements}
         stories={content.stories}
-        alumniCount={content.alumni.length}
       />
     </div>
   )

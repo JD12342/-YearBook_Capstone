@@ -8,7 +8,7 @@ import {
   limit,
   query,
   serverTimestamp,
-  updateDoc,
+  setDoc,
   where,
   writeBatch,
 } from 'firebase/firestore'
@@ -138,10 +138,10 @@ export const createStudent = async (studentData) => {
 export const updateStudent = async (studentId, updates) => {
   try {
     const payload = normalizeRecord({ ...updates })
-    await updateDoc(doc(db, 'students', studentId), {
+    await setDoc(doc(db, 'students', studentId), {
       ...payload,
       updatedAt: serverTimestamp(),
-    })
+    }, { merge: true })
     await syncYearbookForSchoolYear(payload.schoolYearId)
   } catch (error) {
     console.error('updateStudent error:', error)
@@ -162,11 +162,11 @@ export const deleteStudent = async (studentId) => {
 
 export const archiveStudent = async (studentId) => {
   try {
-    const existing = await getDoc(doc(db, 'students', studentId))
-    await updateDoc(doc(db, 'students', studentId), {
+    await setDoc(doc(db, 'students', studentId), {
       status: 'archived',
       updatedAt: serverTimestamp(),
-    })
+    }, { merge: true })
+    const existing = await getDoc(doc(db, 'students', studentId))
     if (existing.exists()) await syncYearbookForSchoolYear(existing.data().schoolYearId)
   } catch (error) {
     console.error('archiveStudent error:', error)
@@ -176,11 +176,11 @@ export const archiveStudent = async (studentId) => {
 
 export const restoreStudent = async (studentId) => {
   try {
-    const existing = await getDoc(doc(db, 'students', studentId))
-    await updateDoc(doc(db, 'students', studentId), {
+    await setDoc(doc(db, 'students', studentId), {
       status: 'active',
       updatedAt: serverTimestamp(),
-    })
+    }, { merge: true })
+    const existing = await getDoc(doc(db, 'students', studentId))
     if (existing.exists()) await syncYearbookForSchoolYear(existing.data().schoolYearId)
   } catch (error) {
     console.error('restoreStudent error:', error)

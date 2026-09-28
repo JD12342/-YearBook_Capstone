@@ -17,26 +17,12 @@ const metricTypes = {
   reads: 'firestore.googleapis.com/document/read_ops_count',
   writes: 'firestore.googleapis.com/document/write_ops_count',
   deletes: 'firestore.googleapis.com/document/delete_ops_count',
+  storageBytes: 'firestore.googleapis.com/storage/data_and_index_storage_bytes',
   activeConnections: 'firestore.googleapis.com/network/active_connections',
   snapshotListeners: 'firestore.googleapis.com/network/snapshot_listeners',
 }
 
 const numberValue = (point) => Number(point?.value?.int64Value ?? point?.value?.doubleValue ?? 0) || 0
-
-const isoDateInManila = (value = new Date()) => {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit',
-  }).formatToParts(value).reduce((result, part) => ({ ...result, [part.type]: part.value }), {})
-  return `${parts.year}-${parts.month}-${parts.day}`
-}
-
-const subtractDays = (dateText, days) => {
-  const date = new Date(`${dateText}T00:00:00Z`)
-  date.setUTCDate(date.getUTCDate() - days)
-  return date.toISOString().slice(0, 10)
-}
-
-const firstDayOfMonth = (dateText) => `${dateText.slice(0, 7)}-01`
 
 async function accessToken() {
   const token = await auth.getAccessToken()
@@ -85,7 +71,6 @@ async function assertTeacher(request) {
 
 const cleanIds = (value) => [...new Set((Array.isArray(value) ? value : []).map((item) => String(item || '').trim()).filter(Boolean))]
 const clampLimit = (value, fallback, maximum) => Math.min(Math.max(Number.parseInt(value, 10) || fallback, 1), maximum)
-
 exports.approveAccountAccess = onCall({ region: 'asia-southeast1' }, async (request) => {
   await assertAdministrator(request)
   const requestId = String(request.data?.requestId || '').trim()
@@ -100,6 +85,25 @@ exports.approveAccountAccess = onCall({ region: 'asia-southeast1' }, async (requ
   const role = accountRequest.profileType === 'Teacher' ? 'Teacher' : 'User'
   const now = FieldValue.serverTimestamp()
   const batch = db.batch()
+  let linkedRecordId = ''
+
+  if (role === 'User') {
+    const referenceId = String(accountRequest.referenceId || '').trim()
+    let existingStudent = referenceId
+      ? await db.collection('students').where('studentNumber', '==', referenceId).limit(1).get()
+      : null
+    if (referenceId && existingStudent?.empty) existingStudent = await db.collection('students').where('lrn', '==', referenceId).limit(1).get()
+    const hasStudentRecord = existingStudent && !existingStudent.empty
+    if (hasStudentRecord) {
+      const studentRef = existingStudent.docs[0].ref
+      linkedRecordId = studentRef.id
+      batch.set(studentRef, {
+        accountUid: uid,
+        accountStatus: 'active',
+        updatedAt: now,
+      }, { merge: true })
+    }
+  }
 
   batch.update(requestRef, { role, status: 'approved', reviewedBy: request.auth.uid, reviewedAt: now, updatedAt: now })
   batch.set(db.doc(`users/${uid}`), {
@@ -109,6 +113,7 @@ exports.approveAccountAccess = onCall({ region: 'asia-southeast1' }, async (requ
     role,
     profileType: accountRequest.profileType || 'Student',
     referenceId: accountRequest.referenceId || '',
+    linkedRecordId,
     status: 'active',
     updatedAt: now,
     createdAt: accountRequest.createdAt || now,
@@ -120,8 +125,9 @@ exports.approveAccountAccess = onCall({ region: 'asia-southeast1' }, async (requ
       active: true,
       sectionIds: cleanIds(request.data?.sectionIds),
       schoolYearId: String(request.data?.schoolYearId || ''),
-      photoLimit: clampLimit(request.data?.photoLimit, 40, 500),
-      videoLimit: clampLimit(request.data?.videoLimit, 5, 100),
+      photoLimit: clampLimit(request.data?.photoLimit, 5, 500),
+      videoLimit: clampLimit(request.data?.videoLimit, 2, 100),
+      videoDurationLimitSeconds: clampLimit(request.data?.videoDurationLimitSeconds, 120, 3600),
       photosSubmitted: 0,
       videosSubmitted: 0,
       pendingPostLimit: clampLimit(request.data?.pendingPostLimit, 10, 100),
@@ -150,8 +156,10 @@ exports.manageTeacherAccess = onCall({ region: 'asia-southeast1' }, async (reque
     active: active && role === 'Teacher',
     sectionIds,
     schoolYearId: String(request.data?.schoolYearId || ''),
-    photoLimit: clampLimit(request.data?.photoLimit, 40, 500),
-    videoLimit: clampLimit(request.data?.videoLimit, 5, 100),
+    position: String(request.data?.position || 'Teacher').trim(),
+    photoLimit: clampLimit(request.data?.photoLimit, 5, 500),
+    videoLimit: clampLimit(request.data?.videoLimit, 2, 100),
+    videoDurationLimitSeconds: clampLimit(request.data?.videoDurationLimitSeconds, 120, 3600),
     pendingPostLimit: clampLimit(request.data?.pendingPostLimit, 10, 100),
     updatedAt: now,
   }
@@ -162,34 +170,88 @@ exports.manageTeacherAccess = onCall({ region: 'asia-southeast1' }, async (reque
     assignmentUpdate.usageResetBy = request.auth.uid
   }
   batch.set(db.doc(`teacherAssignments/${uid}`), assignmentUpdate, { merge: true })
+  const userProfile = await db.doc(`users/${uid}`).get()
+  if (!userProfile.exists || userProfile.data()?.profileType !== 'Teacher') throw new HttpsError('failed-precondition', 'Only an approved teacher account can be assigned to sections.')
   await batch.commit()
   const user = await getAuth().getUser(uid)
   await getAuth().setCustomUserClaims(uid, { ...(user.customClaims || {}), role: active ? role : 'Disabled', admin: false })
   return { uid, role, active, sectionIds }
 })
 
+exports.manageStudentAccess = onCall({ region: 'asia-southeast1' }, async (request) => {
+  await assertAdministrator(request)
+  const uid = String(request.data?.uid || '').trim()
+  if (!uid) throw new HttpsError('invalid-argument', 'Choose a student account.')
+  const profileSnapshot = await db.doc(`users/${uid}`).get()
+  if (!profileSnapshot.exists || profileSnapshot.data()?.profileType !== 'Student') throw new HttpsError('failed-precondition', 'Only an approved student account can be managed here.')
+  const profile = profileSnapshot.data()
+  const active = request.data?.active !== false
+  const referenceId = String(profile.referenceId || '').trim()
+  let studentId = String(profile.linkedRecordId || '').trim()
+  if (studentId) {
+    const linkedStudent = await db.doc(`students/${studentId}`).get()
+    if (!linkedStudent.exists) studentId = ''
+  }
+  if (!studentId && referenceId) {
+    let matchingStudent = await db.collection('students').where('studentNumber', '==', referenceId).limit(1).get()
+    if (matchingStudent.empty) matchingStudent = await db.collection('students').where('lrn', '==', referenceId).limit(1).get()
+    if (!matchingStudent.empty) studentId = matchingStudent.docs[0].id
+  }
+  const now = FieldValue.serverTimestamp()
+  const batch = db.batch()
+  batch.set(db.doc(`users/${uid}`), {
+    role: 'User',
+    status: active ? 'active' : 'disabled',
+    schoolYearId: String(request.data?.schoolYearId || ''),
+    strandId: String(request.data?.strandId || ''),
+    sectionId: String(request.data?.sectionId || ''),
+    linkedRecordId: studentId,
+    updatedAt: now,
+  }, { merge: true })
+  if (studentId) {
+    batch.set(db.doc(`students/${studentId}`), {
+      accountUid: uid,
+      accountStatus: active ? 'active' : 'disabled',
+      updatedAt: now,
+    }, { merge: true })
+  }
+  await batch.commit()
+  const user = await getAuth().getUser(uid)
+  await getAuth().setCustomUserClaims(uid, { ...(user.customClaims || {}), role: active ? 'User' : 'Disabled', admin: false })
+  return { uid, studentId, active }
+})
+
 exports.reserveTeacherMemory = onCall({ region: 'asia-southeast1' }, async (request) => {
   await assertTeacher(request)
   const uid = request.auth.uid
+  const title = String(request.data?.title || '').trim()
   const sectionId = String(request.data?.sectionId || '').trim()
   const photoCount = Math.max(Number(request.data?.photoCount) || 0, 0)
   const videoCount = Math.max(Number(request.data?.videoCount) || 0, 0)
+  const videoDurationsSeconds = (Array.isArray(request.data?.videoDurationsSeconds) ? request.data.videoDurationsSeconds : [])
+    .map((duration) => Math.max(Math.ceil(Number(duration) || 0), 0))
+    .filter(Boolean)
   const assignmentRef = db.doc(`teacherAssignments/${uid}`)
   const memoryRef = db.collection('memories').doc()
   const limits = await db.runTransaction(async (transaction) => {
     const assignmentSnapshot = await transaction.get(assignmentRef)
     const assignment = assignmentSnapshot.data()
     if (!assignmentSnapshot.exists || assignment?.active !== true) throw new HttpsError('permission-denied', 'Your teaching assignment is not active.')
+    if (!title) throw new HttpsError('invalid-argument', 'Add a title for this memory.')
     if (!sectionId || !cleanIds(assignment.sectionIds).includes(sectionId)) throw new HttpsError('permission-denied', 'Choose one of your assigned sections.')
     if (!photoCount && !videoCount) throw new HttpsError('invalid-argument', 'Add at least one photo or video.')
+    if (videoCount !== videoDurationsSeconds.length) throw new HttpsError('invalid-argument', 'GradBook could not verify every video duration. Choose the videos again.')
 
-    const photoLimit = clampLimit(assignment.photoLimit, 40, 500)
-    const videoLimit = clampLimit(assignment.videoLimit, 5, 100)
+    const usesLegacyDefaults = Number(assignment.photoLimit) === 40 && Number(assignment.videoLimit) === 5
+    const photoLimit = clampLimit(usesLegacyDefaults ? 5 : assignment.photoLimit, 5, 500)
+    const videoLimit = clampLimit(usesLegacyDefaults ? 2 : assignment.videoLimit, 2, 100)
+    const videoDurationLimitSeconds = clampLimit(assignment.videoDurationLimitSeconds, 120, 3600)
     const pendingPostLimit = clampLimit(assignment.pendingPostLimit, 10, 100)
     const photosSubmitted = Math.max(Number(assignment.photosSubmitted) || 0, 0)
     const videosSubmitted = Math.max(Number(assignment.videosSubmitted) || 0, 0)
     if (photosSubmitted + photoCount > photoLimit) throw new HttpsError('resource-exhausted', `Only ${Math.max(photoLimit - photosSubmitted, 0)} photo uploads remain in your allowance.`)
     if (videosSubmitted + videoCount > videoLimit) throw new HttpsError('resource-exhausted', `Only ${Math.max(videoLimit - videosSubmitted, 0)} video uploads remain in your allowance.`)
+    if (videoDurationsSeconds.some((duration) => duration > videoDurationLimitSeconds)) throw new HttpsError('invalid-argument', `Each video must be ${Math.ceil(videoDurationLimitSeconds / 60)} minutes or shorter.`)
 
     const pendingQuery = db.collection('memories').where('ownerUid', '==', uid).where('status', '==', 'pending').limit(pendingPostLimit)
     const pending = await transaction.get(pendingQuery)
@@ -197,17 +259,20 @@ exports.reserveTeacherMemory = onCall({ region: 'asia-southeast1' }, async (requ
 
     const now = FieldValue.serverTimestamp()
     transaction.set(memoryRef, {
-      title: String(request.data?.title || '').trim(),
+      title,
       caption: String(request.data?.caption || '').trim(),
       sectionId,
       ownerUid: uid,
       contributorName: String(request.data?.contributorName || '').trim(),
-      source: 'teacher',
+      source: assignment.contributorType === 'alumniLeader' ? 'alumniLeader' : 'teacher',
+      contributorType: assignment.contributorType === 'alumniLeader' ? 'alumniLeader' : 'teacher',
       status: 'pending',
       media: [],
       images: [],
       expectedPhotoCount: photoCount,
       expectedVideoCount: videoCount,
+      expectedVideoDurationsSeconds: videoDurationsSeconds,
+      videoDurationLimitSeconds,
       createdAt: now,
       updatedAt: now,
     })
@@ -217,7 +282,7 @@ exports.reserveTeacherMemory = onCall({ region: 'asia-southeast1' }, async (requ
       lastSubmissionAt: now,
       updatedAt: now,
     })
-    return { photoLimit, videoLimit, pendingPostLimit, photosSubmitted: photosSubmitted + photoCount, videosSubmitted: videosSubmitted + videoCount }
+    return { photoLimit, videoLimit, videoDurationLimitSeconds, pendingPostLimit, photosSubmitted: photosSubmitted + photoCount, videosSubmitted: videosSubmitted + videoCount }
   })
   return { id: memoryRef.id, ...limits }
 })
@@ -286,7 +351,7 @@ async function monitoringSeries(metricType, periodDays, gauge = false) {
 
 async function loadDatabaseUsage(periodDays) {
   const entries = await Promise.all(Object.entries(metricTypes).map(async ([key, metricType]) => {
-    const gauge = key === 'activeConnections' || key === 'snapshotListeners'
+    const gauge = key === 'storageBytes' || key === 'activeConnections' || key === 'snapshotListeners'
     return [key, await monitoringSeries(metricType, periodDays, gauge)]
   }))
   const points = Object.fromEntries(entries)
@@ -311,83 +376,10 @@ async function loadDatabaseUsage(periodDays) {
     reads: points.reads.reduce((sum, point) => sum + numberValue(point), 0),
     writes: points.writes.reduce((sum, point) => sum + numberValue(point), 0),
     deletes: points.deletes.reduce((sum, point) => sum + numberValue(point), 0),
+    storageBytes: newestGauge(points.storageBytes),
     activeConnections: newestGauge(points.activeConnections),
     snapshotListeners: newestGauge(points.snapshotListeners),
     dailyUsage: [...daily.values()].sort((left, right) => left.date.localeCompare(right.date)),
-  }
-}
-
-function validateBillingTable(value) {
-  const table = String(value || '').trim().replaceAll('`', '')
-  if (!table) return ''
-  if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(table)) throw new Error('BILLING_EXPORT_TABLE must use project.dataset.table format.')
-  return table
-}
-
-function parseBigQueryRows(payload) {
-  const fields = payload.schema?.fields || []
-  return (payload.rows || []).map((row) => Object.fromEntries(fields.map((field, index) => [field.name, row.f?.[index]?.v ?? null])))
-}
-
-async function loadBilling(periodDays) {
-  const exportTable = validateBillingTable(process.env.BILLING_EXPORT_TABLE)
-  if (!exportTable) return { status: 'not_configured', message: 'Cloud Billing export has not been connected to GradBook yet.', byService: [], dailyCost: [] }
-
-  const queryProject = process.env.BILLING_QUERY_PROJECT || projectId
-  const today = isoDateInManila()
-  const periodStart = subtractDays(today, periodDays - 1)
-  const monthStart = firstDayOfMonth(today)
-  const queryStart = periodStart < monthStart ? periodStart : monthStart
-  const query = `
-    SELECT
-      FORMAT_DATE('%F', DATE(usage_start_time, 'Asia/Manila')) AS day,
-      service.description AS service,
-      ANY_VALUE(currency) AS currency,
-      ROUND(SUM(cost + IFNULL((SELECT SUM(credit.amount) FROM UNNEST(credits) AS credit), 0)), 6) AS net_cost
-    FROM \`${exportTable}\`
-    WHERE project.id = @projectId
-      AND DATE(usage_start_time, 'Asia/Manila') >= @queryStart
-    GROUP BY day, service
-    ORDER BY day ASC
-  `
-  const body = {
-    query,
-    useLegacySql: false,
-    timeoutMs: 25000,
-    parameterMode: 'NAMED',
-    queryParameters: [
-      { name: 'projectId', parameterType: { type: 'STRING' }, parameterValue: { value: projectId } },
-      { name: 'queryStart', parameterType: { type: 'DATE' }, parameterValue: { value: queryStart } },
-    ],
-  }
-  if (process.env.BILLING_DATASET_LOCATION) body.location = process.env.BILLING_DATASET_LOCATION
-
-  const payload = await cloudJson(`https://bigquery.googleapis.com/bigquery/v2/projects/${queryProject}/queries`, { method: 'POST', body: JSON.stringify(body) })
-  if (!payload.jobComplete) throw new Error('The billing query did not finish before the request timeout.')
-
-  const rows = parseBigQueryRows(payload).map((row) => ({ day: row.day, service: row.service || 'Other', currency: row.currency || 'USD', cost: Number(row.net_cost) || 0 }))
-  const currency = rows.find((row) => row.currency)?.currency || 'USD'
-  const monthRows = rows.filter((row) => row.day >= monthStart)
-  const periodRows = rows.filter((row) => row.day >= periodStart)
-  const monthCost = monthRows.reduce((sum, row) => sum + row.cost, 0)
-  const dayOfMonth = Number(today.slice(-2)) || 1
-  const daysInMonth = new Date(Number(today.slice(0, 4)), Number(today.slice(5, 7)), 0).getDate()
-  const monthlyBudget = Math.max(Number(process.env.MONTHLY_BUDGET) || 0, 0)
-  const dailyCost = Object.values(periodRows.reduce((records, row) => {
-    records[row.day] ||= { date: row.day, cost: 0 }
-    records[row.day].cost += row.cost
-    return records
-  }, {})).sort((left, right) => left.date.localeCompare(right.date))
-  const byService = Object.entries(periodRows.reduce((records, row) => {
-    records[row.service] = (records[row.service] || 0) + row.cost
-    return records
-  }, {})).map(([service, cost]) => ({ service, cost })).sort((left, right) => Math.abs(right.cost) - Math.abs(left.cost))
-
-  return {
-    status: 'ready', currency, monthCost, dailyCost, byService, monthlyBudget,
-    periodCost: periodRows.reduce((sum, row) => sum + row.cost, 0),
-    projectedMonthCost: monthCost / dayOfMonth * daysInMonth,
-    budgetUsedPercent: monthlyBudget ? monthCost / monthlyBudget * 100 : 0,
   }
 }
 
@@ -396,13 +388,9 @@ exports.getDatabaseAnalytics = onCall({ region: 'asia-southeast1', timeoutSecond
   const requestedDays = Number(request.data?.periodDays)
   const periodDays = [7, 30, 90].includes(requestedDays) ? requestedDays : 30
 
-  const [databaseResult, billingResult] = await Promise.allSettled([
-    loadDatabaseUsage(periodDays),
-    loadBilling(periodDays),
-  ])
+  const [databaseResult] = await Promise.allSettled([loadDatabaseUsage(periodDays)])
 
   if (databaseResult.status === 'rejected') logger.error('Unable to load Cloud Monitoring data.', databaseResult.reason)
-  if (billingResult.status === 'rejected') logger.error('Unable to load Cloud Billing data.', billingResult.reason)
 
   return {
     projectId,
@@ -410,9 +398,6 @@ exports.getDatabaseAnalytics = onCall({ region: 'asia-southeast1', timeoutSecond
     generatedAt: new Date().toISOString(),
     database: databaseResult.status === 'fulfilled'
       ? databaseResult.value
-      : { status: 'error', message: 'Cloud Monitoring is unavailable. Confirm that its API and service-account permissions are enabled.', reads: 0, writes: 0, deletes: 0, activeConnections: 0, snapshotListeners: 0, dailyUsage: [] },
-    billing: billingResult.status === 'fulfilled'
-      ? billingResult.value
-      : { status: 'error', message: 'Billing export could not be read. Confirm the BigQuery table name and IAM permissions.', byService: [], dailyCost: [] },
+      : { status: 'error', message: 'Cloud Monitoring is unavailable. Confirm that its API and service-account permissions are enabled.', reads: 0, writes: 0, deletes: 0, storageBytes: 0, activeConnections: 0, snapshotListeners: 0, dailyUsage: [] },
   }
 })

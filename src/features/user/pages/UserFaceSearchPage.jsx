@@ -180,7 +180,7 @@ export function UserFaceSearchPage({ embedded = false }) {
         <div className="face-search-heading">
           <span className="user-eyebrow">{embedded ? 'FIND YOUR PORTRAIT' : 'AUTHORIZED ARCHIVE SEARCH'}</span>
           <h1>{embedded ? <>Face Search</> : <>Search the <em>yearbook archive.</em></>}</h1>
-          <p>{embedded ? 'Find yourself across every published batch.' : 'Choose facial matching or whole-image similarity, then use your camera or select a photo. GradBook compares it only with portraits an administrator approved for active yearbooks.'}</p>
+          <p>{embedded ? 'Find yourself across every published batch.' : 'Choose facial matching or whole-image similarity, then use your camera or select a photo. GradBook compares it only with approved portraits from active yearbooks.'}</p>
           <div className="face-search-trust"><span><LockKeyhole size={15} /> Search photo is not uploaded or saved</span><span><ShieldCheck size={15} /> Results remain read-only</span></div>
         </div>
         <div className="face-search-count"><ScanFace size={29} /><strong>{portraitCount}</strong><span>approved portrait{portraitCount === 1 ? '' : 's'} available</span></div>

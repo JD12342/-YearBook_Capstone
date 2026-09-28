@@ -1,6 +1,11 @@
-import { collection, doc, getDoc, getDocs, limit, onSnapshot, query, where } from 'firebase/firestore'
-import { db } from '../../admin/services/firebase/firestore.js'
-import { isFirebaseConfigured } from '../../admin/services/firebase/firebaseConfig.js'
+import { collection, doc, getDoc, getDocs, limit, query, where } from 'firebase/firestore'
+import { db, isFirebaseConfigured } from '../../../app/firebaseClient.js'
+
+const PORTAL_CACHE_TTL = 2 * 60 * 1000
+let portalContentCache = null
+let portalContentCachedAt = 0
+let portalContentRequest = null
+const activeYearbookCache = new Map()
 
 const newestFirst = (left, right) => {
   const leftTime = Number(left.updatedAt?.seconds ?? left.createdAt?.seconds ?? 0)
@@ -22,76 +27,45 @@ const readPublishedRecords = async (collectionName, status, recordLimit = 8) => 
 
 export const loadActiveYearbook = async (yearbookId) => {
   if (!isFirebaseConfigured || !yearbookId) return null
+  if (activeYearbookCache.has(yearbookId)) return activeYearbookCache.get(yearbookId)
   const snapshot = await getDoc(doc(db, 'yearbooks', yearbookId))
   if (!snapshot.exists() || (snapshot.data().status !== 'active' || snapshot.data().recordsVersion !== 1)) return null
-  return { id: snapshot.id, ...snapshot.data() }
+  const yearbook = { id: snapshot.id, ...snapshot.data() }
+  activeYearbookCache.set(yearbookId, yearbook)
+  return yearbook
 }
 
-export const loadUserPortalContent = async () => {
+export const getCachedUserPortalContent = () => portalContentCache
+
+export const loadUserPortalContent = async ({ forceRefresh = false } = {}) => {
   if (!isFirebaseConfigured) {
-    return { announcements: [], yearbooks: [], stories: [], alumni: [], memories: [], hasLiveContent: false }
+    return { announcements: [], yearbooks: [], stories: [], memories: [], hasLiveContent: false }
   }
 
-  const [announcements, yearbooks, stories, alumni, memories] = await Promise.allSettled([
+  if (!forceRefresh && portalContentCache && Date.now() - portalContentCachedAt < PORTAL_CACHE_TTL) return portalContentCache
+  if (portalContentRequest) return portalContentRequest
+
+  portalContentRequest = Promise.allSettled([
     readPublishedRecords('announcements', 'published'),
-    readPublishedRecords('yearbooks', 'active', 50),
+    readPublishedRecords('yearbooks', 'active', 24),
     readPublishedRecords('schoolContent', 'published'),
-    readPublishedRecords('alumni', 'active'),
-    readPublishedRecords('memories', 'published', 100),
-  ])
+    readPublishedRecords('memories', 'published', 48),
+  ]).then(([announcements, yearbooks, stories, memories]) => {
+    const records = (result) => result.status === 'fulfilled' ? result.value : []
+    const content = {
+      announcements: records(announcements),
+      yearbooks: records(yearbooks).filter(book => book.recordsVersion === 1 && book.schoolYearId && book.schoolYearName),
+      stories: records(stories),
+      memories: records(memories),
+    }
 
-  const records = (result) => result.status === 'fulfilled' ? result.value : []
-  const content = {
-    announcements: records(announcements),
-    yearbooks: records(yearbooks).filter(book => book.recordsVersion === 1 && book.schoolYearId && book.schoolYearName),
-    stories: records(stories),
-    alumni: records(alumni),
-    memories: records(memories),
-  }
+    portalContentCache = {
+      ...content,
+      hasLiveContent: Object.values(content).some((items) => items.length > 0),
+    }
+    portalContentCachedAt = Date.now()
+    return portalContentCache
+  }).finally(() => { portalContentRequest = null })
 
-  return {
-    ...content,
-    hasLiveContent: Object.values(content).some((items) => items.length > 0),
-  }
-}
-
-export const subscribeUserPortalContent = (onContent, onReady) => {
-  if (!isFirebaseConfigured) {
-    onContent({ announcements: [], yearbooks: [], stories: [], alumni: [], memories: [], hasLiveContent: false })
-    onReady?.()
-    return () => {}
-  }
-
-  const definitions = [
-    ['announcements', 'announcements', 'published'],
-    ['yearbooks', 'yearbooks', 'active'],
-    ['stories', 'schoolContent', 'published'],
-    ['alumni', 'alumni', 'active'],
-    ['memories', 'memories', 'published'],
-  ]
-  const content = { announcements: [], yearbooks: [], stories: [], alumni: [], memories: [] }
-  const initialized = new Set()
-  let readySent = false
-
-  const emit = () => onContent({
-    ...content,
-    yearbooks: content.yearbooks.filter((book) => book.recordsVersion === 1 && book.schoolYearId && book.schoolYearName),
-    hasLiveContent: Object.values(content).some((items) => items.length > 0),
-  })
-
-  const unsubscribers = definitions.map(([key, collectionName, status]) => onSnapshot(
-    query(collection(db, collectionName), where('status', '==', status)),
-    (snapshot) => {
-      content[key] = snapshot.docs.map((record) => ({ id: record.id, ...record.data() })).sort(newestFirst)
-      initialized.add(key)
-      emit()
-      if (initialized.size === definitions.length && !readySent) { readySent = true; onReady?.() }
-    },
-    () => {
-      initialized.add(key)
-      if (initialized.size === definitions.length && !readySent) { readySent = true; onReady?.() }
-    },
-  ))
-
-  return () => unsubscribers.forEach((unsubscribe) => unsubscribe())
+  return portalContentRequest
 }

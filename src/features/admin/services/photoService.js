@@ -162,6 +162,11 @@ export const uploadStudentPhotoRecord = async ({
     editedPath: uploadedApproved?.path || '',
     originalFileName: uploadedOriginal.fileName,
     mimeType: uploadedOriginal.mimeType,
+    originalFileSize: uploadedOriginal.originalSize,
+    storedFileSize: uploadedOriginal.uploadedSize,
+    wasOptimized: uploadedOriginal.optimized,
+    storedWidth: uploadedOriginal.width,
+    storedHeight: uploadedOriginal.height,
   }
 
   const photoIdFromFirestore = await createPhotoRecord(photoMetadata)

@@ -94,7 +94,7 @@ export function SettingsPage() {
       <div className="system-info-stack">
         <Card className="panel-card system-info-card"><span><ShieldCheck size={20} /></span><div><h3>Administrator security</h3><p>Settings are stored in your protected Firebase user record. Only an administrator can modify them.</p></div></Card>
         <Card className="panel-card system-info-card"><span><Database size={20} /></span><div><h3>Firebase project</h3><p>{import.meta.env.VITE_FIREBASE_PROJECT_ID || 'Firebase is not configured'}</p></div></Card>
-        <Card className="panel-card system-info-card"><span><Gauge size={20} /></span><div><h3>Database analytics</h3><p>Usage and billing configuration is available from the Reports page.</p><a href="/reports">Open Reports</a></div></Card>
+        <Card className="panel-card system-info-card"><span><Gauge size={20} /></span><div><h3>Database analytics</h3><p>Observed Firestore usage is available from the Reports page.</p><a href="/reports">Open Reports</a></div></Card>
       </div>
     </div>
   </div>

@@ -45,7 +45,7 @@ service firebase.storage {
     match /photos/{allPaths=**} {
       allow read, delete: if isAdministrator();
       allow create, update: if isAdministrator()
-        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.size <= 8 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
     }
 
@@ -54,7 +54,7 @@ service firebase.storage {
     match /photos/{schoolYearId}/{strandId}/{studentId}/approved/{fileName} {
       allow read: if canViewCommunity();
       allow create, update: if isAdministrator()
-        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.size <= 8 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
       allow delete: if isAdministrator();
     }
@@ -62,22 +62,43 @@ service firebase.storage {
     match /published/{allPaths=**} {
       allow read: if canViewCommunity();
       allow create, update: if isAdministrator()
+        && request.resource.size <= 8 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isAdministrator();
+    }
+
+    match /yearbooks/{yearbookId}/cover/{fileName} {
+      allow read: if canViewYearbook(yearbookId);
+      allow create, update: if isAdministrator()
         && request.resource.size < 15 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
       allow delete: if isAdministrator();
     }
 
-    match /yearbooks/{yearbookId}/{allPaths=**} {
+    match /yearbooks/{yearbookId}/pages/{slot}/{fileName} {
+      allow read: if canViewYearbook(yearbookId);
+      allow create, update: if isAdministrator()
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+      allow delete: if isAdministrator();
+    }
+
+    match /yearbooks/{yearbookId}/song/{fileName} {
       allow read: if canViewYearbook(yearbookId);
       allow create, update: if isAdministrator()
         && request.resource.size < 25 * 1024 * 1024
-        && request.resource.contentType.matches('(image|audio)/.*');
+        && request.resource.contentType.matches('audio/.*');
+      allow delete: if isAdministrator();
+    }
+
+    match /yearbooks/{yearbookId}/{allPaths=**} {
+      allow read: if canViewYearbook(yearbookId);
       allow delete: if isAdministrator();
     }
 
     function canViewPublishedContent(collectionName, recordId) {
       return canViewCommunity()
-        && collectionName in ['announcements', 'alumni', 'schoolContent', 'memories']
+        && collectionName in ['announcements', 'schoolContent', 'memories']
         && firestore.exists(/databases/(default)/documents/$(collectionName)/$(recordId))
         && firestore.get(/databases/(default)/documents/$(collectionName)/$(recordId)).data.status in ['published', 'active'];
     }
@@ -110,7 +131,7 @@ service firebase.storage {
     match /teacher-portraits/{teacherId}/approved/{fileName} {
       allow read: if canViewCommunity();
       allow create, update: if isAdministrator()
-        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.size <= 8 * 1024 * 1024
         && request.resource.contentType.matches('image/.*');
       allow delete: if isAdministrator();
     }

@@ -1,4 +1,2 @@
-import { getFirestore } from 'firebase/firestore'
-import { firebaseApp } from './firebaseConfig.js'
-
-export const db = getFirestore(firebaseApp)
+// All roles share one Firestore instance so the SDK can reuse its local cache.
+export { db } from '../../../../app/firebaseClient.js'

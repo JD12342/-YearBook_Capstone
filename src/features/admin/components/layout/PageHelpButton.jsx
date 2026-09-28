@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CircleHelp } from 'lucide-react'
 
-export function PageHelpButton({ title, helpText }) {
+export function PageHelpButton({ title, helpText, helpSections = [] }) {
   const [isOpen, setIsOpen] = useState(false)
   const helpRef = useRef(null)
 
@@ -37,6 +37,7 @@ export function PageHelpButton({ title, helpText }) {
         <div className="page-help-popover" role="dialog" aria-label={`${title} help`}>
           <strong>About {title}</strong>
           <p>{helpText || 'Use this workspace to review and manage its related GradBook records.'}</p>
+          {helpSections.length > 0 && <div className="page-help-sections">{helpSections.map((section) => <section key={section.title}><h4>{section.title}</h4><p>{section.text}</p></section>)}</div>}
         </div>
       )}
     </div>

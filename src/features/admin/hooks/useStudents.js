@@ -127,7 +127,7 @@ export function useStudents() {
           if (current && yearList.some((year) => year.id === current)) return current
           const urlValue = new URLSearchParams(location.search).get('schoolYearId')
           if (urlValue && yearList.some((year) => year.id === urlValue)) return urlValue
-          return yearList[0]?.id ?? ''
+          return ''
         })
       } catch (loadError) {
         if (!ignore) {
@@ -145,17 +145,8 @@ export function useStudents() {
     let ignore = false
 
     const loadStrands = async () => {
-      if (!selectedSchoolYearId) {
-        if (!ignore) {
-          setStrands([])
-          setSelectedStrandId('')
-          setSelectedSectionId('')
-        }
-        return
-      }
-
       try {
-        const records = await getStrands(selectedSchoolYearId)
+        const records = await getStrands(selectedSchoolYearId || undefined)
         if (ignore) return
         const nextStrands = records.map(normalizeStrand)
         setStrands(nextStrands)
@@ -163,7 +154,7 @@ export function useStudents() {
           if (current && nextStrands.some((strand) => strand.id === current)) return current
           const urlValue = new URLSearchParams(location.search).get('strandId')
           if (urlValue && nextStrands.some((strand) => strand.id === urlValue)) return urlValue
-          return nextStrands[0]?.id ?? ''
+          return ''
         })
       } catch (loadError) {
         if (!ignore) {
@@ -182,23 +173,15 @@ export function useStudents() {
     let ignore = false
 
     const loadSections = async () => {
-      if (!selectedSchoolYearId || !selectedStrandId) {
-        if (!ignore) {
-          setSections([])
-          setSelectedSectionId('')
-        }
-        return
-      }
-
       try {
-        const records = await getSections({ schoolYearId: selectedSchoolYearId, strandId: selectedStrandId })
+        const records = await getSections({ schoolYearId: selectedSchoolYearId || undefined, strandId: selectedStrandId || undefined })
         if (ignore) return
         setSections(records)
         setSelectedSectionId((current) => {
           if (current && records.some((section) => section.id === current)) return current
           const urlValue = new URLSearchParams(location.search).get('sectionId')
           if (urlValue && records.some((section) => section.id === urlValue)) return urlValue
-          return records[0]?.id ?? ''
+          return ''
         })
       } catch (loadError) {
         if (!ignore) {

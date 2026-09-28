@@ -6,7 +6,7 @@ export function UserContentStatus({ content, contentReady }) {
         ? 'Connecting to the school archive…'
         : content.hasLiveContent
           ? 'Showing published school content'
-          : 'Archive preview · published content will appear automatically'}
+          : 'Archive preview · published content will appear after refresh'}
     </div>
   )
 }

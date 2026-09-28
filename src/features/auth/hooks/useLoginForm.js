@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -12,7 +12,7 @@ const initialFields = () => ({
 })
 
 export function useLoginForm() {
-  const { authorizationError, clearAuthorizationError, login, register, isAuthenticated, loading, role: authenticatedRole } = useAuth()
+  const { login, register, isAuthenticated, loading, role: authenticatedRole } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -23,16 +23,19 @@ export function useLoginForm() {
   const [error, setError] = useState(location.state?.error || '')
   const [notice, setNotice] = useState('')
 
+  useEffect(() => {
+    setError('')
+    setNotice('')
+  }, [location.key])
+
   const redirectPath = location.state?.from || (authenticatedRole === 'Administrator' ? '/dashboard' : authenticatedRole === 'Teacher' ? '/community/teacher' : '/community')
   const updateField = (name, value) => {
-    clearAuthorizationError()
     setError('')
     setFields((current) => ({ ...current, [name]: value }))
   }
 
   const handleSubmit = async (event) => {
     event.preventDefault()
-    clearAuthorizationError()
     setError('')
     setNotice('')
     setSubmitting(true)
@@ -48,20 +51,19 @@ export function useLoginForm() {
         })
         setFields(initialFields())
         setSearchParams({})
-        setNotice('Your access request was submitted. You can sign in after an administrator approves it.')
+        setNotice('Your access request was submitted. You can sign in after the school approves it.')
       } else {
         const result = await login({ email: fields.email.trim(), password: fields.password, rememberMe: fields.rememberMe })
         navigate(result.role === 'Administrator' ? '/dashboard' : result.role === 'Teacher' ? '/community/teacher' : '/community', { replace: true })
       }
     } catch (loginError) {
-      setError(loginError?.message || 'Unable to sign in. Please check your credentials and try again.')
+      setError(loginError?.message || (isSigningUp ? 'We could not create your account. Please try again.' : 'We could not sign you in. Please try again.'))
     } finally {
       setSubmitting(false)
     }
   }
 
   const toggleMode = () => {
-    clearAuthorizationError()
     setError('')
     setNotice('')
     setFields(initialFields())
@@ -69,7 +71,7 @@ export function useLoginForm() {
   }
 
   return {
-    error: error || authorizationError,
+    error,
     notice,
     fields,
     handleSubmit,

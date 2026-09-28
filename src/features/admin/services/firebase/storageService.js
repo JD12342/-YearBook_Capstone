@@ -1,5 +1,6 @@
 import { deleteObject, getDownloadURL, listAll, ref, uploadBytes } from 'firebase/storage'
 import { storage } from './storage.js'
+import { optimizePortraitForUpload } from '../imageOptimizationService.js'
 
 export const buildStoragePath = ({ schoolYearId, strandId, studentId, type = 'original', photoId }) => {
   const safeSchoolYear = String(schoolYearId || 'unknown-year').replace(/\s+/g, '-')
@@ -11,16 +12,22 @@ export const buildStoragePath = ({ schoolYearId, strandId, studentId, type = 'or
 
 export async function uploadStudentPhoto({ file, schoolYearId, strandId, studentId, photoId, type = 'original' }) {
   if (!file) throw new Error('A file is required for upload.')
+  const optimized = await optimizePortraitForUpload(file)
 
   const path = buildStoragePath({ schoolYearId, strandId, studentId, type, photoId })
   const fileRef = ref(storage, path)
-  await uploadBytes(fileRef, file)
+  await uploadBytes(fileRef, optimized.file, { contentType: 'image/jpeg' })
 
   return {
     path,
     url: await getDownloadURL(fileRef),
     fileName: file.name,
-    mimeType: file.type || 'image/jpeg',
+    mimeType: 'image/jpeg',
+    originalSize: optimized.originalBytes,
+    uploadedSize: optimized.uploadedBytes,
+    optimized: optimized.optimized,
+    width: optimized.width,
+    height: optimized.height,
   }
 }
 
@@ -41,6 +48,8 @@ export async function uploadYearbookAsset({ file, yearbookId, kind, slot = '' })
   if (!yearbookId) throw new Error('A yearbook is required for this upload.')
   if (!['cover', 'page', 'song'].includes(kind)) throw new Error('Unsupported yearbook asset type.')
   if (kind === 'page' && !slot) throw new Error('A page artwork slot is required.')
+  const maxBytes = (kind === 'song' ? 25 : 15) * 1024 * 1024
+  if (file.size > maxBytes) throw new Error(`${kind === 'song' ? 'Graduation songs' : 'Yearbook artwork'} must be smaller than ${kind === 'song' ? 25 : 15} MB.`)
 
   const safeYearbookId = String(yearbookId).replace(/[^a-zA-Z0-9_-]/g, '-')
   const safeSlot = String(slot).replace(/[^a-zA-Z0-9_-]/g, '-')
@@ -71,7 +80,7 @@ export async function deleteYearbookAssets(yearbookId) {
   await removeFolder(ref(storage, `yearbooks/${safeYearbookId}`))
 }
 
-const contentCollections = new Set(['announcements', 'alumni', 'schoolContent', 'memories'])
+const contentCollections = new Set(['announcements', 'schoolContent', 'memories'])
 
 export async function uploadContentImage({ file, collectionName, recordId, slot = '' }) {
   if (!file?.type?.startsWith('image/')) throw new Error('Choose a valid image file.')

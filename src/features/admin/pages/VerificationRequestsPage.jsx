@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { CheckCircle2 } from 'lucide-react'
 import { Badge } from '../components/ui/Badge.jsx'
 import { Button } from '../components/ui/Button.jsx'
 import { Card } from '../components/ui/Card.jsx'
@@ -6,12 +7,13 @@ import { approveAccountRequest, getAdminRecords, updateAdminRecord } from '../se
 
 const statuses = ['all', 'pending', 'approved', 'rejected']
 
-export function VerificationRequestsPage() {
+export function VerificationRequestsPage({ embedded = false }) {
   const [requests, setRequests] = useState([])
   const [statusFilter, setStatusFilter] = useState('pending')
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState('')
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   const loadRequests = async () => {
     setLoading(true)
@@ -26,6 +28,11 @@ export function VerificationRequestsPage() {
   }
 
   useEffect(() => { loadRequests() }, [])
+  useEffect(() => {
+    if (!success) return undefined
+    const timer = window.setTimeout(() => setSuccess(''), 3500)
+    return () => window.clearTimeout(timer)
+  }, [success])
 
   const visibleRequests = useMemo(
     () => requests.filter((request) => statusFilter === 'all' || (request.status || 'pending') === statusFilter),
@@ -35,10 +42,12 @@ export function VerificationRequestsPage() {
   const updateStatus = async (request, status) => {
     setSavingId(request.id)
     setError('')
+    setSuccess('')
     try {
       if (status === 'approved') await approveAccountRequest(request)
       else await updateAdminRecord('accountRequests', request.id, { status, reviewedAt: new Date().toISOString() })
       setRequests((records) => records.map((record) => record.id === request.id ? { ...record, status } : record))
+      if (status === 'approved') setSuccess('Account approved.')
     } catch (updateError) {
       setError(updateError.message)
     } finally {
@@ -48,10 +57,11 @@ export function VerificationRequestsPage() {
 
   return (
     <div className="page-stack">
-      <div className="page-header-row">
-        <div><div className="page-kicker">Role-based access</div><h2>Verification requests</h2><p className="page-description">Verify students and staff as Users, or approve teachers for assignment-managed Teacher access.</p></div>
-      </div>
+      {!embedded && <div className="page-header-row">
+        <div><div className="page-kicker">Role-based access</div><h2>Verification requests</h2><p className="page-description">Verify student accounts or approve teachers for the Teacher Studio.</p></div>
+      </div>}
       {error && <div className="form-error" role="alert">{error}</div>}
+      {success && <div className="form-success verification-success" role="status"><CheckCircle2 size={17} /> {success}</div>}
       <Card className="panel-card">
         <div className="data-toolbar-row">
           <div className="filter-inline"><span className="mini-label">Show</span><select className="data-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>{statuses.map((status) => <option key={status} value={status}>{status === 'all' ? 'All requests' : `${status[0].toUpperCase()}${status.slice(1)}`}</option>)}</select></div>

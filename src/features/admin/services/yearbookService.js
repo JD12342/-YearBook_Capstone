@@ -142,10 +142,9 @@ async function buildPublication(payload) {
   if (!payload.schoolYearId) throw new Error('Choose an existing school year.')
   const year = await getDoc(doc(db, 'schoolYears', payload.schoolYearId))
   if (!year.exists()) throw new Error('This yearbook is linked to a school year that no longer exists.')
-  const [students, strands, sections, teachers, teacherAssignments] = await Promise.all([
+  const [students, strands, sections, teachers] = await Promise.all([
     ...['students', 'strands', 'sections'].map(name => getDocs(query(collection(db, name), where('schoolYearId', '==', payload.schoolYearId)))),
-    getDocs(query(collection(db, 'users'), where('profileType', '==', 'Teacher'))),
-    getDocs(collection(db, 'teacherAssignments')),
+    getDocs(query(collection(db, 'teachers'), where('schoolYearId', '==', payload.schoolYearId))),
   ])
   // Printed yearbook profiles use the short codes students recognize (for example,
   // STEM and STEM-A), while the admin forms can still show their full descriptions.
@@ -173,17 +172,15 @@ async function buildPublication(payload) {
     })))
   }
   const sectionIds = new Set(sections.docs.map(record => record.id))
-  const assignments = new Map(teacherAssignments.docs.map(record => [record.id, record.data()]))
   const teacherProfiles = teachers.docs.map(record => ({ id: record.id, ...record.data() }))
-    .filter(teacher => teacher.status === 'active' && assignments.get(teacher.id)?.active === true)
+    .filter(teacher => teacher.status === 'active')
     .map(teacher => {
-      const assignedSections = (assignments.get(teacher.id)?.sectionIds || []).filter(id => sectionIds.has(id))
-      if (!assignedSections.length) return null
+      const assignedSections = (teacher.sectionIds || []).filter(id => sectionIds.has(id))
       return {
         id: teacher.id,
-        name: teacher.fullName || teacher.email || 'Teacher',
+        name: [teacher.firstName, teacher.middleName, teacher.lastName, teacher.suffix].filter(Boolean).join(' ') || 'Teacher',
         strand: 'FACULTY',
-        section: assignedSections.map(id => sectionLabels.get(id)).filter(Boolean).join(' · '),
+        section: assignedSections.map(id => sectionLabels.get(id)).filter(Boolean).join(' · ') || 'Faculty',
         awards: teacher.position || 'Class Teacher',
         photoUrl: teacher.portraitUrl || '',
       }

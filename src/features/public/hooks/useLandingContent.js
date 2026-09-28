@@ -1,7 +1,6 @@
 import { createContext, createElement, useContext, useEffect, useMemo, useState } from 'react'
-import { collection, onSnapshot, query, where } from 'firebase/firestore'
-import { db } from '../../admin/services/firebase/firestore.js'
-import { isFirebaseConfigured } from '../../admin/services/firebase/firebaseConfig.js'
+import { collection, getDocs, limit, query, where } from 'firebase/firestore'
+import { db, isFirebaseConfigured } from '../../../app/firebaseClient.js'
 
 const LandingContentContext = createContext({})
 
@@ -10,14 +9,16 @@ export function LandingContentProvider({ children }) {
 
   useEffect(() => {
     if (!isFirebaseConfigured) return undefined
-    return onSnapshot(query(collection(db, 'landingContent'), where('status', '==', 'published')), (snapshot) => {
+    let active = true
+    getDocs(query(collection(db, 'landingContent'), where('status', '==', 'published'), limit(8))).then((snapshot) => {
       const next = {}
       snapshot.docs.forEach((entry) => {
         const item = entry.data()
         if (item.section) next[item.section] = item
       })
-      setSections(next)
-    }, () => setSections({}))
+      if (active) setSections(next)
+    }).catch(() => { if (active) setSections({}) })
+    return () => { active = false }
   }, [])
 
   const value = useMemo(() => sections, [sections])

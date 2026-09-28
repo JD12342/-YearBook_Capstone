@@ -3,19 +3,19 @@ import {
   browserLocalPersistence,
   browserSessionPersistence,
   createUserWithEmailAndPassword,
+  deleteUser,
   getIdTokenResult,
   onAuthStateChanged,
   setPersistence,
   signInWithEmailAndPassword,
   signOut,
 } from 'firebase/auth'
-import { addDoc, collection, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc, where } from 'firebase/firestore'
-import { auth } from '../../admin/services/firebase/auth.js'
-import { db } from '../../admin/services/firebase/firestore.js'
+import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { auth, db } from '../../../app/firebaseClient.js'
 
 const AuthContext = createContext(null)
 const supportedRoles = new Set(['User', 'Teacher', 'Administrator'])
-const requestableProfileTypes = new Set(['Student', 'Teacher', 'Staff'])
+const requestableProfileTypes = new Set(['Student', 'Teacher'])
 const bootstrapAdministratorUids = new Set(['iVLZld9fcpcPQXbat8jdlmN6AsC3'])
 
 const isBootstrapAdministrator = (firebaseUser) => bootstrapAdministratorUids.has(firebaseUser?.uid)
@@ -48,6 +48,28 @@ const createAccessError = (code, message) => {
   return error
 }
 
+const firebaseErrorMessages = {
+  'auth/email-already-in-use': 'An account already exists for this email. Sign in instead or use a different email.',
+  'auth/invalid-credential': 'The email or password is incorrect. Please check both and try again.',
+  'auth/invalid-email': 'Enter a valid email address.',
+  'auth/missing-email': 'Enter your email address.',
+  'auth/missing-password': 'Enter your password.',
+  'auth/network-request-failed': 'We could not connect to GradBook. Check your internet connection and try again.',
+  'auth/operation-not-allowed': 'Account access is temporarily unavailable. Please contact the school.',
+  'auth/too-many-requests': 'Too many attempts were made. Please wait a few minutes before trying again.',
+  'auth/user-disabled': 'This account has been disabled. Please contact the school.',
+  'auth/user-not-found': 'The email or password is incorrect. Please check both and try again.',
+  'auth/weak-password': 'Use a stronger password with at least 6 characters.',
+  'auth/wrong-password': 'The email or password is incorrect. Please check both and try again.',
+  'permission-denied': 'GradBook could not complete this request. Please contact the school if the problem continues.',
+  unavailable: 'GradBook is temporarily unavailable. Check your connection and try again.',
+}
+
+const getFriendlyAuthError = (error, fallback) => {
+  if (error?.code && firebaseErrorMessages[error.code]) return firebaseErrorMessages[error.code]
+  return fallback
+}
+
 const buildProfile = (firebaseUser, source = {}) => ({
   uid: firebaseUser.uid,
   fullName: source.fullName || source.name || firebaseUser.displayName || '',
@@ -55,6 +77,7 @@ const buildProfile = (firebaseUser, source = {}) => ({
   profileType: normalizeProfileType(source.profileType || source.accountType || source.role),
   referenceId: source.referenceId || source.studentNumber || source.employeeNumber || '',
   status: source.status || '',
+  contributorType: source.contributorType || '',
   position: source.position || '',
   phone: source.phone || '',
   bio: source.bio || '',
@@ -116,20 +139,6 @@ async function resolveAuthorizedAccount(firebaseUser) {
     return { role: claimRole, profile: buildProfile(firebaseUser, { role: claimRole, status: 'active' }) }
   }
 
-  try {
-    const approvedRequests = await getDocs(query(
-      collection(db, 'accountRequests'),
-      where('uid', '==', firebaseUser.uid),
-      where('status', '==', 'approved'),
-      limit(1),
-    ))
-    const approvedRequest = approvedRequests.docs[0]?.data()
-    const approvedRole = normalizeRole(approvedRequest?.role)
-    if (supportedRoles.has(approvedRole)) return { role: approvedRole, profile: buildProfile(firebaseUser, approvedRequest) }
-  } catch {
-    roleLookupFailed = true
-  }
-
   if (roleLookupFailed) {
     throw createAccessError('auth/role-check-failed', 'GradBook could not verify your account role. Check your connection and try again.')
   }
@@ -141,7 +150,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [role, setRole] = useState('')
   const [profile, setProfile] = useState(null)
-  const [authorizationError, setAuthorizationError] = useState('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -165,13 +173,11 @@ export function AuthProvider({ children }) {
         setUser(nextUser)
         setRole(account.role)
         setProfile(account.profile)
-        setAuthorizationError(account.role ? '' : 'Your account is awaiting approval or does not have a GradBook role yet.')
-      } catch (error) {
+      } catch {
         if (!active || auth.currentUser?.uid !== sessionUid) return
         setUser(nextUser)
         setRole('')
         setProfile(buildProfile(nextUser))
-        setAuthorizationError(error.message)
       } finally {
         if (active && auth.currentUser?.uid === sessionUid) setLoading(false)
       }
@@ -184,39 +190,50 @@ export function AuthProvider({ children }) {
   }, [])
 
   const login = async ({ email, password, rememberMe = false }) => {
-    setAuthorizationError('')
-    await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
-    const credential = await signInWithEmailAndPassword(auth, email, password)
+    let credential
+
+    try {
+      await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence)
+      credential = await signInWithEmailAndPassword(auth, email, password)
+    } catch (error) {
+      throw createAccessError(error?.code || 'auth/sign-in-failed', getFriendlyAuthError(error, 'We could not sign you in. Please try again.'))
+    }
 
     try {
       const account = await resolveAuthorizedAccount(credential.user)
       if (!account.role) {
-        throw createAccessError('auth/access-not-approved', 'Your account is awaiting approval or does not have a GradBook role yet.')
+        throw createAccessError('auth/access-not-approved', 'Your account is awaiting approval.')
       }
       setUser(credential.user)
       setRole(account.role)
       setProfile(account.profile)
       return { user: credential.user, role: account.role, profile: account.profile }
     } catch (error) {
-      await signOut(auth)
+      await signOut(auth).catch(() => {})
       setUser(null)
       setRole('')
       setProfile(null)
-      setAuthorizationError(error.message)
-      throw error
+      const message = getFriendlyAuthError(error, 'We could not finish signing you in. Please try again.')
+      throw createAccessError(error?.code || 'auth/sign-in-failed', message)
     }
   }
 
   const register = async ({ fullName, email, password, profileType, referenceId }) => {
     const normalizedProfileType = normalizeProfileType(profileType)
     if (!requestableProfileTypes.has(normalizedProfileType)) {
-      throw createAccessError('auth/invalid-profile-type', 'Choose Student, Teacher, or Staff for your school profile.')
+      throw createAccessError('auth/invalid-profile-type', 'Choose Student or Teacher for your school profile.')
     }
     if (!String(referenceId || '').trim()) {
-      throw createAccessError('auth/missing-reference-id', 'Enter your LRN or employee number.')
+      throw createAccessError('auth/missing-reference-id', normalizedProfileType === 'Teacher' ? 'Enter your Teacher ID.' : 'Enter your LRN.')
     }
 
-    const credential = await createUserWithEmailAndPassword(auth, email, password)
+    let credential
+    try {
+      credential = await createUserWithEmailAndPassword(auth, email, password)
+    } catch (error) {
+      throw createAccessError(error?.code || 'auth/registration-failed', getFriendlyAuthError(error, 'We could not create your account. Please try again.'))
+    }
+
     try {
       await addDoc(collection(db, 'accountRequests'), {
         uid: credential.user.uid,
@@ -229,8 +246,11 @@ export function AuthProvider({ children }) {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })
+    } catch (error) {
+      await deleteUser(credential.user).catch(() => {})
+      throw createAccessError(error?.code || 'auth/request-failed', getFriendlyAuthError(error, 'Your access request could not be submitted. Please try again.'))
     } finally {
-      await signOut(auth)
+      await signOut(auth).catch(() => {})
       setUser(null)
       setRole('')
       setProfile(null)
@@ -244,7 +264,6 @@ export function AuthProvider({ children }) {
     setUser(null)
     setRole('')
     setProfile(null)
-    setAuthorizationError('')
   }
 
   const refreshProfile = useCallback(async () => {
@@ -263,15 +282,13 @@ export function AuthProvider({ children }) {
       role,
       profile,
       loading,
-      authorizationError,
       isAuthenticated: Boolean(user && role),
-      clearAuthorizationError: () => setAuthorizationError(''),
       login,
       register,
       logout,
       refreshProfile,
     }),
-    [user, role, profile, loading, authorizationError, refreshProfile],
+    [user, role, profile, loading, refreshProfile],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

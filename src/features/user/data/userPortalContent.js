@@ -50,7 +50,7 @@ export const previewAnnouncements = [
   {
     id: 'preview-publishing',
     title: 'New chapters are being prepared',
-    body: 'Announcements created and published by the school administrator will appear here automatically.',
+    body: 'Published school announcements will appear here.',
     dateLabel: 'COMING SOON',
   },
 ]

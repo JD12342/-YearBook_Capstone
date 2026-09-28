@@ -16,7 +16,7 @@ const statusOptions = [
   { value: 'archived', label: 'Archived' },
 ]
 
-export function StudentManagementPage() {
+export function StudentManagementPage({ embedded = false }) {
   const {
     schoolYears,
     strands,
@@ -84,7 +84,7 @@ export function StudentManagementPage() {
       }
 
       if (editingStudent) {
-        await updateStudent(editingStudent.id, payload)
+        await updateStudent(editingStudent.id, { ...editingStudent, ...payload })
       } else {
         await addStudent(payload)
       }
@@ -137,12 +137,12 @@ export function StudentManagementPage() {
 
   return (
     <div className="page-stack">
-      <div className="page-header-row">
+      {!embedded && <div className="page-header-row">
         <div>
           <div className="page-kicker">Student Management</div>
           <h2>Student directory</h2>
         </div>
-      </div>
+      </div>}
 
       <Card className="panel-card">
         <div className="data-toolbar-row">

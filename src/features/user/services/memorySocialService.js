@@ -1,9 +1,11 @@
 import { addDoc, collection, deleteDoc, doc, getDoc, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore'
 import { getFunctions, httpsCallable } from 'firebase/functions'
-import { db } from '../../admin/services/firebase/firestore.js'
-import { firebaseApp } from '../../admin/services/firebase/firebaseConfig.js'
+import { db, firebaseApp } from '../../../app/firebaseClient.js'
 
 const toggleHeart = httpsCallable(getFunctions(firebaseApp, 'asia-southeast1'), 'toggleMemoryHeart')
+const heartCache = new Map()
+const heartRequests = new Map()
+const heartKey = (memoryId, uid) => `${uid}:${memoryId}`
 
 export async function toggleMemoryReaction(memoryId) {
   const result = await toggleHeart({ memoryId })
@@ -12,7 +14,25 @@ export async function toggleMemoryReaction(memoryId) {
 
 export async function getMyHeart(memoryId, uid) {
   if (!memoryId || !uid) return false
-  return (await getDoc(doc(db, 'memories', memoryId, 'reactions', uid))).exists()
+  const key = heartKey(memoryId, uid)
+  if (heartCache.has(key)) return heartCache.get(key)
+  if (heartRequests.has(key)) return heartRequests.get(key)
+
+  const request = getDoc(doc(db, 'memories', memoryId, 'reactions', uid))
+    .then((snapshot) => {
+      const hearted = snapshot.exists()
+      heartCache.set(key, hearted)
+      return hearted
+    })
+    .finally(() => heartRequests.delete(key))
+  heartRequests.set(key, request)
+  return request
+}
+
+export const getCachedHeart = (memoryId, uid) => heartCache.get(heartKey(memoryId, uid))
+
+export const setCachedHeart = (memoryId, uid, hearted) => {
+  if (memoryId && uid) heartCache.set(heartKey(memoryId, uid), Boolean(hearted))
 }
 
 export function subscribeMemoryComments(memoryId, onValue, onError) {

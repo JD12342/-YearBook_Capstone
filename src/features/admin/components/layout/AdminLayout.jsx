@@ -8,7 +8,9 @@ import { loadLocalAdminPreferences } from '../../services/accountSettingsService
 
 const routeMeta = {
   '/dashboard': { title: 'Dashboard', subtitle: 'Overview', helpText: 'See a quick summary of student records, academic setup, and yearbook preparation.' },
-  '/students': { title: 'Student Management', subtitle: 'Students', helpText: 'Search, filter, add, update, archive, or permanently remove student records.' },
+  '/graduation-directory': { title: 'Graduation Directory', subtitle: 'Students & Teachers', helpText: 'Manage the student and teacher records included in graduation photo sessions and yearbooks.' },
+  '/people': { title: 'Graduation Directory', subtitle: 'Students & Teachers', helpText: 'Manage graduation records independently from login accounts.' },
+  '/students': { title: 'Graduation Directory', subtitle: 'Students & Teachers', helpText: 'Search, filter, and manage student graduation records.' },
   '/academic': { title: 'Academic Management', subtitle: 'Academic', helpText: 'Set up school years, strands, sections, and their yearbook foundations.' },
   '/photos': { title: 'Photo Management', subtitle: 'Photos', helpText: 'Find students and track the progress of their graduation photos.' },
   '/photos/editing': { title: 'Photo Editing Queue', subtitle: 'Photos', helpText: 'Review photos that are waiting for editing before they are approved.' },
@@ -17,10 +19,22 @@ const routeMeta = {
   '/photos/camera': { title: 'Camera Session', subtitle: 'Photos', helpText: 'Capture a consistent graduation portrait with the session controls, then save it directly or open the full editor.' },
   '/photos/capture': { title: 'Camera Session', subtitle: 'Photos', helpText: 'Capture a consistent graduation portrait with the session controls, then save it directly or open the full editor.' },
   '/photos/edit/:photoId': { title: 'Photo Editor', subtitle: 'Photos', helpText: 'Make final adjustments to a selected student photo.' },
-  '/verification-requests': { title: 'Verification Requests', subtitle: 'User Access', helpText: 'Review and approve or reject account requests before users can access GradBook.' },
-  '/teachers': { title: 'Teacher Management', subtitle: 'Access', helpText: 'Assign teachers to class sections and control their memory and video upload limits.' },
-  '/content': { title: 'Content Management', subtitle: 'School Content', helpText: 'Manage announcements, section memories, alumni details, and school information shown through GradBook.' },
-  '/reports': { title: 'Reports', subtitle: 'Insights', helpText: 'Review GradBook records, portrait readiness, Firestore activity, and connected billing data.' },
+  '/accounts': {
+    title: 'Account Management',
+    subtitle: 'Login & Access',
+    helpText: 'Account records control sign-in and memory-contributor access. They remain separate from the Graduation Directory used for portraits and yearbooks.',
+    helpSections: [
+      { title: 'Student accounts', text: 'All approved student logins appear here. Alumni leaders remain visible in this list and are marked with their contributor role.' },
+      { title: 'Teacher accounts', text: 'Assign every section a teacher handles and set photo, video, and per-video duration limits.' },
+      { title: 'Alumni leaders', text: 'Use a student account as the memory contributor for an older batch. Only one alumni leader can be assigned to each section.' },
+      { title: 'Access requests', text: 'Approve or reject new registrations. Approval creates login access but does not create a Graduation Directory record.' },
+      { title: 'Upload limits', text: 'Limits apply per contributor account. Defaults are 5 photos, 2 videos, and a maximum duration of 2 minutes for each video. Administrators can edit all three values.' },
+    ],
+  },
+  '/verification-requests': { title: 'Account Management', subtitle: 'Login & Access', helpText: 'Review and approve or reject account requests before users can access GradBook.' },
+  '/teachers': { title: 'Graduation Directory', subtitle: 'Students & Teachers', helpText: 'Manually manage teachers included in graduation photo sessions.' },
+  '/content': { title: 'Content Management', subtitle: 'School Content', helpText: 'Manage announcements and school information, then review teacher and alumni-leader memory submissions in the Memories approval bin.' },
+  '/reports': { title: 'Reports', subtitle: 'Insights', helpText: 'Review GradBook records, portrait readiness, and observed Firestore usage from Cloud Monitoring.' },
   '/settings': { title: 'Settings', subtitle: 'System', helpText: 'Configure your workspace density, navigation, motion, help, and reporting defaults.' },
   '/profile': { title: 'Account Profile', subtitle: 'System', helpText: 'Update your administrator identity, contact details, and sign-in password.' },
 }
@@ -67,7 +81,7 @@ export function AdminLayout() {
       <div className="content-shell">
         <Header title={meta.title} subtitle={meta.subtitle} onMenuToggle={handleMenuToggle} />
         <main className="main-content">
-          {preferences.showPageHelp && <PageHelpButton title={meta.title} helpText={meta.helpText} />}
+          {preferences.showPageHelp && <PageHelpButton title={meta.title} helpText={meta.helpText} helpSections={meta.helpSections} />}
           <Outlet />
         </main>
       </div>

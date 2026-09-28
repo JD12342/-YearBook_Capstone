@@ -13,5 +13,4 @@ export const loadInfrastructureAnalytics = async (periodDays = 30) => {
 export const infrastructureConsoleLinks = (projectId) => ({
   firestore: `https://console.firebase.google.com/project/${projectId}/firestore/databases/-default-/usage`,
   monitoring: `https://console.cloud.google.com/monitoring/dashboards?project=${projectId}`,
-  billing: `https://console.cloud.google.com/billing?project=${projectId}`,
 })

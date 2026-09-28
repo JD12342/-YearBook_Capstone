@@ -3,19 +3,23 @@ import { Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../auth/context/AuthContext.jsx'
 import { UserPortalFooter } from '../components/UserPortalFooter.jsx'
 import { UserPortalHeader } from '../components/UserPortalHeader.jsx'
-import { subscribeUserPortalContent } from '../services/userPortalService.js'
+import { getCachedUserPortalContent, loadUserPortalContent } from '../services/userPortalService.js'
 import '../styles/userPortal.css'
 
-const emptyContent = { announcements: [], yearbooks: [], stories: [], alumni: [], memories: [], hasLiveContent: false }
+const emptyContent = { announcements: [], yearbooks: [], stories: [], memories: [], hasLiveContent: false }
 
 export function UserPortalLayout() {
   const { logout, profile, role, user } = useAuth()
   const location = useLocation()
-  const [content, setContent] = useState(emptyContent)
-  const [contentReady, setContentReady] = useState(false)
+  const [content, setContent] = useState(() => getCachedUserPortalContent() || emptyContent)
+  const [contentReady, setContentReady] = useState(() => Boolean(getCachedUserPortalContent()))
 
   useEffect(() => {
-    return subscribeUserPortalContent(setContent, () => setContentReady(true))
+    let active = true
+    loadUserPortalContent()
+      .then((nextContent) => { if (active) setContent(nextContent) })
+      .finally(() => { if (active) setContentReady(true) })
+    return () => { active = false }
   }, [])
 
   useEffect(() => {

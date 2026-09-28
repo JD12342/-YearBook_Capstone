@@ -6,6 +6,10 @@ const schoolYearsCollection = collection(db, 'schoolYears')
 const strandsCollection = collection(db, 'strands')
 const photosCollection = collection(db, 'photos')
 const yearbooksCollection = collection(db, 'yearbooks')
+const DASHBOARD_CACHE_TTL = 2 * 60 * 1000
+let dashboardCache = null
+let dashboardCachedAt = 0
+let dashboardRequest = null
 
 const countDocuments = async (source) => {
   const snapshot = await getCountFromServer(source)
@@ -20,7 +24,13 @@ const aggregateByLabel = (entries) => Array.from(entries.reduce((totals, entry) 
   return totals
 }, new Map()).values()).filter((entry) => entry.value > 0)
 
-export const getDashboardStats = async () => {
+export const getCachedDashboardStats = () => dashboardCache
+
+export const getDashboardStats = async ({ forceRefresh = false } = {}) => {
+  if (!forceRefresh && dashboardCache && Date.now() - dashboardCachedAt < DASHBOARD_CACHE_TTL) return dashboardCache
+  if (dashboardRequest) return dashboardRequest
+
+  dashboardRequest = (async () => {
   try {
     const [yearsSnap, strandsSnap, totalStudents, archivedStudents, approvedPhotos, yearbooksSnap] = await Promise.all([
       getDocs(schoolYearsCollection),
@@ -46,7 +56,7 @@ export const getDashboardStats = async () => {
       countDocuments(query(studentsCollection, where('photoId', '==', ''))),
     ])
 
-    return {
+    dashboardCache = {
       totalStudents,
       activeStudents: Math.max(totalStudents - archivedStudents, 0),
       archivedStudents,
@@ -58,10 +68,15 @@ export const getDashboardStats = async () => {
       studentsByStrand: aggregateByLabel(strandCounts),
       studentsWithoutPhotos,
     }
+    dashboardCachedAt = Date.now()
+    return dashboardCache
   } catch (error) {
     if (error?.code === 'permission-denied') {
       throw new Error('Firebase rejected the dashboard request. Publish the GradBook Firestore rules, then sign in again.')
     }
     throw new Error(error?.message || 'Unable to load dashboard statistics.')
   }
+  })().finally(() => { dashboardRequest = null })
+
+  return dashboardRequest
 }

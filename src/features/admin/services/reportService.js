@@ -12,8 +12,8 @@ const reportCollections = [
   'accountRequests',
   'announcements',
   'schoolContent',
-  'alumni',
 ]
+let reportDataCache = null
 
 const timestamp = (record) => Number(record?.updatedAt?.seconds ?? record?.createdAt?.seconds ?? 0)
 const labelFor = (record, fallback) => record?.code || record?.name || fallback
@@ -96,8 +96,8 @@ export const buildReport = (data, filters = {}) => {
       yearbooks: yearbooks.length,
       publishedYearbooks: yearbooks.filter((record) => record.status === 'active').length,
       pendingVerification: (data.accountRequests || []).filter((record) => (record.status || 'pending') === 'pending').length,
-      publishedContent: [...(data.announcements || []), ...(data.schoolContent || [])].filter((record) => record.status === 'published').length,
-      activeAlumni: (data.alumni || []).filter((record) => (record.status || 'active') === 'active').length,
+      publishedAnnouncements: (data.announcements || []).filter((record) => record.status === 'published').length,
+      publishedStories: (data.schoolContent || []).filter((record) => record.status === 'published').length,
     },
     photoCounts,
     strandCoverage: buildCoverage('strandId', strandMap, 'Unassigned strand'),
@@ -112,15 +112,19 @@ export const subscribeReportData = (onData, onError) => {
     return () => {}
   }
 
-  const data = {}
-  const ready = new Set()
+  const data = reportDataCache ? { ...reportDataCache } : {}
+  const ready = new Set(reportDataCache ? reportCollections : [])
   let stopped = false
+  if (reportDataCache) onData({ ...reportDataCache })
   const unsubscribe = reportCollections.map((collectionName) => onSnapshot(
     collection(db, collectionName),
     (snapshot) => {
       data[collectionName] = snapshot.docs.map((record) => ({ id: record.id, ...record.data() }))
       ready.add(collectionName)
-      if (!stopped && ready.size === reportCollections.length) onData({ ...data })
+      if (!stopped && ready.size === reportCollections.length) {
+        reportDataCache = { ...data }
+        onData(reportDataCache)
+      }
     },
     (error) => {
       if (stopped) return

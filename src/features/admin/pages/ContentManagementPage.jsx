@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Archive, CheckCircle2, Eye, FilePenLine, ImagePlus, Images, LayoutTemplate, Megaphone, Search, Trash2, UsersRound } from 'lucide-react'
+import { Archive, CheckCircle2, Eye, FilePenLine, ImagePlus, Images, Inbox, LayoutTemplate, Megaphone, Search, Trash2 } from 'lucide-react'
 import { Badge } from '../components/ui/Badge.jsx'
 import { Button } from '../components/ui/Button.jsx'
 import { Card } from '../components/ui/Card.jsx'
 import { Input } from '../components/ui/Input.jsx'
 import { Modal } from '../components/ui/Modal.jsx'
 import { Select } from '../components/ui/Select.jsx'
-import { createAdminRecord, deleteAdminRecord, subscribeAdminRecords, updateAdminRecord, updateAdminRecordStatus } from '../services/adminRecordService.js'
+import { createAdminRecord, deleteAdminRecord, getCachedAdminRecords, subscribeAdminRecords, updateAdminRecord, updateAdminRecordStatus } from '../services/adminRecordService.js'
 import { deleteContentImage, uploadContentImage } from '../services/firebase/storageService.js'
 import { accessContent, campusFilmContent, featuredStoriesContent, heroContent, landingMedia, legacyContent, livingLegacyContent, mosaicContent, schoolStoryContent } from '../../public/data/landingContent.js'
 
@@ -42,15 +42,12 @@ const recordTypes = {
     description: 'Publish captioned photos for classes, clubs, events, and the wider school community.',
     defaults: { title: '', caption: '', themeColor: '#d17c87', status: 'draft', images: [] }, statuses: ['pending', 'draft', 'published', 'rejected', 'archived'], publicStatus: 'published',
   },
-  alumni: {
-    label: 'Alumni records', singular: 'alumni record', collection: 'alumni', icon: UsersRound,
-    description: 'Maintain alumni profiles shown to signed-in community members.',
-    defaults: { fullName: '', graduationYear: '', email: '', occupation: '', biography: '', status: 'active' }, statuses: ['active', 'archived'], publicStatus: 'active',
-  },
 }
 
 const emptyRecord = (type) => ({ ...recordTypes[type].defaults })
 const text = (value) => String(value || '').trim()
+const isContributorSubmission = (record) => record?.source === 'teacher' || record?.source === 'alumniLeader'
+const contributorRoleLabel = (record) => record?.source === 'alumniLeader' ? 'Alumni leader' : 'Teacher'
 const formatDate = (record) => {
   const date = record.updatedAt?.toDate?.() || record.createdAt?.toDate?.()
   return date ? new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', year: 'numeric' }).format(date) : 'Recently'
@@ -80,7 +77,10 @@ export function ContentManagementPage() {
   const ActiveIcon = config.icon
 
   useEffect(() => {
-    setLoading(true)
+    const cachedRecords = getCachedAdminRecords(config.collection)
+    if (cachedRecords) setRecords(cachedRecords)
+    else setRecords([])
+    setLoading(!cachedRecords)
     setError('')
     return subscribeAdminRecords(config.collection, (nextRecords) => {
       setRecords(nextRecords)
@@ -101,6 +101,7 @@ export function ContentManagementPage() {
 
   const publicCount = displayRecords.filter((record) => record.status === config.publicStatus).length
   const draftCount = displayRecords.filter((record) => record.status === 'draft').length
+  const pendingMemoryRecords = activeType === 'memories' ? displayRecords.filter((record) => isContributorSubmission(record) && record.status === 'pending') : []
 
   const closeForm = () => {
     setIsFormOpen(false)
@@ -174,10 +175,8 @@ export function ContentManagementPage() {
     title: text(form.title), category: text(form.category), body: text(form.body), status: form.status,
   } : activeType === 'landing' ? {
     section: text(form.section), eyebrow: text(form.eyebrow), title: text(form.title), body: text(form.body), ctaLabel: text(form.ctaLabel), status: form.status,
-  } : activeType === 'memories' ? {
-    title: text(form.title), caption: text(form.caption), themeColor: form.themeColor || '#d17c87', status: form.status,
   } : {
-    fullName: text(form.fullName), graduationYear: text(form.graduationYear), email: text(form.email), occupation: text(form.occupation), biography: text(form.biography), status: form.status,
+    title: text(form.title), caption: text(form.caption), themeColor: form.themeColor || '#d17c87', status: form.status,
   }
 
   const validate = (payload) => {
@@ -191,9 +190,8 @@ export function ContentManagementPage() {
       if (!memoryPreviews.some(Boolean)) return 'Add at least one memory picture.'
       return ''
     }
-    if (!(payload.title || payload.fullName)) return activeType === 'alumni' ? 'Alumni name is required.' : 'Title is required.'
-    if (activeType !== 'alumni' && !payload.body) return 'Details are required before this record can be saved.'
-    if (activeType === 'alumni' && payload.graduationYear && !/^\d{4}(?:-\d{4})?$/.test(payload.graduationYear)) return 'Use a graduation year such as 2024 or 2023-2024.'
+    if (!payload.title) return 'Title is required.'
+    if (!payload.body) return 'Details are required before this record can be saved.'
     return ''
   }
 
@@ -239,7 +237,7 @@ export function ContentManagementPage() {
     setError('')
     try {
       await updateAdminRecordStatus(config.collection, record.id, status)
-      setSuccess(status === config.publicStatus ? `${record.title || record.fullName} is now visible to authorized users.` : `${record.title || record.fullName} moved to ${status}.`)
+      setSuccess(status === config.publicStatus ? `${record.title} is now visible to authorized users.` : `${record.title} moved to ${status}.`)
     } catch (statusError) {
       setError(statusError.message)
     } finally {
@@ -256,7 +254,7 @@ export function ContentManagementPage() {
       if (pendingDelete.imagePath) await deleteContentImage(pendingDelete.imagePath).catch(() => {})
       await Promise.all((pendingDelete.images || []).filter((image) => image?.path).map((image) => deleteContentImage(image.path).catch(() => {})))
       if (pendingDelete.backgroundImagePath) await deleteContentImage(pendingDelete.backgroundImagePath).catch(() => {})
-      setSuccess(`${pendingDelete.title || pendingDelete.fullName} was deleted.`)
+      setSuccess(`${pendingDelete.title} was deleted.`)
       setPendingDelete(null)
     } catch (deleteError) {
       setError(deleteError.message)
@@ -281,11 +279,20 @@ export function ContentManagementPage() {
     <div className="content-admin-stats">
       <Card className="mini-stat-card"><span className="mini-stat-label">Total records</span><strong className="mini-stat-value">{displayRecords.length}</strong></Card>
       <Card className="mini-stat-card"><span className="mini-stat-label">Visible to users</span><strong className="mini-stat-value">{publicCount}</strong></Card>
-      <Card className="mini-stat-card"><span className="mini-stat-label">Drafts</span><strong className="mini-stat-value">{draftCount}</strong></Card>
+      <Card className="mini-stat-card"><span className="mini-stat-label">{activeType === 'memories' ? 'Waiting for approval' : 'Drafts'}</span><strong className="mini-stat-value">{activeType === 'memories' ? pendingMemoryRecords.length : draftCount}</strong></Card>
     </div>
 
     {success && <div className="form-success" role="status"><CheckCircle2 size={17} /> {success}</div>}
     {error && !isFormOpen && <div className="form-error" role="alert">{error}</div>}
+
+    {activeType === 'memories' && <Card className="memory-submission-bin">
+      <header><div><span><Inbox size={17} /> Submission bin</span><h3>Memories waiting for your approval</h3><p>Teacher and alumni-leader submissions are stored in Firebase and remain private until you publish them.</p></div><Badge status={pendingMemoryRecords.length ? 'editing' : 'approved'}>{pendingMemoryRecords.length} pending</Badge></header>
+      {pendingMemoryRecords.length ? <div className="memory-submission-list">{pendingMemoryRecords.map((record) => <article key={record.id}>
+        <div className="memory-submission-preview">{record.media?.[0]?.type === 'video' ? <video src={record.media[0].url} muted preload="metadata" /> : record.media?.[0]?.url || record.images?.[0]?.url ? <img src={record.media?.[0]?.url || record.images?.[0]?.url} alt="" /> : <Images size={22} />}</div>
+        <div><span>{contributorRoleLabel(record)} · {record.contributorName || 'Contributor'}</span><h4>{record.title || 'Untitled memory'}</h4><p>{record.caption || 'No caption provided.'}</p><small>{record.sectionId ? `Section record: ${record.sectionId} · ` : ''}{record.media?.length || 0} media file{(record.media?.length || 0) === 1 ? '' : 's'}</small></div>
+        <div className="inline-actions"><Button size="sm" disabled={workingId === record.id} onClick={() => changeStatus(record, 'published')}><Eye size={14} /> Publish</Button><Button size="sm" variant="secondary" disabled={workingId === record.id} onClick={() => changeStatus(record, 'rejected')}>Reject</Button></div>
+      </article>)}</div> : <div className="empty-state"><CheckCircle2 size={26} /><div className="empty-state-title">Submission bin is clear</div><div>No teacher or alumni-leader memories are waiting for approval.</div></div>}
+    </Card>}
 
     <Card className="panel-card content-admin-panel">
       <div className="content-admin-toolbar">
@@ -301,14 +308,14 @@ export function ContentManagementPage() {
           <div className="content-record-image">{record.media?.[0]?.type === 'video' ? <video src={record.media[0].url} muted preload="metadata" /> : (record.imageUrl || record.media?.[0]?.url || record.images?.[0]?.url) ? <img src={record.imageUrl || record.media?.[0]?.url || record.images[0].url} alt="" /> : <ActiveIcon size={28} />}</div>
           <div className="content-record-copy">
             <div><Badge variant={record.status === config.publicStatus ? 'success' : record.status === 'archived' ? 'neutral' : 'warning'}>{record.status || 'draft'}</Badge><span>{formatDate(record)}</span></div>
-            <h4>{record.title || record.fullName || 'Untitled'}</h4>
-            <p>{record.body || record.biography || record.occupation || 'No details added yet.'}</p>
-            <small>{activeType === 'memories' ? [record.caption, `${record.media?.length || record.images?.length || 0} media`, record.source === 'teacher' ? `Teacher: ${record.contributorName || 'Contributor'}` : ''].filter(Boolean).join(' · ') : activeType === 'landing' ? `${record.section} section${record.isDefault ? ' · built-in content' : ''}` : activeType === 'content' ? record.category || 'School Story' : activeType === 'alumni' ? [record.graduationYear, record.occupation].filter(Boolean).join(' · ') || 'Alumni profile' : 'Community announcement'}</small>
+            <h4>{record.title || 'Untitled'}</h4>
+            <p>{record.body || record.caption || 'No details added yet.'}</p>
+            <small>{activeType === 'memories' ? [record.caption, `${record.media?.length || record.images?.length || 0} media`, isContributorSubmission(record) ? `${contributorRoleLabel(record)}: ${record.contributorName || 'Contributor'}` : ''].filter(Boolean).join(' · ') : activeType === 'landing' ? `${record.section} section${record.isDefault ? ' · built-in content' : ''}` : activeType === 'content' ? record.category || 'School Story' : 'Community announcement'}</small>
           </div>
           <div className="content-record-actions">
-            {record.source !== 'teacher' && <Button size="sm" variant="secondary" onClick={() => openForm(record)}>Edit</Button>}
-            {!record.isDefault && record.status !== config.publicStatus && <Button size="sm" disabled={workingId === record.id} onClick={() => changeStatus(record, config.publicStatus)}><Eye size={14} /> {activeType === 'alumni' ? 'Activate' : 'Publish'}</Button>}
-            {!record.isDefault && record.status === config.publicStatus && <Button size="sm" variant="ghost" disabled={workingId === record.id} onClick={() => changeStatus(record, activeType === 'alumni' ? 'archived' : 'draft')}>{activeType === 'alumni' ? 'Archive' : 'Unpublish'}</Button>}
+            {!isContributorSubmission(record) && <Button size="sm" variant="secondary" onClick={() => openForm(record)}>Edit</Button>}
+            {!record.isDefault && record.status !== config.publicStatus && <Button size="sm" disabled={workingId === record.id} onClick={() => changeStatus(record, config.publicStatus)}><Eye size={14} /> Publish</Button>}
+            {!record.isDefault && record.status === config.publicStatus && <Button size="sm" variant="ghost" disabled={workingId === record.id} onClick={() => changeStatus(record, 'draft')}>Unpublish</Button>}
             {activeType === 'memories' && record.status === 'pending' && <Button size="sm" variant="secondary" disabled={workingId === record.id} onClick={() => changeStatus(record, 'rejected')}>Reject</Button>}
             {!record.isDefault && record.status !== 'archived' && <Button size="sm" variant="ghost" disabled={workingId === record.id} onClick={() => changeStatus(record, 'archived')}><Archive size={14} /> Archive</Button>}
             {!record.isDefault && <Button size="sm" variant="danger" disabled={workingId === record.id} onClick={() => setPendingDelete(record)}><Trash2 size={14} /> Delete</Button>}
@@ -327,15 +334,9 @@ export function ContentManagementPage() {
             <label className="form-field memory-color-field"><span>Gallery accent color</span><div><input type="color" value={form.themeColor || '#d17c87'} onChange={(event) => setValue('themeColor', event.target.value)} /><Input value={form.themeColor || '#d17c87'} onChange={(event) => setValue('themeColor', event.target.value)} aria-label="Gallery accent color value" /></div></label>
             <label className="form-field"><span>Status</span><Select value={form.status || ''} onChange={(event) => setValue('status', event.target.value)}>{config.statuses.map((status) => <option value={status} key={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}</Select></label>
             <div className="memory-admin-highlights span-2"><div><strong>Memory photos</strong><span>Add one to four portrait or landscape pictures. Their natural shapes are preserved.</span></div><div className="memory-admin-slots">{[0, 1, 2, 3].map((index) => <label className={memoryPreviews[index] ? 'has-image' : ''} key={index}><input type="file" accept="image/*" onChange={(event) => chooseMemoryImage(index, event.target.files?.[0])} /><span>{memoryPreviews[index] ? <img src={memoryPreviews[index]} alt="Memory preview" /> : <><ImagePlus size={23} /><strong>Choose picture</strong></>}</span>{memoryPreviews[index] && <button type="button" onClick={(event) => { event.preventDefault(); removeMemoryImage(index) }}>Remove</button>}</label>)}</div></div>
-          </> : activeType === 'alumni' ? <>
-            <label className="form-field span-2"><span>Full name</span><Input value={form.fullName || ''} onChange={(event) => setValue('fullName', event.target.value)} required /></label>
-            <label className="form-field"><span>Graduation year</span><Input value={form.graduationYear || ''} onChange={(event) => setValue('graduationYear', event.target.value)} placeholder="2024 or 2023-2024" /></label>
-            <label className="form-field"><span>Occupation</span><Input value={form.occupation || ''} onChange={(event) => setValue('occupation', event.target.value)} /></label>
-            <label className="form-field span-2"><span>Email</span><Input type="email" value={form.email || ''} onChange={(event) => setValue('email', event.target.value)} /></label>
-            <label className="form-field span-2"><span>Biography</span><textarea className="field content-textarea" value={form.biography || ''} onChange={(event) => setValue('biography', event.target.value)} placeholder="Share a brief alumni profile" /></label>
           </> : <>
             <label className="form-field span-2"><span>Title</span><Input value={form.title || ''} onChange={(event) => setValue('title', event.target.value)} required /></label>
-            {activeType === 'content' && <label className="form-field span-2"><span>Where this appears</span><Select value={form.category || ''} onChange={(event) => setValue('category', event.target.value)}><option>School Story</option><option>School History</option><option>School Information</option><option>Alumni Gathering</option></Select></label>}
+            {activeType === 'content' && <label className="form-field span-2"><span>Where this appears</span><Select value={form.category || ''} onChange={(event) => setValue('category', event.target.value)}><option>School Story</option><option>School History</option><option>School Information</option></Select></label>}
             {activeType === 'landing' && <><label className="form-field"><span>Landing section</span><Select value={form.section || 'hero'} onChange={(event) => setValue('section', event.target.value)}><option value="hero">Hero</option><option value="legacy">Story opening</option><option value="explore">Explore</option><option value="overview">Overview</option><option value="collection">Collection</option><option value="highlights">Featured chapters</option><option value="access">Access</option><option value="film">Closing film</option></Select></label><label className="form-field"><span>Eyebrow</span><Input value={form.eyebrow || ''} onChange={(event) => setValue('eyebrow', event.target.value)} placeholder="Small label above title" /></label><label className="form-field span-2"><span>Call-to-action label</span><Input value={form.ctaLabel || ''} onChange={(event) => setValue('ctaLabel', event.target.value)} placeholder="Optional button label" /></label></>}
             <label className="form-field span-2"><span>Details</span><textarea className="field content-textarea" value={form.body || ''} onChange={(event) => setValue('body', event.target.value)} placeholder="Write the complete information users should see" required /></label>
           </>}

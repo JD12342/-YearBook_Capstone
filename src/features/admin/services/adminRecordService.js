@@ -4,8 +4,9 @@ import { db } from './firebase/firestore.js'
 import { firebaseApp } from './firebase/firebaseConfig.js'
 import { isFirebaseConfigured } from './firebase/firebaseConfig.js'
 
-const collectionNames = new Set(['accountRequests', 'announcements', 'alumni', 'schoolContent', 'memories', 'landingContent'])
-const approvableProfileTypes = new Set(['Student', 'Teacher', 'Staff', 'Alumni'])
+const collectionNames = new Set(['accountRequests', 'announcements', 'schoolContent', 'memories', 'landingContent'])
+const approvableProfileTypes = new Set(['Student', 'Teacher'])
+const recordCache = new Map()
 
 const getProfileType = (request) => {
   const requestedType = String(request?.profileType || request?.accountType || request?.role || '').trim()
@@ -31,15 +32,19 @@ const adminAccessError = (error) => {
 export const getAdminRecords = async (collectionName) => {
   try {
     const snapshot = await getDocs(getCollection(collectionName))
-    return snapshot.docs
+    const records = snapshot.docs
       .map((record) => ({ id: record.id, ...record.data() }))
       .sort((left, right) => Number(right.updatedAt?.seconds ?? right.createdAt?.seconds ?? 0) - Number(left.updatedAt?.seconds ?? left.createdAt?.seconds ?? 0))
+    recordCache.set(collectionName, records)
+    return records
   } catch (error) {
     throw adminAccessError(error) || new Error('Unable to load these records from Firebase.')
   }
 }
 
-const sortRecords = (records) => records.sort((left, right) => Number(right.updatedAt?.seconds ?? right.createdAt?.seconds ?? 0) - Number(left.updatedAt?.seconds ?? left.createdAt?.seconds ?? 0))
+const sortRecords = (records) => [...records].sort((left, right) => Number(right.updatedAt?.seconds ?? right.createdAt?.seconds ?? 0) - Number(left.updatedAt?.seconds ?? left.createdAt?.seconds ?? 0))
+
+export const getCachedAdminRecords = (collectionName) => recordCache.get(collectionName)
 
 export const subscribeAdminRecords = (collectionName, onRecords, onError) => {
   let recordsCollection
@@ -50,8 +55,13 @@ export const subscribeAdminRecords = (collectionName, onRecords, onError) => {
     return () => {}
   }
 
+  const cached = recordCache.get(collectionName)
+  if (cached) onRecords(cached)
+
   return onSnapshot(recordsCollection, (snapshot) => {
-    onRecords(sortRecords(snapshot.docs.map((record) => ({ id: record.id, ...record.data() }))))
+    const records = sortRecords(snapshot.docs.map((record) => ({ id: record.id, ...record.data() })))
+    recordCache.set(collectionName, records)
+    onRecords(records)
   }, (error) => onError?.(adminAccessError(error) || new Error('Unable to keep these records synchronized.')))
 }
 

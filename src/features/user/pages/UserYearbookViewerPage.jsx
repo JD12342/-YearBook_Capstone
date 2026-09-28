@@ -161,7 +161,7 @@ export function UserYearbookViewerPage() {
     if (Math.abs(dx) >= 45 && Math.abs(dx) > Math.abs(dy) * 1.3) goToPage(pageIndex + (dx < 0 ? 1 : -1))
   }
   if (loading) return <div className="yearbook-viewer-message" role="status">Preparing your yearbook…</div>
-  if (error || !yearbook) return <div className="yearbook-viewer-message"><BookOpen size={32} /><h1>{error ? 'Unable to open yearbook' : 'This edition is not available yet'}</h1><p>{error || 'An administrator must save this edition with its school records and mark it Active.'}</p><Link to="/community/yearbooks">Return to the yearbook room</Link></div>
+  if (error || !yearbook) return <div className="yearbook-viewer-message"><BookOpen size={32} /><h1>{error ? 'Unable to open yearbook' : 'This edition is not available yet'}</h1><p>{error || 'This edition has not been published yet.'}</p><Link to="/community/yearbooks">Return to the yearbook room</Link></div>
   return <div ref={viewerRef} className={`yearbook-viewer ${isOpen ? 'is-open' : ''} ${isExiting ? 'is-exiting' : ''}`} style={{ '--book-cover': coverSurfaceColor(presentation), '--book-accent': presentation.accentColor, '--book-page': presentation.pageColor, '--book-ink': presentation.inkColor }}>
     {presentation.graduationSongUrl && <audio ref={audioRef} src={presentation.graduationSongUrl} loop autoPlay preload="auto" onTimeUpdate={saveAudioPosition} onPlay={() => setIsPlaying(true)} onPause={() => { saveAudioPosition(); setIsPlaying(false) }} onError={() => setNotice('The graduation song is unavailable.')} />}
     <div className="yearbook-reader-tools" aria-label="Yearbook controls">

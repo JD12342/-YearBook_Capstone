@@ -54,7 +54,7 @@ service cloud.firestore {
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.role in ['User', 'Teacher']
         && (request.resource.data.profileType == 'Teacher' ? request.resource.data.role == 'Teacher' : request.resource.data.role == 'User')
-        && request.resource.data.profileType in ['Student', 'Teacher', 'Staff']
+        && request.resource.data.profileType in ['Student', 'Teacher']
         && request.resource.data.referenceId is string
         && request.resource.data.referenceId.size() > 0
         && request.resource.data.status == 'pending'
@@ -68,6 +68,10 @@ service cloud.firestore {
     }
 
     match /students/{studentId} {
+      allow read, write: if isAdministrator();
+    }
+
+    match /teachers/{teacherId} {
       allow read, write: if isAdministrator();
     }
 
@@ -89,6 +93,10 @@ service cloud.firestore {
     match /teacherAssignments/{teacherId} {
       allow get: if isAdministrator() || (isTeacher() && request.auth.uid == teacherId);
       allow list, create, update, delete: if isAdministrator();
+    }
+
+    match /alumniLeaderSections/{sectionId} {
+      allow read, write: if isAdministrator();
     }
 
     match /photos/{photoId} {
@@ -138,12 +146,6 @@ service cloud.firestore {
         allow update: if false;
         allow delete: if isAdministrator() || (isSignedIn() && resource.data.ownerUid == request.auth.uid);
       }
-    }
-
-    match /alumni/{alumniId} {
-      allow read: if isAdministrator()
-        || (canViewCommunity() && resource.data.status == 'active');
-      allow write: if isAdministrator();
     }
 
     match /schoolContent/{contentId} {

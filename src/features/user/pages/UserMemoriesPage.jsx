@@ -3,11 +3,9 @@ import { Camera, Download, Heart, Images, MessageCircle, Send, Share2, Trash2, X
 import { createPortal } from 'react-dom'
 import { useOutletContext } from 'react-router-dom'
 import { useScrollReveal } from '../../public/hooks/useScrollReveal.js'
-import { addMemoryComment, deleteMemoryComment, getMyHeart, subscribeMemoryComments, toggleMemoryReaction } from '../services/memorySocialService.js'
+import { addMemoryComment, deleteMemoryComment, getCachedHeart, getMyHeart, setCachedHeart, subscribeMemoryComments, toggleMemoryReaction } from '../services/memorySocialService.js'
 
 const batchLabel = (memory) => memory.caption || memory.title || memory.schoolYearName || memory.batch || 'School memories'
-const cardTilts = ['-3deg', '3deg', '1deg', '2deg', '-1deg', '-2deg', '-2deg', '2deg', '2deg', '-3deg']
-
 const safeFileName = (value) => String(value || 'memory').replace(/[^a-z0-9-_]+/gi, '-').replace(/^-|-$/g, '').toLowerCase()
 const imageUrl = (image) => typeof image === 'string' ? image : image?.url || image?.imageUrl || image?.downloadUrl || image?.src || ''
 const memoryImages = (memory) => {
@@ -64,8 +62,13 @@ export function UserMemoriesPage() {
 
   useEffect(() => {
     let active = true
-    Promise.all(content.memories.map(async (memory) => [memory.id, await getMyHeart(memory.id, user?.uid).catch(() => false)]))
-      .then((entries) => { if (active) setHearted(Object.fromEntries(entries)) })
+    const cachedEntries = content.memories
+      .map((memory) => [memory.id, getCachedHeart(memory.id, user?.uid)])
+      .filter(([, value]) => typeof value === 'boolean')
+    if (cachedEntries.length) setHearted((current) => ({ ...current, ...Object.fromEntries(cachedEntries) }))
+    const missing = content.memories.filter((memory) => typeof getCachedHeart(memory.id, user?.uid) !== 'boolean')
+    Promise.all(missing.map(async (memory) => [memory.id, await getMyHeart(memory.id, user?.uid).catch(() => false)]))
+      .then((entries) => { if (active && entries.length) setHearted((current) => ({ ...current, ...Object.fromEntries(entries) })) })
     setHeartCounts(Object.fromEntries(content.memories.map((memory) => [memory.id, Number(memory.heartCount) || 0])))
     return () => { active = false }
   }, [content.memories, user?.uid])
@@ -116,9 +119,11 @@ export function UserMemoriesPage() {
     setHeartCounts((current) => ({ ...current, [memory.id]: Math.max((current[memory.id] || 0) + (before ? -1 : 1), 0) }))
     try {
       const result = await toggleMemoryReaction(memory.id)
+      setCachedHeart(memory.id, user?.uid, result.hearted)
       setHearted((current) => ({ ...current, [memory.id]: result.hearted }))
       setHeartCounts((current) => ({ ...current, [memory.id]: result.heartCount }))
     } catch {
+      setCachedHeart(memory.id, user?.uid, before)
       setHearted((current) => ({ ...current, [memory.id]: before }))
       setHeartCounts((current) => ({ ...current, [memory.id]: Math.max((current[memory.id] || 0) + (before ? 1 : -1), 0) }))
     }
@@ -147,7 +152,7 @@ export function UserMemoriesPage() {
         </nav>}
         {galleryPhotos.length ? <main className="memory-photo-wall" aria-live="polite">
           {galleryPhotos.map((photo, index) => <article className="memory-wall-post" key={photo.key}>
-            <button type="button" className="memory-wall-card" onClick={() => setActivePhoto(photo)} aria-label={`Open ${photo.section} memory ${photo.position}`} style={{ '--card-tilt': cardTilts[index % cardTilts.length], '--card-accent': photo.themeColor }}>
+            <button type="button" className="memory-wall-card" onClick={() => setActivePhoto(photo)} aria-label={`Open ${photo.section} memory ${photo.position}`} style={{ '--card-accent': photo.themeColor }}>
               <figure>
                 <span className="memory-wall-image">{photo.type === 'video' ? <video src={photo.url} muted playsInline preload="metadata" /> : <img src={photo.url} alt={`${photo.section} memory ${photo.position}`} loading={index < 4 ? 'eager' : 'lazy'} />}</span>
                 <figcaption><strong>{photo.section}</strong><span>{photo.credit || photo.contributor || selected?.label || 'School memories'}</span></figcaption>
@@ -156,7 +161,7 @@ export function UserMemoriesPage() {
             <div className="memory-social-bar"><button type="button" className={hearted[photo.memoryId] ? 'is-hearted' : ''} onClick={() => toggleHeart(photo.memory)} aria-label="Heart this memory"><Heart size={18} fill={hearted[photo.memoryId] ? 'currentColor' : 'none'} /><span>{heartCounts[photo.memoryId] || 0}</span></button><button type="button" onClick={() => setCommentsMemory(photo.memory)}><MessageCircle size={18} /><span>Comment</span></button><button type="button" onClick={() => shareMemory(photo.memory)}><Share2 size={18} /><span>Share</span></button></div>
           </article>)}
         </main> : <div className="memory-single-missing"><Images size={32} />Pictures unavailable</div>}
-      </> : <section className="memory-empty" data-reveal><Images size={39} /><div><strong>The first memories are being gathered.</strong><p>When an administrator publishes a captioned gallery, it will appear here.</p></div><Camera size={22} /></section>}
+      </> : <section className="memory-empty" data-reveal><Images size={39} /><div><strong>The first memories are being gathered.</strong><p>Published captioned galleries will appear here.</p></div><Camera size={22} /></section>}
     </section>
 
     {activePhoto && createPortal(<div className="memory-lightbox-portal"><div className="memory-lightbox" role="dialog" aria-modal="true" aria-label={`${activePhoto.section} photo preview`} onMouseDown={(event) => { if (event.target === event.currentTarget) setActivePhoto(null) }}>

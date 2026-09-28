@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, Clock3, FileVideo2, ImagePlus, Send, ShieldCheck, UploadCloud, XCircle } from 'lucide-react'
 import { useAuth } from '../../auth/context/AuthContext.jsx'
-import { loadAssignmentSections, submitTeacherMemory, subscribeTeacherAssignment, subscribeTeacherMemories } from '../services/teacherService.js'
+import { loadAssignmentSections, readVideoDurationSeconds, submitTeacherMemory, subscribeTeacherAssignment, subscribeTeacherMemories } from '../services/teacherService.js'
 
 const stateMeta = {
   pending: { icon: Clock3, label: 'Pending approval' },
@@ -35,26 +35,38 @@ export function TeacherStudioPage() {
   const counts = useMemo(() => memories.reduce((result, item) => ({ ...result, [item.status]: (result[item.status] || 0) + 1 }), {}), [memories])
   const photoCount = files.filter((file) => file.type.startsWith('image/')).length
   const videoCount = files.filter((file) => file.type.startsWith('video/')).length
-  const photoRemaining = Math.max((assignment?.photoLimit || 40) - (assignment?.photosSubmitted || 0), 0)
-  const videoRemaining = Math.max((assignment?.videoLimit || 5) - (assignment?.videosSubmitted || 0), 0)
+  const usesLegacyDefaults = Number(assignment?.photoLimit) === 40 && Number(assignment?.videoLimit) === 5
+  const photoRemaining = Math.max((usesLegacyDefaults ? 5 : assignment?.photoLimit || 5) - (assignment?.photosSubmitted || 0), 0)
+  const videoRemaining = Math.max((usesLegacyDefaults ? 2 : assignment?.videoLimit || 2) - (assignment?.videosSubmitted || 0), 0)
+  const videoDurationLimitSeconds = assignment?.videoDurationLimitSeconds || 120
+  const isAlumniLeader = assignment?.contributorType === 'alumniLeader'
 
-  const chooseFiles = (selected) => {
+  const chooseFiles = async (selected) => {
     const accepted = [...selected].filter((file) => file.type.startsWith('image/') || file.type.startsWith('video/'))
     const invalidSize = accepted.find((file) => file.size > (file.type.startsWith('video/') ? 80 : 10) * 1024 * 1024)
     if (invalidSize) { setError(`${invalidSize.name} is too large. Photos can be 10 MB and videos 80 MB.`); return }
     const photos = accepted.filter((file) => file.type.startsWith('image/')).length
     const videos = accepted.filter((file) => file.type.startsWith('video/')).length
     if (photos > photoRemaining || videos > videoRemaining) { setError(`This selection exceeds your remaining allowance: ${photoRemaining} photos and ${videoRemaining} videos.`); return }
+    try {
+      const videoFiles = accepted.filter((file) => file.type.startsWith('video/'))
+      const durations = await Promise.all(videoFiles.map(readVideoDurationSeconds))
+      const invalidDurationIndex = durations.findIndex((duration) => duration > videoDurationLimitSeconds)
+      if (invalidDurationIndex >= 0) { setError(`${videoFiles[invalidDurationIndex].name} exceeds the ${Math.ceil(videoDurationLimitSeconds / 60)}-minute video limit.`); return }
+    } catch (durationError) {
+      setError(durationError.message || 'GradBook could not verify the selected video duration.')
+      return
+    }
     setFiles(accepted)
     setError('')
   }
 
   const submit = async (event) => {
     event.preventDefault()
-    if (!form.sectionId || !files.length || !form.caption.trim()) { setError('Choose an assigned section, add media, and write a caption.'); return }
+    if (!form.sectionId || !form.title.trim() || !files.length || !form.caption.trim()) { setError('Choose an assigned section, add a title and caption, then select media.'); return }
     setSaving(true); setError(''); setMessage(''); setProgress(0)
     try {
-      await submitTeacherMemory({ uid: user.uid, contributorName: profile?.fullName || user.email, ...form, files, onProgress: setProgress })
+      await submitTeacherMemory({ uid: user.uid, contributorName: profile?.fullName || user.email, ...form, files, videoDurationLimitSeconds, onProgress: setProgress })
       setForm((current) => ({ title: '', caption: '', sectionId: current.sectionId }))
       setFiles([])
       if (inputRef.current) inputRef.current.value = ''
@@ -64,16 +76,16 @@ export function TeacherStudioPage() {
     } finally { setSaving(false) }
   }
 
-  if (!assignment?.active) return <div className="teacher-studio-page"><section className="teacher-access-card"><ShieldCheck size={30} /><h1>Teacher access is awaiting assignment</h1><p>An administrator needs to assign at least one section before you can upload memories or take graduation portraits.</p></section></div>
+  if (!assignment?.active) return <div className="teacher-studio-page"><section className="teacher-access-card"><ShieldCheck size={30} /><h1>Memory contributor access is awaiting assignment</h1><p>An administrator needs to activate your account and assign a section before you can upload memories.</p></section></div>
 
   return <div className="teacher-studio-page">
     <section className="teacher-studio-hero">
-      <div><span>TEACHER STUDIO</span><h1>Your class stories, ready for review.</h1><p>Upload photos or videos from your assigned sections. Every submission stays private until an administrator approves it.</p></div>
+      <div><span>{isAlumniLeader ? 'ALUMNI LEADER STUDIO' : 'TEACHER STUDIO'}</span><h1>Your class stories, ready for review.</h1><p>Upload photos or videos from your assigned {isAlumniLeader ? 'section' : 'sections'}. Every submission stays private until an administrator approves it.</p></div>
       <div className="teacher-camera-link"><ShieldCheck size={19} /><span><strong>Your yearbook portrait</strong><small>Captured and approved by the administrator for the 3D yearbook</small></span></div>
     </section>
 
     <section className="teacher-studio-stats">
-      <div><strong>{sections.length}</strong><span>Assigned sections</span></div><div><strong>{counts.pending || 0}/{assignment.pendingPostLimit || 10}</strong><span>Pending approval</span></div><div><strong>{photoRemaining}</strong><span>Photos remaining</span></div><div><strong>{videoRemaining}</strong><span>Videos remaining</span></div>
+      <div><strong>{sections.length}</strong><span>Assigned sections</span></div><div><strong>{counts.pending || 0}</strong><span>Pending review</span></div><div><strong>{photoRemaining}</strong><span>Photos remaining</span></div><div><strong>{videoRemaining}</strong><span>Videos remaining</span></div>
     </section>
 
     <div className="teacher-studio-grid">
@@ -81,9 +93,9 @@ export function TeacherStudioPage() {
         <header><div><span>NEW MEMORY</span><h2>Share a class moment</h2></div><UploadCloud size={24} /></header>
         {message && <div className="teacher-message success">{message}</div>}{error && <div className="teacher-message error">{error}</div>}
         <label><span>Assigned section</span><select value={form.sectionId} onChange={(event) => setForm((current) => ({ ...current, sectionId: event.target.value }))}>{sections.map((section) => <option key={section.id} value={section.id}>{section.name || section.id}</option>)}</select></label>
-        <label><span>Post title</span><input value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} placeholder="Science fair, recognition day…" /></label>
+        <label><span>Post title</span><input value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} placeholder="Science fair, recognition day…" required /></label>
         <label><span>Caption</span><textarea value={form.caption} onChange={(event) => setForm((current) => ({ ...current, caption: event.target.value }))} placeholder="Tell the story behind this memory and mention a club or event if needed." maxLength={1200} /></label>
-        <button className="teacher-media-drop" type="button" onClick={() => inputRef.current?.click()}><ImagePlus size={25} /><strong>Choose photos or videos</strong><span>Photos up to 10 MB · videos up to 80 MB</span></button>
+        <button className="teacher-media-drop" type="button" onClick={() => inputRef.current?.click()}><ImagePlus size={25} /><strong>Choose photos or videos</strong><span>Photos up to 10 MB · videos up to 80 MB and {Math.ceil(videoDurationLimitSeconds / 60)} minutes each</span></button>
         <input ref={inputRef} hidden type="file" accept="image/*,video/mp4,video/webm,video/quicktime" multiple onChange={(event) => chooseFiles(event.target.files || [])} />
         {files.length > 0 && <div className="teacher-file-summary"><span><ImagePlus size={15} /> {photoCount}/{photoRemaining} remaining photos</span><span><FileVideo2 size={15} /> {videoCount}/{videoRemaining} remaining videos</span><button type="button" onClick={() => { setFiles([]); if (inputRef.current) inputRef.current.value = '' }}>Clear</button></div>}
         {saving && <div className="teacher-upload-progress"><span style={{ width: `${Math.round(progress * 100)}%` }} /></div>}

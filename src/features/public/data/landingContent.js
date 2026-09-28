@@ -36,7 +36,7 @@ export const schoolStoryContent = {
   titleLine: 'Step into the stories.',
   notes: [
     { icon: 'heritage', title: 'HERITAGE & IDENTITY', body: 'Explore the milestones and shared values that shaped the school community across generations.' },
-    { icon: 'people', title: 'PEOPLE & EXPERIENCES', body: 'Meet the students, educators, and alumni whose everyday stories give the campus its character.' },
+    { icon: 'people', title: 'PEOPLE & EXPERIENCES', body: 'Meet the students and educators whose everyday stories give the campus its character.' },
   ],
 }
 
@@ -58,13 +58,13 @@ export const mosaicContent = {
 export const accessContent = {
   kicker: 'YOUR PLACE IN THE STORY',
   title: 'Enter the digital home of SNHS.',
-  description: 'Request a verified account to explore full school chapters, class records, portraits, awards, and alumni connections.',
+  description: 'Request a verified account to explore full school chapters, class records, portraits, awards, and shared memories.',
   panelLabel: 'VERIFIED COMMUNITY ACCESS',
   panelTitle: 'One GradBook.\nEvery generation.',
   benefits: [
     { icon: 'secure', text: 'Protected school records' },
     { icon: 'awards', text: 'Student awards and milestones' },
-    { icon: 'community', text: 'Students, staff, and alumni' },
+    { icon: 'community', text: 'Students and teachers' },
   ],
 }
 
@@ -87,9 +87,9 @@ export const campusFilmContent = {
 
 export const footerContent = {
   description: 'Preserving the portraits, achievements, traditions, and stories that connect every SNHS generation.',
-  note: 'For the students, teachers, staff, and administrators of Sorsogon National High School.',
+  note: 'For the verified students and teachers of Sorsogon National High School.',
   groups: [
     { title: 'EXPLORE', links: [{ label: 'Request access', to: '/login?mode=signup' }, { label: 'Sign in', to: '/login' }] },
-    { title: 'INSIDE GRADBOOK', items: ['School history', 'Class records', 'Alumni stories'] },
+    { title: 'INSIDE GRADBOOK', items: ['School history', 'Class records', 'Community stories'] },
   ],
 }

@@ -8,7 +8,7 @@ import { buildReport, subscribeReportData } from '../services/reportService.js'
 
 const emptyData = {
   students: [], photos: [], schoolYears: [], strands: [], sections: [], yearbooks: [],
-  accountRequests: [], announcements: [], schoolContent: [], alumni: [],
+  accountRequests: [], announcements: [], schoolContent: [],
 }
 
 const csvCell = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`
@@ -120,8 +120,8 @@ export function ReportsPage() {
         <Card className="panel-card report-panel">
           <div className="section-title-row"><div><h3>Community publishing</h3><span className="panel-caption">Current records available across the system</span></div></div>
           <div className="report-publishing-list">
-            <div><span>Published school content</span><strong>{report.totals.publishedContent}</strong></div>
-            <div><span>Active alumni profiles</span><strong>{report.totals.activeAlumni}</strong></div>
+            <div><span>Published announcements</span><strong>{report.totals.publishedAnnouncements}</strong></div>
+            <div><span>Published school stories</span><strong>{report.totals.publishedStories}</strong></div>
             <div><span>Active yearbooks</span><strong>{report.totals.publishedYearbooks}</strong></div>
           </div>
         </Card>

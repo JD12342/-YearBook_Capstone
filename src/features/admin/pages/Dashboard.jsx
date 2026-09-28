@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, BookOpenText, Layers3, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Card } from '../components/ui/Card.jsx'
-import { getDashboardStats } from '../services/dashboardService.js'
+import { getCachedDashboardStats, getDashboardStats } from '../services/dashboardService.js'
 import { isFirebaseConfigured } from '../services/firebase/firebaseConfig.js'
 
 export function Dashboard() {
   const navigate = useNavigate()
-  const [stats, setStats] = useState([])
-  const [loading, setLoading] = useState(false)
+  const [stats, setStats] = useState(() => getCachedDashboardStats() || [])
+  const [loading, setLoading] = useState(() => !getCachedDashboardStats())
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -23,7 +23,7 @@ export function Dashboard() {
         return
       }
 
-      setLoading(true)
+      setLoading(!getCachedDashboardStats())
       setError('')
 
       try {
@@ -44,7 +44,7 @@ export function Dashboard() {
   }, [])
 
   const featureCards = [
-    { title: 'Student Directory', description: 'Organize student records for every graduating class.', metric: stats.totalStudents ?? 0, metricLabel: 'student records', icon: <Users size={66} strokeWidth={1.5} />, route: '/students', tone: 'feature-forest' },
+    { title: 'Graduation Directory', description: 'Manage student and teacher records for graduation photos and yearbooks.', metric: stats.totalStudents ?? 0, metricLabel: 'student records', icon: <Users size={66} strokeWidth={1.5} />, route: '/graduation-directory', tone: 'feature-forest' },
     { title: 'Academic Setup', description: 'Manage school years, strands, and sections.', metric: stats.totalSchoolYears ?? 0, metricLabel: `${stats.totalStrands ?? 0} academic strands`, icon: <Layers3 size={66} strokeWidth={1.5} />, route: '/academic', tone: 'feature-jade' },
     { title: 'Yearbook Studio', description: 'Prepare the records that shape each digital yearbook.', metric: stats.totalYearbooks ?? 0, metricLabel: `${stats.totalPhotos ?? 0} approved photo records`, icon: <BookOpenText size={66} strokeWidth={1.5} />, route: '/yearbooks', tone: 'feature-emerald' },
   ]
